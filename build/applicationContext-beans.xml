@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+     xmlns:aop="http://www.springframework.org/schema/aop"
+     xmlns:tx="http://www.springframework.org/schema/tx"
+     xmlns:jdbc="http://www.springframework.org/schema/jdbc"
+     xmlns:context="http://www.springframework.org/schema/context"
+     xmlns:util="http://www.springframework.org/schema/util"
+     xsi:schemaLocation="
+     http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-3.1.xsd
+     http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.1.xsd
+     http://www.springframework.org/schema/jdbc http://www.springframework.org/schema/jdbc/spring-jdbc-3.1.xsd
+     http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-3.0.xsd
+     http://www.springframework.org/schema/util http://www.springframework.org/schema/util/spring-util-3.1.xsd
+     http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-3.1.xsd">
+
+	<bean id="placeHolder" class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
+		<property name="locations" value="classpath:web.properties" />
+	</bean>
+	
+	<!-- 此文件时用来专门为spring bean注入用的 -->
+	<bean id="commonResource" class="com.linyang.energy.common.CommonResource">
+		<property name="elecUnit"    value="0.404" /> <!-- 电 -->
+		<property name="waterUnit"   value="0.0857" /> <!-- 水 -->
+		<property name="gasUnit"     value="1.2143174" /> <!-- 气 -->
+        <property name="hotUnit"     value="0.1229" /> <!-- 热 -->
+
+		<property name="energyValue" value="0.997" />    <!-- 能效标准值 -->
+		<property name="airValue"    value="2.4" />    <!-- 空调标准值 -->
+	</bean>
+	
+	<bean id ="taskExecutor"  class ="org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor" >
+    <property name ="corePoolSize" value ="10" /> <!--核心线程数 -->
+    <property name ="keepAliveSeconds" value ="3000" /> <!-- 某线程空闲超过这个时间，就回收该线程 -->
+    <property name ="maxPoolSize" value ="50" />     <!--最大线程数 -->
+    <property name ="queueCapacity" value ="1000" />  <!-- 队列大小 -->
+    <property name= "rejectedExecutionHandler" >
+        <!-- AbortPolicy:直接抛出java.util.concurrent.RejectedExecutionException异常 -->
+        <!-- CallerRunsPolicy:主线程直接执行该任务，执行完之后尝试添加下一个任务到线程池中，可以有效降低向线程池内添加任务的速度 -->
+        <!-- DiscardOldestPolicy:抛弃旧的任务、暂不支持；会导致被丢弃的任务无法再次被执行 -->
+        <!-- DiscardPolicy:抛弃当前任务、暂不支持；会导致被丢弃的任务无法再次被执行 -->
+        <bean class = "java.util.concurrent.ThreadPoolExecutor$DiscardPolicy"   />
+    </property>
+</bean>
+	
+</beans>

@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.linyang.energy.mapping.authmanager.ProductBeanMapper" >
+  <!-- 获取产品列表-->
+  <select id="getProductList" resultType="com.linyang.energy.model.ProductsBean" >
+  	SELECT T.PRODUCT_ID AS productId,T.PRODUCT_NAME AS productName,T.PIC_ID AS picId,
+	P.PIC_NAME AS picName,P.PIC_URL AS picUrl,T.MEASURE_UNIT_ID AS measureUnitId,
+	D.DETAIL_NAME AS unitName,T.UNIT_CONSUMER AS unitConsumer FROM T_PRODUCT T 
+	LEFT JOIN T_PICTURE P ON T.PIC_ID = P.PIC_ID LEFT JOIN T_DICT_TYPE_DETAIL D 
+    ON T.MEASURE_UNIT_ID = D.DETAIL_ID ORDER BY T.PRODUCT_ID DESC
+  </select>
+  
+  <!-- 根据Id删除产品信息 -->
+  <delete id="deleteProduct" parameterType="java.lang.Long" >
+    DELETE FROM T_PRODUCT WHERE PRODUCT_ID=#{productId,jdbcType=DECIMAL}
+  </delete>
+  
+  <!-- 根据Id查询与计划表的关联关系 -->
+  <select id="getProductLink" parameterType="java.lang.Long" resultType="java.lang.Long">
+  	SELECT COUNT(T.PRODUCT_ID) FROM T_PLAN T LEFT JOIN T_PRODUCT P ON T.PRODUCT_ID=P.PRODUCT_ID 
+  	WHERE T.PRODUCT_ID=#{productId,jdbcType=DECIMAL}
+  </select>
+  
+  <!-- 获取耗能种类 -->
+  <select id="getPowerData" resultType="HashMap" >
+  	SELECT DETAIL_ID,DETAIL_NAME FROM T_DICT_TYPE_DETAIL  WHERE STATUS=1 
+  	AND CATE_ID IN (1000,1001,1002,1003,1004,1005,1006)
+  </select>
+  
+  <!-- 获取计量单位 -->
+  <select id="getUnitData" resultType="HashMap" >
+  	SELECT DETAIL_ID,DETAIL_NAME FROM T_DICT_TYPE_DETAIL  WHERE STATUS=1 
+  	AND CATE_ID=200
+  </select>
+  
+  <!-- 根据产品Id删除耗能种类信息  -->
+  <delete id="deletePowerDetail" parameterType="java.lang.Long" >
+    DELETE FROM T_PRODUCT_DEVICE_RELATION WHERE PRODUCT_ID=#{productId,jdbcType=DECIMAL}
+  </delete>
+  
+  <!-- 根据时段Id删除图片信息  -->
+  <delete id="deletePicData" parameterType="java.lang.Long" >
+    DELETE FROM T_PICTURE WHERE PIC_ID=#{picId,jdbcType=DECIMAL}
+  </delete>
+  
+  
+  <!-- 检查是否有相同的产品名称 -->
+  <select id="checkProductName" resultType="java.lang.Long" parameterType="java.lang.String" >
+  	SELECT COUNT(PRODUCT_ID) FROM T_PRODUCT WHERE PRODUCT_NAME=#{productName,jdbcType=VARCHAR}
+  </select>
+  
+  <!-- 插入产品信息 -->
+  <insert id="insertProductData" parameterType="com.linyang.energy.model.ProductsBean" >
+  	INSERT INTO T_PRODUCT (PRODUCT_ID,PRODUCT_NAME,PIC_ID,MEASURE_UNIT_ID,UNIT_CONSUMER) VALUES 
+  	(#{productId,jdbcType=DECIMAL},#{productName,jdbcType=VARCHAR},#{picId,jdbcType=DECIMAL},
+  	#{measureUnitId,jdbcType=DECIMAL},#{unitConsumer,jdbcType=DOUBLE})
+  </insert> 
+  
+  <!-- 插入图片信息 -->
+  <insert id="insertPicData" parameterType="com.linyang.energy.model.ProductsBean" >
+    INSERT INTO T_PICTURE (PIC_ID,PIC_NAME,PIC_URL) VALUES 
+    (#{picId,jdbcType=DECIMAL},#{picName,jdbcType=VARCHAR},#{picUrl,jdbcType=VARCHAR})
+  </insert>
+  
+   <!-- 插入耗能种类信息 -->
+  <insert id="insertPowerData" parameterType="HashMap" >
+    INSERT INTO T_PRODUCT_DEVICE_RELATION (PRODUCT_ID,TYPE_ID) VALUES (#{productId,jdbcType=DECIMAL},#{typeId,jdbcType=DECIMAL})
+  </insert>
+  
+  <!-- 根据Id获得相应的产品信息 -->
+  <select id="getProdInfo" resultType="com.linyang.energy.model.ProductsBean" parameterType="java.lang.Long" >
+  	SELECT T.PRODUCT_ID AS productId,T.PRODUCT_NAME AS productName,T.PIC_ID AS picId,
+	P.PIC_NAME AS picName,P.PIC_URL AS picUrl,T.MEASURE_UNIT_ID AS measureUnitId,
+	D.DETAIL_NAME AS unitName,T.UNIT_CONSUMER AS unitConsumer FROM T_PRODUCT T 
+	LEFT JOIN T_PICTURE P ON T.PIC_ID = P.PIC_ID LEFT JOIN T_DICT_TYPE_DETAIL D 
+    ON T.MEASURE_UNIT_ID = D.DETAIL_ID WHERE T.PRODUCT_ID=#{productId,jdbcType=DECIMAL}
+  </select>
+  
+  <!-- 根据费率Id获得相应的耗能种类 -->
+  <select id="getPowerDataById" resultType="HashMap" parameterType="java.lang.Long" >
+  	SELECT TYPE_ID FROM T_PRODUCT_DEVICE_RELATION WHERE PRODUCT_ID=#{productId,jdbcType=DECIMAL}
+  </select>
+  
+  
+  <!-- 更新费率信息 -->
+  <update id="updateProductInfo" parameterType="com.linyang.energy.model.ProductsBean" >
+    UPDATE T_PRODUCT 
+    <set >
+      <if test="productName != null" >
+        PRODUCT_NAME = #{productName,jdbcType=VARCHAR},
+      </if>
+      <if test="picId != null" >
+        PIC_ID = #{picId,jdbcType=DECIMAL},
+      </if>
+      <if test="measureUnitId != null" >
+        MEASURE_UNIT_ID = #{measureUnitId,jdbcType=DECIMAL},
+      </if>
+      <if test="unitConsumer != null" >
+        UNIT_CONSUMER = #{unitConsumer,jdbcType=DECIMAL},
+      </if>
+    </set>
+    WHERE PRODUCT_ID = #{productId,jdbcType=DECIMAL}
+  </update>
+  
+  <!-- 更新图片信息 -->
+  <update id="updatePicInfo" parameterType="com.linyang.energy.model.ProductsBean" >
+    UPDATE T_PICTURE 
+    <set >
+      <if test="picName != null" >
+        PIC_NAME = #{picName,jdbcType=VARCHAR},
+      </if>
+      <if test="picUrl != null" >
+        PIC_URL = #{picUrl,jdbcType=VARCHAR},
+      </if>
+    </set>
+    WHERE PIC_ID = #{picId,jdbcType=DECIMAL}
+  </update>
+</mapper>

@@ -1,0 +1,228 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.linyang.energy.mapping.yunNan.EnergyManagementMapper">
+
+    <select id="queryenManagementPageList" resultType="HashMap">
+			SELECT ENM_ID,ENM_NAME,TEL,DEPT,JOB,FAX,EMAIL,ENT_ID
+			FROM T_ENM_INFO T1
+            JOIN (
+            SELECT T1.LEDGER_ID AS ID, T1.LEDGER_NAME AS NAME, 1 AS TYPE FROM T_LEDGER T1,T_LEDGER T2
+            WHERE T1.LEDGER_LFT >= T2.LEDGER_LFT AND T1.LEDGER_RGT &lt;=T2.LEDGER_RGT AND T2.LEDGER_ID=#{pId}
+            ) T4 ON T1.ENT_ID = T4.ID
+			WHERE ENM_TYPE = #{enmType}
+            <if test=" ledgerId != null and ledgerId != '' ">
+                AND ENT_ID = #{ledgerId}
+            </if>
+    </select>
+
+    <!-- 对应的插入字段的名字() -->
+    <sql id="key">
+        <trim suffixOverrides=",">
+            <if test="enmId != null and enmId != ''">
+                ENM_ID,
+            </if>
+            <if test="enmName != null and enmName != ''">
+                ENM_NAME,
+            </if>
+            <if test="enmType != null and enmType != ''">
+                ENM_TYPE,
+            </if>
+            <if test="tel != null and tel != ''">
+                TEL,
+            </if>
+            <if test="dept != null and dept != ''">
+                DEPT,
+            </if>
+            <if test="job != null and job != ''">
+                JOB,
+            </if>
+            <if test="fax != null and fax != ''">
+                FAX,
+            </if>
+            <if test="email != null and email != ''">
+                EMAIL,
+            </if>
+            <if test="certId != null and certId != ''">
+                CERT_ID,
+            </if>
+            <if test="trainInfo != null and trainInfo != ''">
+                TRAIN_INFO,
+            </if>
+            <if test="techPost != null and techPost != ''">
+                TECH_POST,
+            </if>
+            <if test="ledgerId != null and ledgerId != ''">
+                ENT_ID,
+            </if>
+            UPLOAD_STATUS,
+        </trim>
+    </sql>
+
+    <!-- 对应的插入字段的值 -->
+    <sql id="values">
+        <if test="enmId != null and enmId != ''">
+            #{enmId},
+        </if>
+        <if test="enmName != null and enmName != ''">
+            #{enmName},
+        </if>
+        <if test="enmType != null and enmType != ''">
+            #{enmType},
+        </if>
+        <if test="tel != null and tel != ''">
+            #{tel},
+        </if>
+        <if test="dept != null and dept != ''">
+            #{dept},
+        </if>
+        <if test="job != null and job != ''">
+            #{job},
+        </if>
+        <if test="fax != null and fax != ''">
+            #{fax},
+        </if>
+        <if test="email != null and email != ''">
+            #{email},
+        </if>
+        <if test="certId != null and certId != ''">
+            #{certId},
+        </if>
+        <if test="trainInfo != null and trainInfo != ''">
+            #{trainInfo},
+        </if>
+        <if test="techPost != null and techPost != ''">
+            #{techPost},
+        </if>
+        <if test="ledgerId != null and ledgerId != ''">
+            #{ledgerId},
+        </if>
+        0
+    </sql>
+
+
+    <insert id="saveData" parameterType="HashMap">
+        INSERT INTO T_ENM_INFO (<include refid="key"/>)
+        VALUES (<include refid="values"/>)
+    </insert>
+
+
+    <update id="modifyData" parameterType="HashMap">
+        UPDATE T_ENM_INFO
+        <set>
+            <if test="enmName != null and enmName != ''">
+                ENM_NAME = #{enmName},
+            </if>
+            <if test="enmType != null and enmType != ''">
+                ENM_TYPE = #{enmType},
+            </if>
+            <if test="tel != null and tel != ''">
+                TEL = #{tel},
+            </if>
+            <if test="dept != null and dept != ''">
+                DEPT = #{dept},
+            </if>
+            <if test="job != null and job != ''">
+                JOB = #{job},
+            </if>
+            <if test="fax != null and fax != ''">
+                FAX =  #{fax},
+            </if>
+            <if test="email != null and email != ''">
+                EMAIL = #{email},
+            </if>
+            <if test="certId != null and certId != ''">
+                CERT_ID = #{certId},
+            </if>
+            <if test="trainInfo != null and trainInfo != ''">
+                TRAIN_INFO = #{trainInfo},
+            </if>
+            <if test="techPost != null and techPost != ''">
+                TECH_POST =  #{techPost},
+            </if>
+            <if test="ledgerId != null and ledgerId != ''">
+                ENT_ID =  #{ledgerId},
+            </if>
+            <if test="dataIndex != null">
+                DATA_INDEX = #{dataIndex},
+            </if>
+            <if test="uploadStatus != null and uploadStatus != ''">
+                UPLOAD_STATUS = #{uploadStatus},
+            </if>
+        </set>
+        WHERE ENM_ID =  #{enmId}
+    </update>
+
+    <sql id="column">
+     T1.ENM_ID,T1.ENM_NAME,T1.ENM_TYPE,T1.TEL,T1.DEPT,T1.JOB,T1.FAX,T1.EMAIL,T1.CERT_ID,T1.TRAIN_INFO,T1.TECH_POST,T1.ENT_ID,T1.UPLOAD_STATUS,
+     T2.ENT_NAME,T1.DATA_INDEX,T3.CERT_ID , T3.CERT_NO , T3.CERT_NAME, T3.CERT_URL,T2.ENT_CODE
+    </sql>
+
+    <select id="queryDataById" resultType="HashMap">
+        SELECT <include refid="column"/> FROM T_ENM_INFO T1
+        LEFT JOIN T_ENT_INFO T2 ON T1.ENT_ID = T2.ENT_ID
+        LEFT JOIN T_CERT_INFO T3 ON T1.CERT_ID = T3.CERT_ID
+        WHERE T1.ENM_ID = #{enmId}
+    </select>
+
+    <delete id="deleteRecordData" parameterType="Long">
+      DELETE FROM T_ENM_INFO WHERE ENM_ID = #{enmId}
+    </delete>
+
+
+    <insert id="saveCalData" parameterType="HashMap">
+        INSERT INTO T_CERT_INFO (
+        <trim suffixOverrides=",">
+            <if test="cerId != null and cerId != ''">
+              CERT_ID,
+            </if>
+            <if test="certName != null and certName != ''">
+              CERT_NAME,
+            </if>
+            <if test="certNo != null and certNo != ''">
+              CERT_NO,
+            </if>
+            <if test="fileName != null and fileName != ''">
+              CERT_URL,
+            </if>
+        </trim>
+        )
+        VALUES
+        (
+        <trim suffixOverrides=",">
+            <if test="cerId != null and cerId != ''">
+                #{cerId},
+            </if>
+            <if test="certName != null and certName != ''">
+                #{certName},
+            </if>
+            <if test="certNo != null and certNo != ''">
+                #{certNo},
+            </if>
+            <if test="fileName != null and fileName != ''">
+                #{fileName},
+            </if>
+        </trim>
+        )
+    </insert>
+
+    <update id="modifyCalData" parameterType="HashMap">
+      UPDATE T_CERT_INFO
+      <set>
+          <if test="certName != null and certName != ''">
+              CERT_NAME = #{certName},
+          </if>
+          <if test="certNo != null and certNo != ''">
+              CERT_NO = #{certNo},
+          </if>
+          <if test="fileName != null and fileName != ''">
+              CERT_URL = #{fileName},
+          </if>
+      </set>
+        WHERE CERT_ID = #{certId}
+    </update>
+    
+    <delete id="deleteCalData" parameterType="Long">
+        DELETE FROM T_CERT_INFO WHERE CERT_ID = #{certId}
+    </delete>
+
+</mapper>

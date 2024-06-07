@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8" ?> 
+<!DOCTYPE mapper PUBLIC "-//ibatis.apache.org//DTD Mapper 3.0//EN" "http://ibatis.apache.org/dtd/ibatis-3-mapper.dtd">
+
+<mapper namespace="com.linyang.energy.mapping.contrastanalysis.TrendForecastMapper">
+	
+	<!-- 得到曲线数据 -->
+	<select id="getCurDatas" parameterType="HashMap" resultType="HashMap">
+		<choose>
+			<when test="meterType == 4"><!-- 热 暂时不做 -->
+			
+			</when>
+			<otherwise>
+			SELECT A.FREEZE_TIME TIME_FIELD,
+				<if test="meterType == 1">SUM(A.FAQ_VALUE) VAL FROM t_ledger_device_meter B ,T_CUR_Q A</if>
+				<if test="meterType == 2">SUM(A.FLOW_VALUE) VAL FROM t_ledger_device_meter B ,T_CUR_WFLOW A</if>
+				<if test="meterType == 3">SUM(A.FLOW_VALUE) VAL FROM t_ledger_device_meter B ,T_CUR_GFLOW A</if>
+			WHERE A.METER_ID = B.METER_ID AND B.LEDGER_ID=#{legerdId} and b.TYPE_ID=#{typeId}
+		      AND A.FREEZE_TIME BETWEEN #{beginTime} AND #{endTime} GROUP BY A.FREEZE_TIME ORDER BY TIME_FIELD ASC
+			</otherwise>
+		</choose>
+	</select>
+	
+	<select id="getStatDatas" parameterType="HashMap" resultType="HashMap">
+		SELECT A.FREEZE_TIME TIME_FIELD, <if test="meterType == 1">SUM(A.FAQ_VALUE)</if>
+		<if test="meterType == 2">SUM(A.FLOW_VALUE)</if><if test="meterType == 3">SUM(A.FLOW_VALUE)</if> VAL
+		  FROM <if test="timeType == 1 or timeType == 4"><if test="meterType == 1">T_DAY_Q</if><if test="meterType == 2">T_DAY_WFLOW</if><if test="meterType == 3">T_DAY_GFLOW</if></if>
+		  <if test="timeType == 2 or timeType == 3"><if test="meterType == 1">T_MON_Q</if><if test="meterType == 2">T_MON_WFLOW</if><if test="meterType == 3">T_MON_GFLOW</if></if> A,
+		  t_ledger_device_meter b
+		 WHERE b.LEDGER_ID = #{legerdId} and b.TYPE_ID=#{typeId} and a.METER_ID=b.METER_ID
+		 AND A.FREEZE_TIME BETWEEN #{beginTime} AND #{endTime} 
+		 GROUP BY A.FREEZE_TIME ORDER BY A.FREEZE_TIME ASC
+	</select>
+
+</mapper>

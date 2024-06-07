@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="UTF-8" ?> 
+<!DOCTYPE mapper PUBLIC "-//ibatis.apache.org//DTD Mapper 3.0//EN" "http://ibatis.apache.org/dtd/ibatis-3-mapper.dtd">
+
+<mapper namespace="com.linyang.energy.mapping.energyanalysis.ClfcHouseStatisticStatMapper">
+	<select id="getLegerConst" parameterType="HashMap" resultType="HashMap">
+		SELECT STAT_DATE TIME_FIELD,Q_VALUE,G_VALUE,W_VALUE FROM 
+			<!-- 日 -->
+    		<if test="timeType == 1">
+    			T_DAY_LEDGER_COST 
+    		</if>
+    		<!-- 周 -->
+    		<if test="timeType == 4">
+    			T_DAY_LEDGER_COST 
+    		</if>
+    		<!-- 月 -->
+    		<if test="timeType == 2">
+    			T_MON_LEDGER_COST
+    		</if>
+    		<!-- 年 -->
+    		<if test="timeType == 3">
+    			T_MON_LEDGER_COST
+    		</if>
+		        WHERE LEDGER_ID =#{legerdId} AND STAT_DATE BETWEEN #{beginTime} AND  #{endTime}
+	</select>
+	
+	<select id="getLegerChildConst" parameterType="HashMap" resultType="HashMap">
+		SELECT A.Q Q_VALUE,A.GAS_FLOW G_VALUE,A.WATER_FLOW W_VALUE,B.LEDGER_NAME,B.LEDGER_ID FROM T_LEDGER B ,
+			<!-- 日 -->
+    		<if test="timeType == 1">
+    			T_DAY_LEDGER_STAT A
+    		</if>
+    		<!-- 周 -->
+    		<if test="timeType == 4">
+    			T_DAY_LEDGER_STAT A
+    		</if>
+    		<!-- 月 -->
+    		<if test="timeType == 2">
+    			T_MON_LEDGER_STAT A
+    		</if>
+    		<!-- 年 -->
+    		<if test="timeType == 3">
+    			T_MON_LEDGER_STAT A
+    		</if>
+			   WHERE A.LEDGER_ID = B.LEDGER_ID AND (B.PARENT_LEDGER_ID=#{legerdId} OR B.LEDGER_ID=#{legerdId}) AND A.STAT_DATE BETWEEN #{beginTime} AND  #{endTime}
+	</select>
+	
+	
+	<select id="getHouseStatPage" parameterType="HashMap" resultType="LegdeStatBean">
+	 SELECT M.LEDGER_ID legdeId ,M.ELEVALUE eleNow,M.GASVALUE gasNow,M.WATERVALUE waterNow,N.ELEPREVALUE elePre,N.GASPREVALUE gasPre,N.WATERPREVALUE waterPre ,
+	 X.ELECOST  eleCostNow,X.GASCOST gasCostNow,X.WATERCOST waterCostNow,Y.ELEPRECOST eleCostPre,Y.GASPRECOST gasCostPre, Y.WATERPRECOST waterCostPre
+	 FROM 
+	    (SELECT A.LEDGER_ID,SUM(Q) ELEVALUE,SUM(GAS_FLOW) GASVALUE,SUM(WATER_FLOW) WATERVALUE FROM 
+	    	 <if test="type==1">
+			  	 T_DAY_LEDGER_STAT A
+			  </if>
+			   <if test="type==2">
+			  	 T_MON_LEDGER_STAT A
+			  </if>
+	      , T_LEDGER B
+	     WHERE A.LEDGER_ID = B.LEDGER_ID
+	       AND
+	       <choose>
+	        <when test="queryLedgerIds != null">  
+	             B.LEDGER_ID IN  <foreach collection="queryLedgerIds" item="ids" open="(" separator="," close=")"> #{ids} </foreach>
+	        </when>
+	        <otherwise>  
+	           B.PARENT_LEDGER_ID = #{parentLegerId} 
+	        </otherwise> 
+	       </choose>
+	       AND A.STAT_DATE BETWEEN #{beginTime} AND #{endTime}
+	     GROUP BY A.LEDGER_ID) M  LEFT JOIN 
+	     (SELECT A.LEDGER_ID,SUM(Q) ELEPREVALUE,SUM(GAS_FLOW) GASPREVALUE,SUM(WATER_FLOW) WATERPREVALUE FROM 
+	      	<if test="type==1">
+			  	 T_DAY_LEDGER_STAT A
+			  </if>
+			   <if test="type==2">
+			  	 T_MON_LEDGER_STAT A
+			  </if>
+	     , T_LEDGER B
+	     WHERE A.LEDGER_ID = B.LEDGER_ID
+	       AND 
+	       <choose>
+	       	  <when test="queryLedgerIds != null">  
+	             B.LEDGER_ID IN <foreach collection="queryLedgerIds" item="ids" open="(" separator="," close=")"> #{ids} </foreach>
+	        </when>
+	        <otherwise>  
+	           B.PARENT_LEDGER_ID = #{parentLegerId} 
+	        </otherwise> 
+	       </choose>
+	       AND A.STAT_DATE BETWEEN #{beginTime1} AND #{endTime1}
+	     GROUP BY A.LEDGER_ID) N
+	     ON N.LEDGER_ID=M.LEDGER_ID
+	     LEFT JOIN(
+	           SELECT A.LEDGER_ID,SUM(Q_VALUE) ELECOST,SUM(G_VALUE) GASCOST,SUM(W_VALUE) WATERCOST FROM 
+	     	<if test="type==1">
+			  	 T_DAY_LEDGER_COST A
+			  </if>
+			   <if test="type==2">
+			  	 T_MON_LEDGER_COST A
+			  </if>
+	      , T_LEDGER B
+	     WHERE A.LEDGER_ID = B.LEDGER_ID
+	       AND 
+	       <choose>
+	       	 <when test="queryLedgerIds != null">  
+	             B.LEDGER_ID IN	<foreach collection="queryLedgerIds" item="ids" open="(" separator="," close=")"> #{ids} </foreach>
+	        </when>
+	        <otherwise>  
+	           B.PARENT_LEDGER_ID = #{parentLegerId} 
+	        </otherwise>
+	       </choose>
+	       AND A.STAT_DATE BETWEEN #{beginTime} AND #{endTime}
+	     GROUP BY A.LEDGER_ID
+	     ) X ON M.LEDGER_ID = X.LEDGER_ID
+	      LEFT JOIN(
+	           SELECT A.LEDGER_ID,SUM(Q_VALUE) ELEPRECOST,SUM(G_VALUE) GASPRECOST,SUM(W_VALUE) WATERPRECOST FROM 
+	   		 <if test="type==1">
+			  	 T_DAY_LEDGER_COST A
+			  </if>
+			   <if test="type==2">
+			  	 T_MON_LEDGER_COST A
+			  </if>
+	      , T_LEDGER B
+	     WHERE A.LEDGER_ID = B.LEDGER_ID
+	       AND 
+	       <choose>
+	       	 <when test="queryLedgerIds != null">  
+	             B.LEDGER_ID IN <foreach collection="queryLedgerIds" item="ids" open="(" separator="," close=")"> #{ids} </foreach>
+	        </when>
+	        <otherwise>  
+	           B.PARENT_LEDGER_ID = #{parentLegerId} 
+	        </otherwise> 
+	       </choose>
+	       AND A.STAT_DATE BETWEEN #{beginTime1} AND #{endTime1}
+	     GROUP BY A.LEDGER_ID
+	     ) Y ON M.LEDGER_ID = Y.LEDGER_ID
+	     
+	</select>
+	
+	<select id="getRateDatas"  parameterType="HashMap"  resultType="HashMap">
+	 SELECT A.*,B.SECTOR_NAME FROM 
+		(SELECT SUM(
+		 <if test="type==1">
+		  	 T3.DAY_FAQ
+		  </if>
+		   <if test="type==2">
+		  	 T3.MON_FAQ
+		  </if>
+		) ELE_VALUE,T3.RATE_NUMBER ,T3.LEDGER_ID,T1.RATE_ID
+		  FROM T_RATE T1, T_RATE_SECTOR T2, T_LEDGER T,
+		   <if test="type==1">
+		  	 T_DAY_LEDGER_Q_RATE T3
+		  </if>
+		   <if test="type==2">
+		  	 T_MON_LEDGER_Q_RATE T3
+		  </if>
+		 WHERE T1.RATE_ID = T2.RATE_ID
+		   AND T.RATE_ID = T1.RATE_ID
+		   AND T.LEDGER_ID = T3.LEDGER_ID
+		   AND T2.SECTOR_ID = T3.RATE_NUMBER
+		   <if test="ledgerIds != null">  AND T3.LEDGER_ID IN <foreach collection="ledgerIds" item="ids" open="(" separator="," close=")"> #{ids} </foreach> </if>
+		   AND T.RATE_ID IS NOT NULL
+		   AND T3.FREEZE_TIME BETWEEN #{beginTime} AND #{endTime}
+		   GROUP BY T3.LEDGER_ID, T3.RATE_NUMBER,T1.RATE_ID
+		 ) A ,T_RATE_SECTOR B
+		 WHERE A.RATE_NUMBER = B.SECTOR_ID AND A.RATE_ID = B.RATE_ID
+		  ORDER BY A.LEDGER_ID ASC
+	</select>
+	
+	<select id="getLegerdsPics" parameterType="java.lang.String"  resultType="HashMap">
+			SELECT A.LEDGER_ID,A.LEDGER_NAME,B.* FROM T_LEDGER A LEFT JOIN T_PICTURE B ON A.PIC_ID = B.PIC_ID
+			WHERE  <if test="ledgerIds != null">  A.LEDGER_ID IN <foreach collection="ledgerIds" item="ids" open="(" separator="," close=")"> #{ids} </foreach> </if>
+	</select>
+</mapper>

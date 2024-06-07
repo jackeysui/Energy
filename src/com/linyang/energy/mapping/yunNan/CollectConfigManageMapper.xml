@@ -1,0 +1,359 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.linyang.energy.mapping.yunNan.CollectConfigManageMapper" >
+  <!-- 分页生产工序列表-->
+  <select id="getProdProcPageData" resultType="HashMap" parameterType="HashMap" >
+	  SELECT T.*,T2.LEDGER_NAME FROM T_PROD_PROCESS T,T_LEDGER T2
+	   	where T.ENT_ID=T2.LEDGER_ID AND t.ENT_ID in (
+	   	SELECT t1.ledger_id as ledgerId from t_ledger t1,t_ledger t2
+   		WHERE t1.ledger_lft>=t2.ledger_lft 
+		and t1.ledger_rgt &lt;=t2.ledger_rgt and t2.ledger_id =  #{ledgerId})
+	    <if test="entId != null and entId != '0' and entId != ''">
+           and T.ENT_ID=#{entId}
+        </if>
+	   
+	   ORDER BY T.PROCESS_ID
+  </select>
+  <!-- 根据企业id获取生存工序 -->
+  <select id="getAllProdProcData" resultType="HashMap" parameterType="HashMap" >
+	   SELECT T.PROCESS_ID,T.PROCESS_NAME,T.PROCESS_CODE FROM T_PROD_PROCESS T 
+	    <if test="entId != null and entId != '0' and entId != ''">
+           WHERE T.ENT_ID=#{entId}
+        </if>
+	    ORDER BY T.PROCESS_ID
+  </select>
+  
+  <!-- 根据企业id获取生存工序 -->
+  <select id="getIfCanDeleteProc"  parameterType="long" resultType="int">
+	   SELECT SUM(K.DCOUNT) TCOUNT FROM 
+		(SELECT COUNT(1) DCOUNT FROM T_PROD_PROCESS_UNIT U WHERE U.PROCESS_ID=#{procId}
+		UNION
+		SELECT COUNT(1) DCOUNT FROM T_DATACFG_ITEM T WHERE T.PROCESS_ID=#{procId}) K
+  </select>
+
+  <select id="getProcById" resultType="HashMap" parameterType="long" >
+	   SELECT T.*,L.LEDGER_NAME ENT_NAME FROM T_PROD_PROCESS T
+		INNER JOIN T_LEDGER L ON T.ENT_ID=L.LEDGER_ID
+ 		WHERE PROCESS_ID= #{procId}
+  </select>
+  
+  <select id="getProdPCode" resultType="HashMap"  parameterType="long">
+	  SELECT T1.* FROM T_PROD_PCODE T1  left join T_ENT_INFO T2
+		on T2.INDUSTRY_CODE=T1.INDUSTRY_ID
+		where T2.ENT_ID=${entId} OR T1.INDUSTRY_ID IS NULL
+  </select>
+  
+  <select id="getProdPUnitCode" resultType="HashMap"  parameterType="long">
+	SELECT T1.* FROM T_PROD_PUNITCODE T1  left join T_ENT_INFO T2
+		on T2.INDUSTRY_CODE=T1.INDUSTRY_ID
+		where T2.ENT_ID=${entId} OR T1.INDUSTRY_ID IS NULL
+  </select>
+  
+  <select id="getDataType" resultType="HashMap"  >
+	  SELECT * FROM T_DATA_TYPE
+  </select>
+  
+  <select id="getDataUsage" resultType="HashMap"  >
+	  SELECT * FROM t_datacode_enuse
+  </select>
+  
+   <select id="getEqpType" resultType="HashMap"  >
+	   select * from t_eneqp_type 
+  </select>
+  
+  <select id="getEnType" resultType="HashMap"  >
+	   select t.EN_TYPE_ID,t.EN_TYPE_NAME,t.PRECISION from t_en_type t
+  </select>
+  
+   <select id="getWPED" resultType="HashMap"  >
+	   select t.WMED_ID EN_TYPE_ID,t.WMED_NAME EN_TYPE_NAME,t.PRECISION PRECISION from T_WMED t
+  </select>
+  
+   <select id="getNonenprod" resultType="HashMap"  >
+	   select t.NONENPROD_ID EN_TYPE_ID,t.NONENPROD_NAME EN_TYPE_NAME,t.PRECISION PRECISION from t_non_enprod t
+  </select>
+  
+  <select id="getEEI" resultType="HashMap"  >
+	  select t.EEI_ID EN_TYPE_ID,t.EEI_NAME EN_TYPE_NAME from t_eei t
+  </select>
+  
+   <select id="getOtherDataCode" resultType="HashMap"  >
+	  select t.DATAOTH_ID EN_TYPE_ID,t.DATAOTH_NAME EN_TYPE_NAME from t_datacode_other t
+  </select>
+  
+  <select id="getDataSrc" resultType="HashMap"  >
+	   select * from t_data_src
+  </select>
+  
+  <!-- 添加生产工序信息 -->
+  <insert id="addProdProc" parameterType="HashMap">
+		INSERT INTO T_PROD_PROCESS (PROCESS_ID, PROCESS_CODE, PROCESS_NAME,UPLOAD_STATUS,ENT_ID)
+			VALUES(#{procId},#{procCode},#{procName},'0',#{entId})
+  </insert>
+  <!-- 更新生产工序信息 -->
+  <update id="updateProdProc" parameterType="HashMap" >
+	  UPDATE T_PROD_PROCESS SET PROCESS_CODE=#{procCode},PROCESS_NAME=#{procName},ENT_ID=#{entId}
+ 	  WHERE PROCESS_ID=#{procId}
+  </update>
+  
+  <!-- 更新生产工序信息 -->
+  <update id="updateProdProcStatus" parameterType="HashMap" >
+	  UPDATE T_PROD_PROCESS SET UPLOAD_STATUS=#{uploadStatus,jdbcType=INTEGER}
+ 	  <if test="dataIndex != null ">
+          ,DATA_INDEX=#{dataIndex,jdbcType=VARCHAR}
+       </if>
+ 	  WHERE PROCESS_ID=#{procId,jdbcType=BIGINT}
+  </update>
+  
+  <!-- 删除生产工序 -->
+  <delete id="deleteProdProc" parameterType="long">
+		DELETE FROM T_PROD_PROCESS WHERE PROCESS_ID=#{procId}
+  </delete>
+  
+  <!-- 工序单元start -->
+  <select id="getProcUnitPageData" resultType="HashMap" parameterType="HashMap" >
+	  SELECT T.UNIT_ID,T.UNIT_CODE,T.UNIT_NAME,T.DESIGNED_CAPC,T.PROCESS_ID,T.UPLOAD_STATUS,T.ENT_ID,T.DATA_INDEX,
+	   to_char(t.COMM_DATE,'yyyy-mm-dd') COMM_DATE,P.PROCESS_NAME,L.LEDGER_NAME FROM T_PROD_PROCESS_UNIT T,T_PROD_PROCESS P,T_LEDGER L
+		WHERE P.PROCESS_ID=T.PROCESS_ID AND T.ENT_ID=L.LEDGER_ID
+	   <if test="entId != null and entId != '0' and entId != ''">
+           AND T.ENT_ID=#{entId}
+       </if>
+       AND T.ENT_ID in (
+	   	SELECT t1.ledger_id as ledgerId from t_ledger t1,t_ledger t2
+   		WHERE t1.ledger_lft>=t2.ledger_lft 
+		and t1.ledger_rgt &lt;=t2.ledger_rgt and t2.ledger_id =  #{ledgerId})
+	   ORDER BY T.UNIT_ID
+  </select>
+  
+  <!-- 根据生存工序获取生存工序单元 -->
+  <select id="getAllProcUnitData" resultType="HashMap" parameterType="HashMap" >
+	   SELECT T.UNIT_ID,T.UNIT_NAME,T.UNIT_CODE FROM T_PROD_PROCESS_UNIT T 
+	    WHERE 1=1
+	    <if test="procId != null and procId != ''">
+           AND  T.PROCESS_ID=#{procId}
+        </if>
+	    <if test="unitId != null and unitId != ''">
+           AND   T.PROCESS_ID IN (SELECT T1.PROCESS_ID FROM T_PROD_PROCESS_UNIT T1 WHERE T1.UNIT_ID=#{unitId})
+        </if>
+	     ORDER BY T.UNIT_ID
+  </select>
+  
+  <select id="getProcUnitById" resultType="HashMap" parameterType="long" >
+	   SELECT L.LEDGER_NAME ENT_NAME,T.UNIT_ID,T.UNIT_CODE,T.UNIT_NAME,T.DESIGNED_CAPC,T.PROCESS_ID,
+	   T.UPLOAD_STATUS,T.ENT_ID,T.DATA_INDEX,to_char(t.COMM_DATE,'yyyy-mm-dd') COMM_DATE,
+	    T1.PROCESS_CODE
+		FROM T_PROD_PROCESS_UNIT T
+		JOIN T_PROD_PROCESS T1 ON T1.PROCESS_ID=T.PROCESS_ID
+	   INNER JOIN T_LEDGER L ON L.LEDGER_ID=T.ENT_ID
+ 		WHERE T.UNIT_ID= #{unitId}
+  </select>
+  
+  <!-- 根据工序单元id获取依赖数量 -->
+  <select id="getPUnitSonCounts"  parameterType="long" resultType="int">
+	   SELECT SUM(K.DCOUNT) TCOUNT FROM 
+		(SELECT COUNT(1) DCOUNT FROM T_CONSUME_DEVICE U WHERE U.UNIT_ID= #{unitId}
+		UNION
+		SELECT COUNT(1) DCOUNT FROM T_DATACFG_ITEM T WHERE T.UNIT_ID= #{unitId}
+	) K
+  </select>
+  
+  <!-- 添加 -->
+  <insert id="addProcUnit" parameterType="HashMap">
+		INSERT INTO T_PROD_PROCESS_UNIT (UNIT_ID, UNIT_CODE, UNIT_NAME,COMM_DATE,DESIGNED_CAPC,PROCESS_ID,UPLOAD_STATUS,ENT_ID)
+			VALUES(#{unitId},#{unitCode},#{unitName},to_date(#{commDate},'yyyy-mm-dd'),#{designedCapc},#{procId},'0',#{entId})
+  </insert>
+  <!-- 更新 -->
+  <update id="updateProcUnit" parameterType="HashMap" >
+	  UPDATE T_PROD_PROCESS_UNIT SET UNIT_CODE=#{unitCode},UNIT_NAME=#{unitName}
+	  ,COMM_DATE=to_date(#{commDate},'yyyy-mm-dd'),DESIGNED_CAPC=#{designedCapc}
+	  ,PROCESS_ID=#{procId},ENT_ID=#{entId}
+ 	  WHERE UNIT_ID=#{unitId}
+  </update>
+  
+  <!-- 更新 -->
+  <update id="updateProcUnitStatus" parameterType="HashMap" >
+ 	  UPDATE T_PROD_PROCESS_UNIT SET UPLOAD_STATUS=#{uploadStatus,jdbcType=INTEGER}
+ 	  <if test="dataIndex != null ">
+          ,DATA_INDEX=#{dataIndex,jdbcType=VARCHAR}
+       </if>
+ 	  WHERE UNIT_ID=#{unitId,jdbcType=BIGINT}
+  </update>
+  
+  <!-- 删除 -->
+  <delete id="deleteProcUnit" parameterType="long">
+		DELETE FROM T_PROD_PROCESS_UNIT WHERE UNIT_ID=#{unitId}
+  </delete>
+  <!-- 工序单元end -->
+  
+  
+  <!-- 耗能设备start -->
+  <select id="getConDeivcePageData" resultType="HashMap" parameterType="HashMap" >
+	    SELECT EQP.EQP_TYPE_NAME DEVICE_TYPE_NAME,ET.EN_TYPE_NAME ENERGY_CODE_NAME,to_char(T.USING_DATE,'yyyy-mm-dd') USING_DATE,
+		T.DEVICE_ID,T.DEVICE_NO,T.DEVICE_NAME,T.DEVICE_TYPE,T.MODEL,T.LOCATION,T.DEPT,T.CURRENT_STATUS,T.MANUFACTURER,T.ENERGY_CODE,
+		T.ENERGY_VALUE,T.UNIT_ID,T.UPLOAD_STATUS,T.ENT_ID,L.LEDGER_NAME
+		FROM T_CONSUME_DEVICE T 
+		JOIN T_PROD_PROCESS_UNIT T1 ON T1.UNIT_ID=T.UNIT_ID
+		JOIN T_PROD_PROCESS T2 ON T1.PROCESS_ID=T2.PROCESS_ID
+	    JOIN T_LEDGER L ON L.LEDGER_ID=T.ENT_ID
+		LEFT JOIN T_ENEQP_TYPE EQP ON EQP.EQP_TYPE_ID=T.DEVICE_TYPE
+		LEFT JOIN T_EN_TYPE ET ON ET.EN_TYPE_ID=T.ENERGY_CODE
+		WHERE 1=1 
+	    <if test="entId != null and entId != '0' and entId != ''">
+           AND T.ENT_ID=#{entId}
+       </if>
+         AND T.ENT_ID in (
+	   	SELECT t1.ledger_id as ledgerId from t_ledger t1,t_ledger t2
+   		WHERE t1.ledger_lft>=t2.ledger_lft 
+		and t1.ledger_rgt &lt;=t2.ledger_rgt and t2.ledger_id =  #{ledgerId})
+	    ORDER BY T.DEVICE_ID
+  </select>
+  
+   <!-- 根据工序单元id获取耗能设备 -->
+  <select id="getAllDeviceData" resultType="HashMap" parameterType="HashMap" >
+	   SELECT T.DEVICE_ID,T.DEVICE_NAME,T.DEVICE_TYPE||T.DEVICE_NO DEVICE_NO FROM T_CONSUME_DEVICE T 
+	    WHERE T.UNIT_ID=#{unitId}
+	     ORDER BY T.DEVICE_ID
+  </select>
+  
+  <select id="getConDeivceById" resultType="HashMap" parameterType="long" >
+	   SELECT to_char(T.USING_DATE,'yyyy-mm-dd') USING_DATE,
+		T.DEVICE_ID,T.DEVICE_NO,T.DEVICE_NAME,T.DEVICE_TYPE,T.MODEL,T.LOCATION,T.DEPT,T.CURRENT_STATUS,T.MANUFACTURER,T.ENERGY_CODE,
+		T.ENERGY_VALUE,T.UNIT_ID,T.UPLOAD_STATUS,T.ENT_ID,T.DATA_INDEX,L.LEDGER_NAME ENT_NAME,T1.UNIT_CODE,T2.PROCESS_CODE,T2.PROCESS_ID
+		FROM T_CONSUME_DEVICE T 
+		JOIN T_PROD_PROCESS_UNIT T1 ON T1.UNIT_ID=T.UNIT_ID
+		JOIN T_PROD_PROCESS T2 ON T1.PROCESS_ID=T2.PROCESS_ID
+	    JOIN T_LEDGER L ON L.LEDGER_ID=T.ENT_ID
+		WHERE T.DEVICE_ID= #{deviceId}
+  </select>
+  
+  <!-- 根据工序单元id获取依赖数量 -->
+  <select id="getDeviceSonCounts" parameterType="long" resultType="int">
+	  SELECT COUNT(1) DCOUNT FROM T_DATACFG_ITEM T WHERE T.DEVICE_ID= #{deviceId}
+  </select>
+  
+  <!-- 添加 -->
+  <insert id="addConDeivce" parameterType="HashMap">
+		INSERT INTO T_CONSUME_DEVICE (DEVICE_ID, DEVICE_NO, DEVICE_NAME,DEVICE_TYPE,MODEL,LOCATION,DEPT,
+		CURRENT_STATUS,MANUFACTURER,USING_DATE,ENERGY_CODE,ENERGY_VALUE,UNIT_ID,UPLOAD_STATUS,ENT_ID)
+			VALUES(#{deviceId},#{deviceNo},#{deviceName},#{deviceType},#{model},#{location},#{dept},
+			#{currentStatus},#{manu},to_date(#{usingDate},'yyyy-mm-dd'),#{energyCode},#{energyValue},#{unitId},'0',#{entId})
+  </insert>
+  <!-- 更新 -->
+  <update id="updateConDeivce" parameterType="HashMap" >
+	  UPDATE T_CONSUME_DEVICE SET DEVICE_NO=#{deviceNo},DEVICE_NAME=#{deviceName},DEVICE_TYPE=#{deviceType},MODEL=#{model},LOCATION=#{location},DEPT=#{dept},
+	  CURRENT_STATUS=#{currentStatus},MANUFACTURER=#{manu},USING_DATE=to_date(#{usingDate},'yyyy-mm-dd'),ENERGY_CODE=#{energyCode},ENERGY_VALUE=#{energyValue},
+	  UNIT_ID=#{unitId},ENT_ID=#{entId}
+ 	  WHERE DEVICE_ID=#{deviceId}
+  </update>
+  
+  <!-- 更新 -->
+  <update id="updateConDeivceStatus" parameterType="HashMap" >
+	  UPDATE T_CONSUME_DEVICE SET UPLOAD_STATUS=#{uploadStatus,jdbcType=INTEGER}
+ 	  <if test="dataIndex != null ">
+          ,DATA_INDEX=#{dataIndex,jdbcType=VARCHAR}
+       </if>
+ 	  WHERE DEVICE_ID=#{deviceId,jdbcType=BIGINT}
+  </update>
+  
+  <!-- 删除 -->
+  <delete id="deleteConDeivce" parameterType="long">
+		DELETE FROM T_CONSUME_DEVICE WHERE DEVICE_ID=#{deviceId}
+  </delete>
+  <!-- 耗能设备end -->
+  
+   <!-- 采集配置start -->
+  <select id="getDataConfigPageData" resultType="HashMap" parameterType="HashMap" >
+	   SELECT T.*,T1.PROCESS_NAME,T2.UNIT_NAME,T3.DEVICE_NAME,T4.DSRC_NAME,L.LEDGER_NAME
+		FROM T_DATACFG_ITEM T 
+	  JOIN T_LEDGER L ON L.LEDGER_ID=T.ENT_ID
+		LEFT JOIN T_PROD_PROCESS T1 ON T1.PROCESS_ID=T.PROCESS_ID
+		LEFT JOIN T_PROD_PROCESS_UNIT T2 ON T2.UNIT_ID=T.UNIT_ID
+		LEFT JOIN T_CONSUME_DEVICE T3 ON T3.DEVICE_ID=T.DEVICE_ID
+		LEFT JOIN T_DATA_SRC T4 ON T4.DSRC_ID=T.INPUT_TYPE 
+	   WHERE 1=1
+	   <if test="entId != null and entId != ''">
+           AND T.ENT_ID=#{entId}
+       </if>
+	   <if test="procId != null and procId != ''">
+           AND  T.PROCESS_ID=#{procId}
+       </if>
+       <if test="unitId != null and unitId != ''">
+           AND  T.UNIT_ID=#{unitId}
+       </if>
+       <if test="deviceName != null and deviceName != ''">
+           AND  T3.DEVICE_NAME LIKE '%${deviceName}%'
+       </if>
+       <if test="frequce != null and frequce != ''">
+           AND  T.frequce = #{frequce}
+       </if>
+       <if test="inputType != null and inputType != ''">
+           AND  T.INPUT_TYPE = #{inputType}
+       </if>
+        AND T.ENT_ID in (
+	   	SELECT t1.ledger_id as ledgerId from t_ledger t1,t_ledger t2
+   		WHERE t1.ledger_lft>=t2.ledger_lft 
+		and t1.ledger_rgt &lt;=t2.ledger_rgt and t2.ledger_id =  #{ledgerId})
+        ORDER BY DATA_ID 
+  </select>
+  
+  <select id="getDataConfigData" resultType="HashMap" parameterType="HashMap" >
+	   SELECT T.* FROM T_DATACFG_ITEM T
+	   WHERE 1=1
+	   <if test="entId != null and entId != ''">
+           AND  T.ENT_ID=#{entId}
+       </if>
+       <if test="frequce != null and frequce != ''">
+           AND  T.frequce = #{frequce}
+       </if>
+		ORDER BY DATA_ID 
+  </select>
+  
+  <select id="getDataConfigById" resultType="HashMap" parameterType="long" >
+	  SELECT T.*,T1.DEVICE_TYPE,T1.DEVICE_NO,T2.UNIT_CODE,T3.PROCESS_CODE,L.LEDGER_NAME ENT_NAME 
+		FROM T_DATACFG_ITEM T 
+	  	INNER JOIN T_LEDGER L ON L.LEDGER_ID=T.ENT_ID
+		LEFT JOIN T_CONSUME_DEVICE T1 ON T1.DEVICE_ID=T.DEVICE_ID
+		LEFT JOIN T_PROD_PROCESS_UNIT T2 ON T2.UNIT_ID=T.UNIT_ID
+		LEFT JOIN T_PROD_PROCESS T3 ON T3.PROCESS_ID=T.PROCESS_ID
+ 		WHERE DATA_ID= #{dataId}
+  </select>
+  
+   <select id="getMpedListByLedgerID" resultType="HashMap" parameterType="long" >
+	  SELECT T.METER_ID MPED_ID,T.METER_NAME MPED_NAME 
+		FROM T_METER T 
+		WHERE t.METER_STATUS=1 and T.LEDGER_ID= #{entId}
+  </select>
+  
+  <!-- 添加 -->
+  <insert id="addDataConfig" parameterType="HashMap">
+		INSERT INTO T_DATACFG_ITEM (DATA_ID, DATA_CODE, DATA_NAME,DEVICE_ID,EQP_TYPE_ID,PROCESS_ID,UNIT_ID,COLLPLAT_ID,DATAUSAGE_ID,
+		DTYPE_ID,EN_TYPE_ID,INPUT_TYPE,DATA_MAX,DATA_MIN,FREQUCE,SCOPE,EMO_ID,EMO_TYPE,UPLOAD_STATUS,ENT_ID)
+			VALUES(#{dataId,jdbcType=BIGINT},#{dataCode,jdbcType=VARCHAR},#{dataName,jdbcType=VARCHAR},#{deviceId,jdbcType=VARCHAR},
+			#{deviceType,jdbcType=VARCHAR},#{procId,jdbcType=BIGINT},#{unitId,jdbcType=BIGINT},
+			#{collplatId,jdbcType=BIGINT},#{dataUsageId,jdbcType=VARCHAR},
+			#{dtypeId,jdbcType=VARCHAR},#{enTypeId,jdbcType=VARCHAR},#{inputType,jdbcType=INTEGER},#{dataMax,jdbcType=DOUBLE},
+			#{dataMin,jdbcType=DOUBLE},#{frequce,jdbcType=DOUBLE},#{scope,jdbcType=DOUBLE},#{emoId,jdbcType=BIGINT},
+			#{emoType,jdbcType=BIGINT},'0',#{entId,jdbcType=BIGINT})
+  </insert>
+  <!-- 更新 -->
+  <update id="updateDataConfig" parameterType="HashMap" >
+	  UPDATE T_DATACFG_ITEM SET DATA_CODE=#{dataCode},DATA_NAME=#{dataName},DEVICE_ID=#{deviceId},EQP_TYPE_ID=#{deviceType},PROCESS_ID=#{procId},UNIT_ID=#{unitId},
+	  COLLPLAT_ID=#{collplatId},DATAUSAGE_ID=#{dataUsageId},DTYPE_ID=#{dtypeId},EN_TYPE_ID=#{enTypeId},INPUT_TYPE=#{inputType},DATA_MAX=#{dataMax},
+ 	  DATA_MIN=#{dataMin},FREQUCE=#{frequce},SCOPE=#{scope},EMO_ID=#{emoId},EMO_TYPE=#{emoType},ENT_ID=#{entId} WHERE DATA_ID=#{dataId}
+  </update>
+  
+  <!-- 更新 -->
+  <update id="updateDataConfigStatus" parameterType="HashMap" >
+	  UPDATE T_DATACFG_ITEM SET UPLOAD_STATUS=#{uploadStatus,jdbcType=INTEGER}
+ 	  <if test="dataIndex != null ">
+          ,DATA_INDEX=#{dataIndex,jdbcType=VARCHAR}
+       </if>
+ 	  WHERE DATA_ID=#{dataId,jdbcType=BIGINT}
+  </update>
+  
+  <!-- 删除 -->
+  <delete id="deleteDataConfig" parameterType="long">
+		DELETE FROM T_DATACFG_ITEM WHERE DATA_ID=#{dataId}
+  </delete>
+  <!--采集配置end -->
+</mapper>

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.linyang.energy.mapping.authmanager.TypeBeanMapper" >
+
+  <resultMap id="BaseResultMap" type="com.linyang.energy.model.TypeBean" >
+    <id column="EQPTYPE_ID" property="typeId" jdbcType="INTEGER" />
+    <result column="EQPTYPE_NAME" property="typeName" jdbcType="VARCHAR" />
+    <result column="PARENT_EQPTYPE_ID" property="parentTypeId" jdbcType="INTEGER" />
+  </resultMap>
+
+  <sql id="Base_Column_List" >
+    	EQPTYPE_ID, EQPTYPE_NAME, PARENT_EQPTYPE_ID
+  </sql>
+
+  <select id="queryTypeInfo" resultMap="BaseResultMap">
+		SELECT <include refid="Base_Column_List" />
+		FROM  T_LEDGER_EQPTYPE
+		ORDER BY EQPTYPE_ID
+	</select>
+</mapper>

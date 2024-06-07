@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8" ?> 
+<!DOCTYPE mapper PUBLIC "-//ibatis.apache.org//DTD Mapper 3.0//EN" "http://ibatis.apache.org/dtd/ibatis-3-mapper.dtd">
+
+<mapper namespace="com.linyang.energy.mapping.energydataquery.StartingRateMapper">
+
+	<select id="queryStartRateData" resultType="StartrateBean">
+		select l.ledger_id,
+		       l.ledger_name as ledgerName,
+		       me.meter_name as meterName,
+		       me.meter_id as meterId,
+		       a.total * mi.pt * mi.ct as total,
+		       c.rate1 * mi.pt * mi.ct as rate1,
+		       c.rate2 * mi.pt * mi.ct as rate2,
+		       c.rate3 * mi.pt * mi.ct as rate3,
+		       c.rate4 * mi.pt * mi.ct as rate4,
+		       round(b.startMin / 60, 2) as startMin,
+		       round(b.startMin / #{allMin} * 100, 2) as startRate
+		  from (select t1.meter_id as meterId, (t2.day_fae_total - t1.day_fae_total) as total from view_day_e_total t1 left join view_day_e_total t2
+		       on t1.meter_id = t2.meter_id 
+		      where t1.freeze_time = #{beginTime2}
+		      and t2.freeze_time =  #{endTime}
+		     <if test="meterIds != null">  and t2.meter_id in  <foreach collection="meterIds" item="ids" open="(" separator="," close=")"> #{ids} </foreach></if>
+		  ( select m.meter_id as meterId, count(*) * 15 as startMin
+		               from t_meter m, t_cur_i i
+		              where m.meter_id = i.meter_id
+		               <!-- 修改删除行 -->
+		                   <if test="meterIds != null">   and m.meter_id in  <foreach collection="meterIds" item="ids" open="(" separator="," close=")"> #{ids} </foreach></if>
+		                and (i.ia >= m.startcur or i.ib >= m.startcur or
+		                    i.ic >= m.startcur)
+		                and m.startcur &lt;> 0
+		                and i.freeze_time between #{beginTime} and  #{endTime2}
+		              group by m.meter_id) b  on a.meterId = b.meterId left join 
+		    (select t1.meter_id as meterId, 
+		    sum(decode(t1.rate_number,1, (t2.day_fae_rate - t1.day_fae_rate),null ))  as rate1,
+		    sum(decode(t1.rate_number,2, (t2.day_fae_rate - t1.day_fae_rate),null ))  as rate2,
+		    sum(decode(t1.rate_number,3, (t2.day_fae_rate - t1.day_fae_rate),null ))  as rate3,
+		    sum(decode(t1.rate_number,4, (t2.day_fae_rate - t1.day_fae_rate),null ))  as rate4
+		     from view_day_e_rate t1   left join  view_day_e_rate t2  on t1.meter_id = t2.meter_id
+		    where t1.freeze_time =  #{beginTime2}
+		    and t2.freeze_time =  #{endTime}
+            <if test="meterIds != null">  and t2.meter_id in  <foreach collection="meterIds" item="ids" open="(" separator="," close=")"> #{ids} </foreach></if>
+		    and t1.rate_number = t2.rate_number
+		    group by t1.meter_id) c on c.meterId = a.meterId, 
+		    t_meter me, t_ledger l,t_mped_info mi
+		 where a.meterId = me.meter_id
+		   and me.mped_id = mi.mped_id
+		   and me.ledger_id = l.ledger_id
+		   and me.STARTCUR &lt;> 0
+		 order by l.ledger_lft desc, me.meter_name
+	</select>
+	
+	<select id="getTree" resultType="com.linyang.energy.dto.LedgerTreeBean">
+		 select * from 
+	    ( SELECT distinct(A.LEDGER_ID) id,A.PARENT_LEDGER_ID  pId,A.LEDGER_NAME name,1 treeNodeType,0 meterType FROM T_LEDGER A 
+				Start With A.LEDGER_ID=#{ledgerId}
+			Connect By Prior A.ledger_id = A.parent_ledger_id
+	    union all 
+	       SELECT distinct(B.METER_ID) id,B.LEDGER_ID  pid,B.METER_NAME  name ,2 treeNodeType ,B.METER_TYPE  meterType FROM T_METER B 
+		      where B.METER_STATUS = 1 AND B.STARTCUR &lt;> 0 AND B.LEDGER_ID IN (
+		            SELECT A.LEDGER_ID FROM T_LEDGER A start with  
+		          A.LEDGER_ID = #{ledgerId}
+		      Connect By Prior  A.ledger_id = A.parent_ledger_id
+		      )
+	    )
+	   ORDER BY nlssort(name, 'NLS_SORT=SCHINESE_PINYIN_M')
+	</select>
+	
+	
+</mapper>

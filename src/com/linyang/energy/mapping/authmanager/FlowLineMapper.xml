@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8" ?> 
+<!DOCTYPE mapper PUBLIC "-//ibatis.apache.org//DTD Mapper 3.0//EN" "http://ibatis.apache.org/dtd/ibatis-3-mapper.dtd">
+
+<mapper namespace="com.linyang.energy.mapping.authmanager.FlowLineMapper">
+	 <select id="getPageList" parameterType="HashMap" resultType="HashMap">
+	 	 SELECT * FROM  T_ASSEMBLE WHERE FLAG=1 ORDER BY ASSEMBLE_ID DESC
+	 </select>
+	 
+	 <select id="getFlowLineMeters"  resultType="HashMap">
+	 	 SELECT A.METER_ID,A.METER_NAME FROM T_METER A WHERE A.ASSEMBLE_ID=#{flowLineId}
+	 </select>
+	 
+	 <select id="getFlowLine"  resultType="com.linyang.energy.model.FlowLineBean">
+	 	SELECT ASSEMBLE_ID assembleId,SCHEDULE_ID scheduleId,ASSEMBLE_NAME assembleName,REMARK remark FROM T_ASSEMBLE WHERE ASSEMBLE_ID=#{flowLineId}  AND FLAG=1
+	 </select>
+	 
+	 
+	 <insert id="addFlowLine" parameterType="com.linyang.energy.model.FlowLineBean" >
+	 	INSERT INTO T_ASSEMBLE  (ASSEMBLE_ID, SCHEDULE_ID,ASSEMBLE_NAME,REMARK) VALUES (#{assembleId}, #{scheduleId},#{assembleName},#{remark}) 
+	 </insert>
+	 <update id="addMetersFlowLine" parameterType="HashMap">
+	 	UPDATE T_METER SET ASSEMBLE_ID=#{flowLineId} WHERE  <if test="ids != null"> METER_ID IN  <foreach collection="ids" item="id" open="(" separator="," close=")"> #{id} </foreach></if>
+	 </update>
+	 
+	 <update id="updateFlowLine" parameterType="com.linyang.energy.model.FlowLineBean">
+	 	UPDATE T_ASSEMBLE SET SCHEDULE_ID=#{scheduleId},ASSEMBLE_NAME=#{assembleName},REMARK=#{remark} WHERE ASSEMBLE_ID=#{assembleId}
+	 </update>
+	 
+	 <update id="deleteFlowLine" >
+	 	UPDATE  T_ASSEMBLE SET FLAG=0 WHERE  <if test="flowLineIds != null"> ASSEMBLE_ID IN  <foreach collection="flowLineIds" item="id" open="(" separator="," close=")"> #{id} </foreach></if>
+	 </update>
+	 
+	 <update id="deleteMetersFlowLine">
+	 	UPDATE T_METER SET ASSEMBLE_ID=NULL WHERE  ASSEMBLE_ID=#{flowLineId}
+	 </update>
+	 
+	 <select id="getScheduleInfos" resultType="com.linyang.energy.model.ScheduleBean">
+	 	SELECT SCHEDULE_ID scheduleId,SCHEDULE_NAME scheduleName,REMARK remark FROM T_SCHEDULE
+	 </select>
+	 
+	 <select id="getPlanLink" resultType="Long" parameterType="Long">
+	 	select count(plan_id) from t_plan where assemble_id=#{assembleId}
+	 </select>
+	 <!-- 检查是否有相同的名称 -->
+	 <select id="checkFlowLineName" parameterType="String" resultType="Long">
+	 	SELECT COUNT(ASSEMBLE_ID) FROM T_ASSEMBLE WHERE ASSEMBLE_NAME=#{assembleName} AND FLAG=1
+	 </select>
+	 <!-- 检查计量点和流水线是否已经关联 -->
+	 <select id="getMeterLink" resultType="Long" parameterType="Long">
+	 	select t.assemble_id from t_meter t where t.meter_id=#{meterId}
+	 </select>
+</mapper>	 

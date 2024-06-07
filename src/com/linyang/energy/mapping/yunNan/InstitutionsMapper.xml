@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.linyang.energy.mapping.yunNan.InstitutionsMapper">
+    <select id="queryMsiData" resultType="HashMap">
+      SELECT MSI_ID , MSI_NAME FROM T_MSI
+    </select>
+
+    <select id="queryAoData" resultType="HashMap">
+      SELECT AO_ID , AO_NAME FROM T_ALIGN_ORG
+    </select>
+
+    <select id="queryInstitutionsPageList" resultType="HashMap">
+      SELECT T1.MSI_ID MSIID, T1.AO_ID AOID ,T2.MSI_NAME MSINAME,T3.AO_NAME AONAME,T1.RECORD_DATE RECORDDATE,
+      T2.ENT_ID
+      FROM T_MSI_ALIGNORG_RELATION T1
+      LEFT JOIN T_MSI T2 ON T1.MSI_ID = T2.MSI_ID
+      LEFT JOIN T_ALIGN_ORG T3 ON T3.AO_ID = T1.AO_ID
+      JOIN (
+        SELECT T1.LEDGER_ID AS ID, T1.LEDGER_NAME AS NAME, 1 AS TYPE FROM T_LEDGER T1,T_LEDGER T2
+        WHERE T1.LEDGER_LFT >= T2.LEDGER_LFT AND T1.LEDGER_RGT &lt;=T2.LEDGER_RGT AND T2.LEDGER_ID=#{ledgerId}
+        ) T4 ON T2.ENT_ID = T4.ID
+      <where>
+        <if test="msiId != null and msiId != ''">
+            AND T1.MSI_ID = #{msiId}
+        </if>
+        <if test="aoId != null and aoId != ''">
+            AND T1.AO_ID = #{aoId}
+        </if>
+        <if test="beginTime != null and endTime != null and beginTime != '' and endTime != ''">
+            AND T1.RECORD_DATE BETWEEN To_Date(#{beginTime},'yyyy-mm-dd') AND To_Date(#{endTime},'yyyy-mm-dd')
+        </if>
+      </where>
+    </select>
+    
+    <insert id="saveData" parameterType="HashMap">
+      INSERT INTO T_MSI_ALIGNORG_RELATION (
+        <if test="msiId">
+            MSI_ID,
+        </if>
+        <if test="aoId">
+            AO_ID,
+        </if>
+        <if test="recenTime">
+            RECORD_DATE,
+        </if>
+      UPLOAD_STATUS
+      ) VALUES (
+      <if test="msiId">
+          #{msiId},
+      </if>
+      <if test="aoId">
+          #{aoId},
+      </if>
+      <if test="recenTime">
+          To_Date(#{recenTime},'yyyy-mm-dd'),
+      </if>
+      0 )
+    </insert>
+    
+    <update id="modifyData" parameterType="HashMap">
+        UPDATE T_MSI_ALIGNORG_RELATION
+        <set>
+            <if test="msiId != null and msiId != ''">
+                MSI_ID = #{msiId},
+            </if>
+            <if test="aoId != null and aoId != ''">
+                AO_ID = #{aoId},
+            </if>
+            <if test="recenTime != null and recenTime != ''">
+                RECORD_DATE = To_Date(#{recenTime},'yyyy-mm-dd'),
+            </if>
+        </set>
+        <where>
+            <if test="oldMsiId == msiId">
+                AND MSI_ID = #{msiId}
+            </if>
+            <if test="oldAoId == aoId">
+                AND AO_ID = #{aoId}
+            </if>
+            <if test="oldTime == recenTime">
+                AND  RECORD_DATE = To_Date(#{recenTime},'yyyy-mm-dd')
+            </if>
+        </where>
+    </update>
+
+    <update id="modifyMeasuringAo" parameterType="HashMap">
+        UPDATE T_MSI SET AO_ID = #{aoId} WHERE MSI_ID = #{msiId}
+    </update>
+
+    <select id="queryDataById" parameterType="Long" resultType="HashMap">
+        SELECT T1.MSI_ID,T2.MSI_NAME,T1.AO_ID,T3.AO_NAME,T1.RECORD_DATE , T1.UPLOAD_STATUS , T1.DATA_INDEX,T4.ENT_ID ,T4.ENT_NAME
+        FROM T_MSI_ALIGNORG_RELATION T1
+		LEFT JOIN T_MSI T2 ON T1.MSI_ID = T2.MSI_ID
+		LEFT JOIN T_ALIGN_ORG T3 ON T1.AO_ID = T3.AO_ID
+		LEFT JOIN T_ENT_INFO T4 ON T2.ENT_ID = T4.ENT_ID
+		WHERE T1.MSI_ID = #{msiId} AND T1.AO_ID = #{aoId}
+    </select>
+
+    <delete id="deleteInsData" parameterType="Long">
+        DELETE FROM T_MSI_ALIGNORG_RELATION WHERE MSI_ID = #{msiId} AND AO_ID = #{aoId}
+    </delete>
+
+    <select id="queryUploadData" parameterType="Long" resultType="HashMap">
+		SELECT T1.MSI_ID,T2.MSI_NAME,T1.AO_ID,T3.AO_NAME,T1.RECORD_DATE , T1.DATA_INDEX,
+		T4.ENT_CODE,T2.SERNO ,T2.MANAGE_NO,T2.BARCODE,T2.MSI_TYPE,T2.MSI_LEVEL,T1.UPLOAD_STATUS UPLOADSTATUS,
+		T2.ENT_ID
+        FROM T_MSI_ALIGNORG_RELATION T1
+		JOIN T_MSI T2 ON T1.MSI_ID = T2.MSI_ID
+		JOIN T_ALIGN_ORG T3 ON T1.AO_ID = T3.AO_ID
+		JOIN T_ENT_INFO T4 ON T2.ENT_ID = T4.ENT_ID
+        WHERE T1.MSI_ID = #{msiId} AND T1.AO_ID = #{aoId}
+    </select>
+
+    <update id="updateDataIndexById" parameterType="HashMap">
+      UPDATE T_MSI_ALIGNORG_RELATION SET DATA_INDEX = #{dataIndex} , UPLOAD_STATUS = #{uploadStatus}
+      WHERE MSI_ID = #{msiId}  AND AO_ID = #{aoId}
+    </update>
+
+
+</mapper>

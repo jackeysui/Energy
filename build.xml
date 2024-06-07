@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project basedir="." default="clean">
+
+  <!-- =================================================================== -->
+  <!-- Initialization target                                               -->
+  <!-- =================================================================== -->
+  <target name="init">
+    <tstamp/>
+    <property file="build.properties"></property>
+    <echo>begin build classes files...</echo>
+    <property name="debug" value="off"/>
+    <property name="optimize" value="on"/>
+    <property name="deprecation" value="on"/>
+
+    <property name="src.dir" value="${src.dir}"/>
+  	
+    <property name="lib.dir" value="${basedir}/${project.webInf}/lib"/>
+   
+    <property name="build.src" value="${basedir}/build"/>
+    <property name="build.dest" value="${basedir}/${project.webInf}/classes"/>
+  	
+  	<property name="tomcat.dir" value="${tomcat.path}/webapps"/>
+        
+    <path id="classpath">
+        <pathelement path="${jsdk_jar}"/>
+        <fileset dir="${lib.dir}" includes="**/*.jar"></fileset>
+         <fileset dir="${tomcat.path}/lib" includes="**/*.jar"></fileset>
+    </path>
+    
+    <filter token="year" value="${year}"/>
+    <filter token="version" value="${version}"/>
+    <filter token="date" value="${TODAY}"/>
+    <filter token="log" value="true"/>
+    <filter token="verbose" value="true"/>
+  </target>
+
+  <!-- =================================================================== -->
+  <!-- Help on usage                                                       -->
+  <!-- =================================================================== -->
+  <target name="usage" depends="init">
+    <echo message="${Name} Build file"/>
+    <echo message="-------------------------------------------------------------"/>
+    <echo message=""/>
+    <echo message=" available targets are:"/>
+    <echo message=""/>
+    <echo message="   jar      --> generates the ${name}.jar file"/>
+    <echo message="   build    --> compiles the source code"/>
+    <echo message="   javadoc  --> generates the API documentation"/>
+    <echo message="   clean    --> cleans up the directory"/>
+    <echo message=""/>
+    <echo message=" Please rename build.properties.default to build.properties"/>
+    <echo message=" and edit build.properties to specify JSDK 2.3 classpath."/>
+    <echo message=""/>
+    <echo message=" See the comments inside the build.xml file for more details."/>
+    <echo message="-------------------------------------------------------------"/>
+    <echo message=""/>
+    <echo message=""/>
+  </target>
+
+  <!-- =================================================================== -->
+  <!-- Prepares the source code                                            -->
+  <!-- =================================================================== -->
+  <target name="prepare-src" depends="init">
+    <!-- create directories -->
+    <mkdir dir="${build.src}"/>
+    <mkdir dir="${build.dest}"/>
+    
+    <!-- copy src files -->
+    <copy todir="${build.src}">
+      <fileset dir="${src.dir}"/>
+    </copy>
+  </target>
+
+  <!-- =================================================================== -->
+  <!-- Compiles the source directory                                       -->
+  <!-- =================================================================== -->
+  <target name="build" depends="prepare-src">
+    <javac srcdir="${build.src}"
+           destdir="${build.dest}"
+           debug="${debug}"
+           optimize="${optimize}">
+	    <compilerarg line="-encoding UTF-8 "/>
+	    <classpath refid="classpath"/>
+    </javac>
+  </target>
+  
+  <target name="copycfg" depends="build">
+  	<copy todir="${build.dest}">
+      <fileset dir="${build.src}">
+  		<include name="**/*.xml"/>
+      	<include name="**/*.json"/>
+      	<include name="**/*.properties"/>
+      </fileset>
+    </copy>
+  </target>
+	
+  <!-- =================================================================== -->
+  <!-- Creates the class package                                           -->
+  <!-- =================================================================== -->
+  <target name="war" depends="copycfg" >
+		<echo message="----------- create ${web.name} war ------------" />
+		<war warfile="${basedir}/build/${web.name}.war" webxml="${basedir}/${project.webInf}/web.xml">  
+			<fileset dir="${basedir}/WebRoot" >
+				<!-- 无关的目录-->
+				<exclude name="src/"/>
+				<exclude name="META-INF/"/>
+				<exclude name="bin/"/>
+				<!-- 无关的文件-->
+				<exclude name="**/*.classpath"/>
+				<exclude name="**/*.txt"/>
+				<exclude name="*.html"/>
+				<exclude name="*.xls"/>
+				<exclude name="*.jar"/>
+				<exclude name="*history"/>
+				<exclude name="*.project"/>
+				<exclude name="*.tomcatplugin"/>
+			</fileset>
+		</war>
+	</target>
+	  
+	<target name="copy" depends="war">
+		<echo message="----------- copy  ${web.name}.war  to ${tomcat.dir} ------------" />
+		<copy file="${basedir}/build/${web.name}.war" todir="${tomcat.dir}" overwrite="true" />
+	</target>
+	
+	<target name="zipTomcat" depends="copy">
+		<echo>zip tomcat</echo>
+		<zip  destfile="${tomcat.zip.dir}/tomcat.zip">
+			<zipfileset dir="${tomcat.path}" includes="**" />
+		</zip>
+	</target>
+	
+  <!-- =================================================================== -->
+  <!-- Clean targets                                                       -->
+  <!-- =================================================================== -->
+  <target name="clean" depends="zipTomcat">
+    <delete dir="${build.src}"/>
+  </target>
+	
+	
+</project>

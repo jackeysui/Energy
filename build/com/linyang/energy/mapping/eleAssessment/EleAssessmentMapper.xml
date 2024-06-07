@@ -1,0 +1,361 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//ibatis.apache.org//DTD Mapper 3.0//EN" "http://ibatis.apache.org/dtd/ibatis-3-mapper.dtd">
+
+<mapper namespace="com.linyang.energy.mapping.eleAssessment.EleAssessmentMapper">
+
+    <!-- 查询分户下的所有测量点 -->
+    <select id="getMeterIdsByLedgerId" parameterType="Long" resultType="Long">
+        select M.METER_ID from T_METER M,t_ledger l,t_ledger p
+		WHERE M.LEDGER_ID = l.ledger_id and p.ledger_id=#{ledgerId} and l.ledger_lft>=p.ledger_lft 
+		and l.ledger_rgt&lt;=p.ledger_rgt AND M.METER_STATUS =1
+		ORDER BY M.METER_ID
+    </select>
+
+    <!-- 查询分户下的"总加组"测量点 -->
+    <select id="getTmeterByLedgerId" parameterType="Long" resultType="Long">
+        select M.METER_ID
+        from t_ledger_meter lm inner join t_meter m on lm.METER_ID = m.METER_ID
+        WHERE lm.LEDGER_ID=#{ledgerId} AND M.METER_STATUS =1
+        ORDER BY M.METER_ID
+    </select>
+
+    <!-- 获取指定时间段内，某测量点功率曲线的最大值 -->
+    <select id="getMaxPowerByMeter" resultType="java.lang.Double">
+        select max(ca.AP) from t_cur_ap ca
+        where ca.FREEZE_TIME between #{beginTime,jdbcType=TIME} and #{endTime,jdbcType=TIME}
+             and ca.METER_ID=#{meterId}
+    </select>
+
+    <!-- 获取指定时间段内，某测量点电流曲线的最大值 -->
+    <select id="getMaxIbyMeter" resultType="java.lang.Double">
+       select max(t.maxI) from
+       (
+        select max(ci.IA) as maxI from t_cur_i ci
+        where ci.FREEZE_TIME between #{beginTime,jdbcType=TIME} and #{endTime,jdbcType=TIME}
+             and ci.METER_ID=#{meterId}
+        union
+        select max(ci.IB) as maxI from t_cur_i ci
+        where ci.FREEZE_TIME between #{beginTime,jdbcType=TIME} and #{endTime,jdbcType=TIME}
+             and ci.METER_ID=#{meterId}
+        union
+        select max(ci.IC) as maxI from t_cur_i ci
+        where ci.FREEZE_TIME between #{beginTime,jdbcType=TIME} and #{endTime,jdbcType=TIME}
+             and ci.METER_ID=#{meterId}
+       ) t
+       where 1=1
+    </select>
+
+    <!-- 获取指定时间段内，某测量点电压曲线的最大值 -->
+    <select id="getMaxVbyMeter" resultType="java.lang.Double">
+        select max(t.maxV) from
+        (
+        select max(cv.VA) as maxV from t_cur_V cv
+        where cv.FREEZE_TIME between #{beginTime,jdbcType=TIME} and #{endTime,jdbcType=TIME}
+        and cv.METER_ID=#{meterId}
+        union
+        select max(cv.VB) as maxV from t_cur_V cv
+        where cv.FREEZE_TIME between #{beginTime,jdbcType=TIME} and #{endTime,jdbcType=TIME}
+        and cv.METER_ID=#{meterId}
+        union
+        select max(cv.VC) as maxV from t_cur_V cv
+        where cv.FREEZE_TIME between #{beginTime,jdbcType=TIME} and #{endTime,jdbcType=TIME}
+        and cv.METER_ID=#{meterId}
+        ) t
+        where 1=1
+    </select>
+
+    <!-- 获取指定时间段内，某测量点电压曲线的最小值 -->
+    <select id="getMinVbyMeter" resultType="java.lang.Double">
+        select min(t.minV) from
+        (
+        select min(cv.VA) as minV from t_cur_V cv
+        where cv.FREEZE_TIME between #{beginTime,jdbcType=TIME} and #{endTime,jdbcType=TIME}
+        and cv.METER_ID=#{meterId}
+        union
+        select min(cv.VB) as minV from t_cur_V cv
+        where cv.FREEZE_TIME between #{beginTime,jdbcType=TIME} and #{endTime,jdbcType=TIME}
+        and cv.METER_ID=#{meterId}
+        union
+        select min(cv.VC) as minV from t_cur_V cv
+        where cv.FREEZE_TIME between #{beginTime,jdbcType=TIME} and #{endTime,jdbcType=TIME}
+        and cv.METER_ID=#{meterId}
+        ) t
+        where 1=1
+    </select>
+
+    <!-- 获取指定时间段内，某测量点 电压不平衡度的最大值 -->
+    <select id="getVolBalance" resultType="java.lang.Double">
+        select max(t.VU_MAX)
+        from t_day_unbf_opt t left join t_meter m on t.METER_ID=m.METER_ID
+              left join t_mped_info mi on m.MPED_ID=mi.MPED_ID
+        where t.FREEZE_TIME between #{beginTime,jdbcType=TIME} and #{endTime,jdbcType=TIME}
+        and t.METER_ID=#{meterId} and mi.COMM_MODE=2
+    </select>
+
+    <!-- 获取指定时间段内，某测量点 电流不平衡度的最大值 -->
+    <select id="getIBalance" resultType="java.lang.Double">
+        select max(t.IU_MAX)
+        from t_day_unbf_opt t left join t_meter m on t.METER_ID=m.METER_ID
+              left join t_mped_info mi on m.MPED_ID=mi.MPED_ID
+        where t.FREEZE_TIME between #{beginTime,jdbcType=TIME} and #{endTime,jdbcType=TIME}
+        and t.METER_ID=#{meterId} and mi.COMM_MODE=2
+    </select>
+
+    <!-- 获取指定时间段内，某测量点 负载率的最大值 -->
+    <select id="getMaxLoad" resultType="java.lang.Double">
+        select max(t.LOAD_MAX) from t_day_lf_opt t
+        where t.FREEZE_TIME between #{beginTime,jdbcType=TIME} and #{endTime,jdbcType=TIME}
+        and t.METER_ID=#{meterId}
+    </select>
+
+    <!-- 获取指定时间段内，某测量点 最小功率因数 -->
+    <select id="getMinPf" resultType="java.lang.Double">
+        select min(t.PF) from t_cur_pf t
+        where t.FREEZE_TIME between #{beginTime,jdbcType=TIME} and #{endTime,jdbcType=TIME}
+        and t.METER_ID=#{meterId} and t.pf is not null
+    </select>
+
+    <!-- 获取指定时间段内，某测量点 功率因数点数 -->
+    <select id="getPfTotalNum" resultType="java.lang.Integer">
+        select count(1) from t_cur_pf t
+        where t.FREEZE_TIME between #{beginTime,jdbcType=TIME} and #{endTime,jdbcType=TIME}
+        and t.METER_ID=#{meterId} and t.pf is not null
+    </select>
+
+    <!-- 获取指定时间段内，某测量点 功率因数越限的点数 -->
+    <select id="getPfExceedNum" resultType="java.lang.Integer">
+        select count(1) from t_cur_pf t
+        where t.FREEZE_TIME between #{beginTime,jdbcType=TIME} and #{endTime,jdbcType=TIME}
+        and t.METER_ID=#{meterId} and t.pf is not null
+        and t.pf&lt;#{stdPF}
+    </select>
+
+    <!-- 获取指定时间段内，某测量点 电压不平衡度的日均值 -->
+    <select id="getVBalanAvg" resultType="java.lang.Double">
+        select avg(t.VU_MAX)
+        from t_day_unbf_opt t
+        where t.FREEZE_TIME between #{beginTime,jdbcType=TIME} and #{endTime,jdbcType=TIME}
+        and t.METER_ID=#{meterId} and t.VU_MAX is not null
+    </select>
+
+    <!-- 获取指定时间段内，某测量点 电压不平衡度的日均时间 -->
+    <select id="getVBalanTimeAvg" resultType="java.lang.Long">
+        select avg(t.VU_LIMIT)
+        from t_day_unbf_opt t
+        where t.FREEZE_TIME between #{beginTime,jdbcType=TIME} and #{endTime,jdbcType=TIME}
+        and t.METER_ID=#{meterId} and t.VU_LIMIT is not null
+    </select>
+
+    <!-- 获取指定时间段内，某测量点 电流不平衡度的日均值 -->
+    <select id="getIBalanAvg" resultType="java.lang.Double">
+        select avg(t.IU_MAX)
+        from t_day_unbf_opt t
+        where t.FREEZE_TIME between #{beginTime,jdbcType=TIME} and #{endTime,jdbcType=TIME}
+        and t.METER_ID=#{meterId} and t.IU_MAX is not null
+    </select>
+
+    <!-- 登陆次数 -->
+    <select id="getLoginNum" resultType="java.lang.Integer">
+        select count(1)
+        from T_ACCOUT_LOGIN_HIS t
+        where t.LOGIN_DATE between #{beginTime,jdbcType=TIME} and #{endTime,jdbcType=TIME} and t.ACCOUNT_ID=#{accountId}
+               <if test="flag == 1">
+                   and t.LOGIN_SOFTWARE_TYPE=1
+               </if>
+               <if test="flag == 2">
+                   and (t.LOGIN_SOFTWARE_TYPE=2 or t.LOGIN_SOFTWARE_TYPE=3)
+               </if>
+    </select>
+
+    <!-- 功能点击次数 -->
+    <select id="getUserClickNum" resultType="java.lang.Integer">
+        select count(1)
+        from t_account_trace t
+        where t.OPERATE_TIME between #{beginTime,jdbcType=TIME} and #{endTime,jdbcType=TIME} and t.ACCOUNT_ID=#{accountId}
+    </select>
+
+    <!-- 用户点击业务数 -->
+    <select id="getCoverOperNum" resultType="java.lang.Integer">
+        select count(distinct t.OPER_ITEM_ID)
+        from t_account_trace t
+        where t.OPERATE_TIME between #{beginTime,jdbcType=TIME} and #{endTime,jdbcType=TIME} and t.ACCOUNT_ID=#{accountId}
+    </select>
+
+    <!-- 总业务数 -->
+    <select id="getTotalOperNum" resultType="java.lang.Integer">
+        select count(t.OPER_ITEM_ID)
+        from t_oper_item t
+        where 1=1
+    </select>
+
+	<!-- 计算分户一段时间的分费率电量 -->
+	<select id="getTotalFeeEle" resultType="HashMap">
+		select r.sector_id as sectorId,
+		       sum((a.value1 - a.value2) * i.pt * i.ct * lm.add_attr * lm.pct /100) as value
+		  from (select t.rate_number as sectorId,
+		               t.meter_id,
+		               max(t.day_fae_rate) as value1,
+		               min(t.day_fae_rate) as value2
+		          from view_day_e_rate t
+		         where t.freeze_time between #{beginTime,jdbcType=TIME} - 1 AND #{endTime,jdbcType=TIME} - 1
+		         group by t.rate_number, t.meter_id) a,
+		       t_meter m,
+		       t_ledger l,
+		       t_rate_sector r,
+		       t_mped_info i,
+		       t_ledger_meter lm
+		 where lm.ledger_id = #{ledgerId}
+		   and lm.meter_id = m.meter_id
+		   and a.meter_id = m.meter_id
+		   and m.ledger_id = l.ledger_id
+		   and l.rate_id = r.rate_id
+		   and a.sectorId = r.sector_id
+		   and m.mped_id = i.mped_id
+		 group by r.sector_id
+	</select>
+	
+	<!-- 分户月正向有功总电量 -->
+	<select id="getLedgerQ" resultType="Double">
+		select sum((a.value1-a.value2)*i.ct*i.pt) from
+	   (select m.meter_id,max(t.day_fae_total) as value1,min(t.day_fae_total) as value2
+	    from view_day_e_total t,t_meter m
+      where t.meter_id=m.meter_id and m.ledger_id=#{ledgerId} and m.volume>0 and t.freeze_time between #{beginTime,jdbcType=TIME}-1 AND #{endTime,jdbcType=TIME}-1
+      group by m.meter_id) a,t_meter r,t_mped_info i
+     where a.meter_id=r.meter_id and r.mped_id=i.mped_id
+	</select>
+	
+	<!-- 测量点月正向有功总电量 -->
+	<select id="getMeterQ" resultType="Double">
+		 select sum((a.value1-a.value2)*i.ct*i.pt) from
+	     (select m.meter_id,max(t.day_fae_total) as value1,min(t.day_fae_total) as value2
+	     from view_day_e_total t,t_meter m
+	     where t.meter_id=m.meter_id and m.meter_id=#{meterId} and t.freeze_time between #{beginTime,jdbcType=TIME}-1 AND #{endTime,jdbcType=TIME}-1
+	     group by m.meter_id) a,t_meter r,t_mped_info i
+	     where a.meter_id=r.meter_id and r.mped_id=i.mped_id
+	</select>
+	
+	<!-- 分户月正向无功总电量 -->
+	<select id="getLedgerRQ" resultType="Double">
+		select sum((a.value1-a.value2)*i.ct*i.pt) from
+	   (select m.meter_id,max(t.day_fre_total) as value1,min(t.day_fre_total) as value2
+	    from view_day_e_total t,t_meter m
+	    where t.meter_id=m.meter_id and m.ledger_id=#{ledgerId} and m.volume>0 and t.freeze_time between #{beginTime,jdbcType=TIME}-1 AND #{endTime,jdbcType=TIME}-1
+	    group by m.meter_id) a,t_meter r,t_mped_info i
+	   where a.meter_id=r.meter_id and r.mped_id=i.mped_id
+	</select>
+	
+	<!-- 测量点月正向无功总电量 -->
+	<select id="getMeterRQ" resultType="Double">
+		select sum((a.value1-a.value2)*i.ct*i.pt) from
+	   (select m.meter_id,max(t.day_fre_total) as value1,min(t.day_fre_total) as value2
+	    from view_day_e_total t,t_meter m
+	    where t.meter_id=m.meter_id and m.meter_id=#{meterId} and t.freeze_time between #{beginTime,jdbcType=TIME}-1 AND #{endTime,jdbcType=TIME}-1
+	    group by m.meter_id) a,t_meter r,t_mped_info i
+	   where a.meter_id=r.meter_id and r.mped_id=i.mped_id
+	</select>
+	
+	<!-- 分户最小无功功率 -->
+	<select id="getMeterMinRP" resultType="Double">
+		select min(t.rp) from t_cur_rp t
+		where t.meter_id=#{meterId}
+		and t.freeze_time between #{beginTime,jdbcType=TIME} AND #{endTime,jdbcType=TIME}
+	</select>
+	
+	<!-- 分户无功倒送时间 -->
+	<select id="getMeterMinRPTime" resultType="Integer">
+		select count(*) from t_cur_rp t
+		where t.meter_id=#{meterId} and t.rp&lt;0
+		and t.freeze_time between #{beginTime,jdbcType=TIME} AND #{endTime,jdbcType=TIME}
+	</select>
+	
+	<!-- 分户负载率均值 -->
+	<select id="getMeterAvgLoad" resultType="Double">
+		select avg(t.load_max) from t_day_lf_opt t
+		where t.meter_id=#{meterId}
+		and t.freeze_time between #{beginTime,jdbcType=TIME} AND #{endTime,jdbcType=TIME}
+	</select>
+	
+	<!-- 取某级线损电量 -->
+	<select id="getLedgerLinelossCoul" resultType="Double">
+		select sum((a.value1-a.value2)*i.ct*i.pt) from
+     (select m.meter_id,max(t.day_fae_total) as value1,min(t.day_fae_total) as value2
+      from view_day_e_total t,t_meter m,t_lineloss_meter_info i
+      where t.meter_id=m.meter_id and m.meter_id=i.meter_id and i.meter_level=#{level} and m.ledger_id=#{ledgerId}
+      and t.freeze_time between #{beginTime,jdbcType=TIME}-1 AND #{endTime,jdbcType=TIME}-1
+      group by m.meter_id) a,t_meter r,t_mped_info i
+     where a.meter_id=r.meter_id and r.mped_id=i.mped_id
+	</select>
+	
+	<!-- 取分户标准功率因数 -->
+	<select id="getThresholdValue" resultType="Double">
+		SELECT A.THRESHOLD_VALUE FROM T_LEDGER_THRESHOLD_RELATION A WHERE a.threshold_id=1 and a.ledger_id=#{ledgerId}
+	</select>
+	
+	<!-- 取分户额定功率  -->
+	<select id="getThresholdPwrValue" resultType="Double">
+		select t.threshold_value from t_meter_threshold_relation t
+		where t.threshold_id=4 and t.meter_id=#{meterId}
+	</select>
+	
+	<!-- 取分户下所有变压器测量点 -->
+	<select id="getTFMeterIdsByLedgerId" resultType="Long">
+		select M.METER_ID from T_METER M,t_ledger l,t_ledger p
+		WHERE M.LEDGER_ID = l.ledger_id and p.ledger_id=#{ledgerId} and l.ledger_lft>=p.ledger_lft 
+		and l.ledger_rgt&lt;=p.ledger_rgt AND M.METER_STATUS =1 and m.volume>0
+		ORDER BY M.METER_ID
+    </select>
+    
+    <!-- 取电表越电压上下限的点数 -->
+    <select id="getMeterOverVol" resultType="Integer">
+        select a.up+b.down from
+		(select count(*) as up
+		from t_meter_threshold_relation t,t_cur_v v
+		where t.meter_id=v.meter_id and t.meter_id=#{meterId} and v.freeze_time between #{beginTime,jdbcType=TIME} AND #{endTime,jdbcType=TIME}
+		and t.threshold_id=1 and (v.va>t.threshold_value or v.vb>t.threshold_value or v.vc>t.threshold_value)) a,
+		(select count(*) as down
+		from t_meter_threshold_relation t,t_cur_v v
+		where t.meter_id=v.meter_id and t.meter_id=#{meterId} and v.freeze_time between #{beginTime,jdbcType=TIME} AND #{endTime,jdbcType=TIME}
+		and t.threshold_id=2 and v.va !=0 and v.vb !=0 and v.vc !=0 and (v.va&lt;t.threshold_value or v.vb&lt;t.threshold_value or v.vc&lt;t.threshold_value)) b
+    </select>
+    
+    <!-- 取电表曲线电压点数 -->
+    <select id="getMeterVolCount" resultType="Integer">
+    	select count(*) from t_cur_v t where t.meter_id=#{meterId} and t.freeze_time between #{beginTime,jdbcType=TIME} AND #{endTime,jdbcType=TIME}
+    </select>
+    
+    <!-- 取打分小项权重 -->
+    <select id="getScoreItemWeight" resultType="HashMap">
+    	select t.score_item_id as id,t.score_item_weight as weight from t_score_item t
+    </select>
+    
+    <!-- 保存分数 -->
+    <insert id="saveAccountScore" parameterType="HashMap">
+    	insert into t_account_score	(score_id,account_id,score_time,total_score,section_one,section_two,section_thr,section_for)
+    	values (#{scoreId},#{accountId},sysdate,#{score},#{score1},#{score2},#{score3},#{score4})
+    </insert>
+    
+    <!-- 取测量点电压总谐波畸变率最大值 -->
+    <select id="getMeterMaxDisV" resultType="HashMap">
+    	select max(t.dis_va_max) as va,max(t.dis_vb_max) as vb,max(t.dis_vc_max) as vc from T_DAY_DIS_V t
+		where t.meter_id=#{meterId} and t.freeze_time between #{beginTime,jdbcType=TIME} AND #{endTime,jdbcType=TIME}
+    </select>
+    
+    <!-- 取测量点各奇次谐波电压含有率最大值 -->
+    <select id="getMeterMaxHarV" resultType="HashMap">
+    	select t.har_num as hnum,max(t.har_va_max) as va,max(t.har_vb_max) as vb,max(t.har_vc_max) as vc from T_DAY_HAR_V t 
+		where MOD(t.HAR_NUM,2)=1 and t.meter_id=#{meterId} and t.freeze_time between #{beginTime,jdbcType=TIME} AND #{endTime,jdbcType=TIME}
+		group by t.har_num
+    </select>
+    
+    <!-- 取测量点各奇次谐波电流含有率最大值 -->
+    <select id="getMeterMaxHarI" resultType="HashMap">
+    	select t.har_num as hnum,max(t.har_ia_max) as ia,max(t.har_ib_max) as ib,max(t.har_ic_max) as ic from T_DAY_HAR_I t 
+		where MOD(t.HAR_NUM,2)=1 and t.meter_id=#{meterId} and t.freeze_time between #{beginTime,jdbcType=TIME} AND #{endTime,jdbcType=TIME}
+		group by t.har_num
+    </select>
+    
+    <!-- 取测量点电压等级 -->
+    <select id="getMeterVolLevel" resultType="Integer">
+    	select t.voltage_level from t_meter t where t.meter_id=#{meterId}
+    </select>
+</mapper>

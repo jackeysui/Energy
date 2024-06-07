@@ -1,0 +1,2003 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.linyang.energy.mapping.recordmanager.LedgerManagerMapper" >
+	<!-- 分户bean map -->
+	<resultMap id="BaseResultMap" type="com.linyang.energy.model.LedgerBean" >
+		<id column="LEDGER_ID"            property="ledgerId"        jdbcType="DECIMAL" />
+		<result column="LEDGER_NAME"      property="ledgerName"      jdbcType="VARCHAR" />
+		<result column="NUMBER_OF_PEOPLE" property="numberOfPeople"  jdbcType="DECIMAL" />
+		<result column="USE_AREA"         property="useArea"         jdbcType="DECIMAL" />
+		<result column="DEPTH"            property="depth"           jdbcType="DECIMAL" />
+		<result column="LEDGER_LFT"       property="ledgerLft"       jdbcType="DECIMAL" />
+		<result column="LEDGER_RGT"       property="ledgerRgt"       jdbcType="DECIMAL" />
+		<result column="PARENT_LEDGER_ID" property="parentLedgerId"  jdbcType="DECIMAL" />
+		<result column="COLLMETER_NUMBER" property="collmeterNumber" jdbcType="DECIMAL" />
+		<result column="RATE_ID"          property="rateId"          jdbcType="DECIMAL" />
+		<result column="LEDGER_REMARK"    property="ledgerRemark"    jdbcType="VARCHAR" />
+		<result column="THRESHOLD_ID"     property="thresholdId"     jdbcType="DECIMAL" />
+		<result column="THRESHOLD_NAME"   property="thresholdName"   jdbcType="VARCHAR" />
+		<result column="THRESHOLD_VALUE"  property="thresholdValue"  jdbcType="VARCHAR" />
+		<result column="X"                property="x"               jdbcType="DOUBLE" />
+		<result column="Y"                property="y"               jdbcType="DOUBLE" />
+		<result column="PIC_ID"           property="picId"           jdbcType="DECIMAL" />
+		<result column="ANALY_TYPE"       property="analyType"       jdbcType="INTEGER" />
+		<result column="INHERIT"          property="inherit"         jdbcType="INTEGER" />
+		<result column="USER_NO"          property="userNo"          jdbcType="VARCHAR" />
+		<result column="INDUSTRY_TYPE"    property="industryType"    jdbcType="VARCHAR" />
+		<result column="INDUSTRY_NAME"    property="industryName"    jdbcType="VARCHAR" />
+		<result column="REGION"           property="region"          jdbcType="VARCHAR" />
+		<result column="REGION_NAME"      property="regionName"      jdbcType="VARCHAR" />
+		<result column="CONTACTS"         property="contacts"        jdbcType="VARCHAR" />
+		<result column="CONTACT_INFO"     property="contactInfo"     jdbcType="VARCHAR" />
+		<result column="ADDRESS"          property="address"         jdbcType="VARCHAR" />
+		<result column="LEDGER_TYPE"      property="ledgerType"      jdbcType="DECIMAL" />
+		<result column="LINELOSS"         property="lineloss"      jdbcType="DECIMAL" />
+        <result column="ADD_ATTR"       property="addAttr"       jdbcType="INTEGER" />
+        <result column="COLOR"      	property="logoColor"      jdbcType="VARCHAR"/>
+        <result column="LOGO_ICON"      property="logoIcon"      jdbcType="VARCHAR"/>
+        <result column="RATE_W_ID"          property="rateWId"          jdbcType="DECIMAL" />
+        <result column="RATE_G_ID"          property="rateGId"          jdbcType="DECIMAL" />
+        <result column="RATE_H_ID"          property="rateHId"          jdbcType="DECIMAL" />
+        <result column="SHOW_PIC_URL"      property="showPicUrl"      jdbcType="VARCHAR"/>
+        <result column="ENERGY_TYPE"      property="energyType"      jdbcType="INTEGER"/>
+		<result column="EQPTYPE_ID" 		property="eqpTypeId"	 jdbcType="DECIMAL"/>
+		<result column="EQPTYPE_NAME" 		property="eqpTypeName"	 jdbcType="VARCHAR"/>
+        <result column="START_POWER"        property="startPower"       jdbcType="DOUBLE" />
+        <result column="BASE_Q"             property="baseQ"            jdbcType="DOUBLE" />
+		<result column="WATER_LIMIT_THRES"  property="waterLimitThres" jdbcType="DOUBLE" />
+		<result column="GAS_LIMIT_THRES"  property="gasLimitThres" jdbcType="DOUBLE" />
+		<result column="ELECT_LIMIT_THRES"  property="electLimitThres" jdbcType="DOUBLE" />
+		<result column="Q_CALC_DATE"  property="qCalcDate" jdbcType="INTEGER" />
+		<result column="Q_CALC_INHERIT"  property="qCalcInherit" jdbcType="INTEGER" />
+		<result column="POLLUT_ID"      property="pollutId"      jdbcType="VARCHAR"/>
+		<result column="POLLUT_NAME"      property="pollutName"      jdbcType="VARCHAR"/>
+		<result column="POLLUTCTL_ID"      property="pollutctlId"      jdbcType="VARCHAR"/>
+		<result column="POLLUTCTL_NAME"      property="pollutctlName"      jdbcType="VARCHAR"/>
+		<result column="DEVICE_CODE"      property="deviceCode"      jdbcType="VARCHAR"/>
+	</resultMap>
+	
+	<sql id="Base_Column_List" >
+		LEDGER_ID, LEDGER_NAME, NUMBER_OF_PEOPLE, USE_AREA, DEPTH, LEDGER_LFT, LEDGER_RGT, PARENT_LEDGER_ID, 
+		COLLMETER_NUMBER, RATE_ID, LEDGER_REMARK, X, Y, PIC_ID, ANALY_TYPE, INHERIT,USER_NO,INDUSTRY_TYPE,
+		REGION,CONTACTS,CONTACT_INFO,ADDRESS, LEDGER_TYPE, LINELOSS, ADD_ATTR, COLOR, LOGO_ICON,RATE_W_ID,RATE_G_ID,RATE_H_ID,
+		SHOW_PIC_URL,ENERGY_TYPE,EQPTYPE_ID
+	</sql>
+	
+	<!--  分页查询分户信息 -->
+	<select id="getLedgerPageList" parameterType="com.linyang.energy.model.LedgerBean" resultType="com.linyang.energy.model.LedgerBean">
+	    <!-- 分户权限 -->
+	    <if test="ledger.ledgerId != 0">
+	    	SELECT distinct node.ledger_id as ledgerId,node.ledger_name as ledgerName,node.number_of_people as numberOfPeople,
+       		node.use_area as useArea,node.depth as depth,node.ledger_lft as ledgerLft,node.ledger_rgt as ledgerRgt,
+       		node.parent_ledger_id as parentLedgerId,node.collmeter_number as collmeterNumber,node.rate_id as rateId,
+       		node.ledger_remark as ledgerRemark,node.x as x,node.y as y,node.pic_id as picId,node.analy_type as analyType,
+       		node.inherit as inherit, node.LINELOSS as lineloss, node.ADD_ATTR as addAttr
+            FROM t_ledger node, t_ledger parent
+            WHERE
+			<!-- 对admin账号特殊处理  2020/05/28 -->
+				<if test="ledger.ledgerId == 1">
+					1 = 1
+				</if>
+				<if test="ledger.ledgerId != 1">
+					node.ledger_lft BETWEEN parent.ledger_lft AND parent.ledger_rgt
+					AND parent.ledger_id = #{ledger.ledgerId}
+				</if>
+			<!-- 对admin账号特殊处理  END -->
+
+			<if test="parentName != ''">
+                and node.ledger_id in (
+                select l1.ledger_id from t_ledger l1,t_ledger l2
+                where l1.ledger_lft>=l2.ledger_lft and l1.ledger_rgt&lt;=l2.ledger_rgt
+                and l2.ledger_name LIKE '%' || #{parentName} || '%'
+                and l2.ledger_id &lt;> l1.ledger_id
+                )
+			</if>
+            <if test="ledger.ledgerName != ''">
+                and node.ledger_name LIKE '%' || #{ledger.ledgerName} || '%'
+            </if>
+			ORDER BY node.LEDGER_ID DESC
+		</if>
+		<!-- 群组权限 -->
+		<if test="ledger.ledgerId == 0">
+	    	select distinct ledger_id as ledgerId,ledger_name as ledgerName,number_of_people as numberOfPeople,
+       		use_area as useArea,depth as depth,ledger_lft as ledgerLft,ledger_rgt as ledgerRgt,
+       		parent_ledger_id as parentLedgerId,collmeter_number as collmeterNumber,rate_id as rateId,
+       		ledger_remark as ledgerRemark,x as x,y as y,pic_id as picId,analy_type as analyType,
+       		inherit as inherit, LINELOSS as lineloss, ADD_ATTR as addAttr
+            from t_ledger
+            where 1=1
+    	    <if test="parentName != ''">
+				and ledger_id in (
+                select l1.ledger_id from t_ledger l1,t_ledger l2
+                where l1.ledger_lft>=l2.ledger_lft and l1.ledger_rgt&lt;=l2.ledger_rgt
+                and l2.ledger_name LIKE '%' || #{parentName} || '%'
+                )
+		    </if>
+            <if test="ledger.ledgerName != ''">
+                and ledger_name LIKE '%' || #{ledger.ledgerName} || '%'
+            </if>
+    	    Start With ledger_id in (
+			select tl.LEDGER_ID AS ledgerId 
+			from t_account ta, t_group_account tga, t_group_ledger tgl,t_ledger tl
+			where ta.account_id = tga.account_id
+			and tga.group_id = tgl.group_id
+    		and tgl.ledger_id = tl.ledger_id  
+    			and ta.account_id = #{ledger.userNo}
+    		)
+    	   Connect By Prior ledger_id = parent_ledger_id
+		</if>
+	</select>
+	
+	<!-- 根据条件查询分户信息 -->
+	<select id="getLedgerList" parameterType="com.linyang.energy.model.LedgerBean" resultMap="BaseResultMap">
+		SELECT <include refid="Base_Column_List" />
+		FROM   T_LEDGER
+		<where>
+			<if test="ledgerName != null">
+				LEDGER_NAME = #{ledgerName}
+				<if test="ledgerId != null and ledgerId != 0">
+					AND LEDGER_ID != #{ledgerId}
+				</if>
+			</if>
+		</where>
+	</select>
+	
+	
+	<!-- 获取全部分户信息 -->
+	<select id="getAllLedger" resultMap="BaseResultMap">
+		SELECT <include refid="Base_Column_List" />
+		FROM   T_LEDGER
+	</select>
+
+	<!-- 验证同级下是否有相同的分户名称 -->
+	<select id="checkLedgerName" parameterType="HashMap" resultType="Long">
+		SELECT COUNT(LEDGER_ID) FROM T_LEDGER  WHERE LEDGER_NAME=#{ledgerName} 
+		<if test="parentId!=0">
+			AND PARENT_LEDGER_ID=#{parentId}
+		</if>
+		<if test="ledgerId!=0">
+			AND LEDGER_ID!=#{ledgerId}
+		</if>
+	</select>
+	
+	<!-- 根据分户Id查询分户信息 -->
+	<select id="selectByLedgerId" resultMap="BaseResultMap" parameterType="java.lang.Long" >
+		SELECT A.LEDGER_ID, A.LEDGER_NAME, A.NUMBER_OF_PEOPLE, A.USE_AREA, A.DEPTH, A.LEDGER_LFT, A.LEDGER_RGT, A.PARENT_LEDGER_ID, 
+			   A.COLLMETER_NUMBER, A.RATE_ID, A.RATE_W_ID, A.RATE_G_ID, A.RATE_H_ID, A.LEDGER_REMARK, A.X, A.Y, A.PIC_ID, A.ANALY_TYPE, A.INHERIT, B.THRESHOLD_VALUE,A.LEDGER_TYPE,
+			   A.USER_NO, A.INDUSTRY_TYPE, A.REGION, A.CONTACTS, A.CONTACT_INFO, A.ADDRESS, C.REGION_NAME, D.INDUSTRY_NAME, A.LINELOSS, A.ADD_ATTR,
+			   A.COLOR, A.LOGO_ICON, A.SHOW_PIC_URL,A.ENERGY_TYPE,A.URL,
+			   A.EQPTYPE_ID ,F.EQPTYPE_NAME, A.START_POWER, A.BASE_Q,A.WATER_LIMIT_THRES , A.GAS_LIMIT_THRES ,A.ELECT_LIMIT_THRES,A.Q_CALC_DATE,A.Q_CALC_INHERIT,
+			   A.POLLUTCTL_ID,P1.POLLUTCTL_NAME,A.POLLUT_ID,P.POLLUT_NAME
+		FROM T_LEDGER A LEFT JOIN T_LEDGER_THRESHOLD_RELATION B ON A.LEDGER_ID = B.LEDGER_ID
+			            LEFT JOIN T_REGION C ON A.REGION = C.REGION_ID
+			            LEFT JOIN T_INDUSTRY D ON A.INDUSTRY_TYPE = D.INDUSTRY_ID
+			            LEFT JOIN T_LEDGER_EQPTYPE F ON A.EQPTYPE_ID = F.EQPTYPE_ID
+			            LEFT JOIN T_POLLUT_FACIL P ON P.POLLUT_ID = A.POLLUT_ID
+						LEFT JOIN T_POLLUTCTL_FACIL P1 ON A.POLLUTCTL_ID = P1.POLLUTCTL_ID
+		WHERE A.LEDGER_ID = #{ledgerId, jdbcType=DECIMAL}
+	</select>
+	
+	<!-- 根据分户Id查询分户信息 -->
+	<select id="findPreviousLedger" resultMap="BaseResultMap" parameterType="java.lang.Long" >
+		SELECT <include refid="Base_Column_List" /> 
+		FROM T_LEDGER A
+		 WHERE A.PARENT_LEDGER_ID = #{ledgerId}
+		   AND A.LEDGER_RGT = (SELECT MAX(B.LEDGER_RGT)
+		                         FROM T_LEDGER B
+		                        WHERE B.PARENT_LEDGER_ID = #{ledgerId})
+	</select>
+	
+	<!-- 获取最大边距值 -->
+	<select id="getMaxBorder" resultType="Integer">
+		SELECT MAX(LEDGER_RGT) FROM T_LEDGER
+	</select>
+	
+	<!-- 查询 电 费率信息 -->
+	<select id="queryRateInfo" parameterType="java.util.Date" resultType="com.linyang.energy.model.RateBean">
+		SELECT RATE_ID rateId, RATE_NAME rateName, END_EFFECT_DATE endEffectDate, BEGIN_EFFECT_DATE beginEffectDate, RATE_REMARK rateRemark
+		FROM   T_RATE
+		WHERE RATE_ID != 0 and RATE_TYPE = 1
+	</select>
+
+    <!-- 查询 水、气、热 费率信息 -->
+    <select id="queryOtherRateInfo" resultType="HashMap">
+        SELECT RATE_ID, RATE_NAME, RATE_REMARK, RATE_TYPE
+        FROM   T_RATE
+        WHERE RATE_ID != 0
+        and RATE_TYPE = #{rateType}
+    </select>
+	
+	<!-- 查询分析类型 -->
+	<select id="queryAnalyTypes" resultType="com.linyang.energy.model.CateBean">
+		SELECT DETAIL_ID detailId, DETAIL_NAME detailName FROM T_DICT_TYPE_DETAIL WHERE CATE_ID = 100 ORDER BY SERIAL_NUMBER
+	</select>
+	
+	<!-- 根据分户Id查询分户关联数据 -->
+	<select id="getLedgerRelatedByLedgerId" parameterType="long" resultType="int">
+		SELECT COUNT(1) FROM (
+		   SELECT LEDGER_ID FROM T_METER WHERE LEDGER_ID = #{ledgerId} and METER_STATUS=1
+		   UNION 
+		   SELECT LEDGER_ID FROM T_ACCOUNT WHERE ACCOUNT_STATUS = 1 AND LEDGER_ID = #{ledgerId}
+		) A
+	</select>
+	
+	<!-- 根据分户Ids查询分户信息 -->
+	<select id="getLedgerByIds" resultMap="BaseResultMap">
+		SELECT <include refid="Base_Column_List" /> FROM T_LEDGER
+		<where>
+			LEDGER_ID IN
+			<foreach collection="list" item="ledgerId" open="(" separator="," close=")">
+				#{ledgerId}
+			</foreach>
+		</where>
+	</select>
+	
+	<!-- 根据分户Id删除分户信息 -->
+	<delete id="deleteByLedgerId" parameterType="java.lang.Long" >
+		DELETE FROM T_LEDGER
+		WHERE LEDGER_ID = #{ledgerId,jdbcType=DECIMAL}
+	</delete>
+	
+	<!-- 添加分户信息(只插入不为空的字段) -->
+	<insert id="insertBySelective" parameterType="com.linyang.energy.model.LedgerBean" >
+		INSERT INTO T_LEDGER
+		<trim prefix="(" suffix=")" suffixOverrides="," >
+		  <if test="ledgerId != null" >
+		    LEDGER_ID,
+		  </if>
+		  <if test="ledgerName != null" >
+		    LEDGER_NAME,
+		  </if>
+		  <if test="ledgerType != null" >
+		    LEDGER_TYPE,
+		  </if>
+		  <if test="numberOfPeople != null" >
+		    NUMBER_OF_PEOPLE,
+		  </if>
+		  <if test="useArea != null" >
+		    USE_AREA,
+		  </if>
+		  <if test="depth != null" >
+		    DEPTH,
+		  </if>
+		  <if test="ledgerLft != null" >
+		    LEDGER_LFT,
+		  </if>
+		  <if test="ledgerRgt != null" >
+		    LEDGER_RGT,
+		  </if>
+		  <if test="parentLedgerId != null" >
+		    PARENT_LEDGER_ID,
+		  </if>
+		  <if test="collmeterNumber != null" >
+		    COLLMETER_NUMBER,
+		  </if>
+		  <if test="rateId != null" >
+		    RATE_ID,
+		  </if>
+            <if test="rateWId != null and rateWId > 0" >
+                RATE_W_ID,
+            </if>
+            <if test="rateGId != null and rateGId > 0" >
+                RATE_G_ID,
+            </if>
+            <if test="rateHId != null and rateHId > 0" >
+                RATE_H_ID,
+            </if>
+		  <if test="ledgerRemark != null" >
+		    LEDGER_REMARK,
+		  </if>
+		  <if test="analyType != null">
+		  	ANALY_TYPE,
+		  </if>
+		  <if test="inherit != -1">
+		  	INHERIT,
+		  </if>
+		  <if test="userNo != null">
+		  	USER_NO,
+		  </if>
+		  <if test="industryType != null">
+		  	INDUSTRY_TYPE,
+		  </if>
+		  <if test="region != null">
+		  	REGION,
+		  </if>
+		  <if test="contacts != null">
+		  	CONTACTS,
+		  </if>
+		  <if test="contactInfo != null">
+		  	CONTACT_INFO,
+		  </if>
+		  <if test="address != null">
+		  	ADDRESS,
+		  </if>
+          <if test="lineloss != null">
+            LINELOSS,
+          </if>
+          <if test="addAttr != null">
+            ADD_ATTR,
+          </if>
+          <if test="showPicUrl != null and showPicUrl != ''">
+                SHOW_PIC_URL,
+          </if>
+          <if test="energyType != null">
+              ENERGY_TYPE,
+          </if>
+			<if test="eqpTypeId != -1">
+				EQPTYPE_ID,
+			</if>
+            <if test="startPower != null">
+                START_POWER,
+            </if>
+            <if test="baseQ != null">
+                BASE_Q,
+            </if>
+			<if test="waterLimitThres != null">
+				WATER_LIMIT_THRES,
+			</if>
+			<if test="gasLimitThres != null">
+				GAS_LIMIT_THRES,
+			</if>
+			<if test="electLimitThres != null">
+				ELECT_LIMIT_THRES,
+			</if>
+			<if test="qCalcDate != null">
+				Q_CALC_DATE,
+			</if>
+			<if test="qCalcInherit != null">
+				Q_CALC_INHERIT,
+			</if>
+			<if test="pollutId != null">
+				POLLUT_ID ,
+			</if>
+
+			<if test="pollutctlId != null">
+				POLLUTCTL_ID
+			</if>
+		</trim>
+		<trim prefix="values (" suffix=")" suffixOverrides="," >
+		  <if test="ledgerId != null" >
+		    #{ledgerId,jdbcType=DECIMAL},
+		  </if>
+		  <if test="ledgerName != null" >
+		    #{ledgerName,jdbcType=VARCHAR},
+		  </if>
+		  <if test="ledgerType != null" >
+		    #{ledgerType,jdbcType=DECIMAL},
+		  </if>
+		  <if test="numberOfPeople != null" >
+		    #{numberOfPeople,jdbcType=DECIMAL},
+		  </if>
+		  <if test="useArea != null" >
+		    #{useArea,jdbcType=DECIMAL},
+		  </if>
+		  <if test="depth != null" >
+		    #{depth,jdbcType=DECIMAL},
+		  </if>
+		  <if test="ledgerLft != null" >
+		    #{ledgerLft,jdbcType=DECIMAL},
+		  </if>
+		  <if test="ledgerRgt != null" >
+		    #{ledgerRgt,jdbcType=DECIMAL},
+		  </if>
+		  <if test="parentLedgerId != null" >
+		    #{parentLedgerId,jdbcType=DECIMAL},
+		  </if>
+		  <if test="collmeterNumber != null" >
+		    #{collmeterNumber,jdbcType=DECIMAL},
+		  </if>
+		  <if test="rateId != null" >
+		    #{rateId,jdbcType=DECIMAL},
+		  </if>
+            <if test="rateWId != null and rateWId > 0" >
+                #{rateWId,jdbcType=DECIMAL},
+            </if>
+            <if test="rateGId != null and rateGId > 0" >
+                #{rateGId,jdbcType=DECIMAL},
+            </if>
+            <if test="rateHId != null and rateHId > 0" >
+                #{rateHId,jdbcType=DECIMAL},
+            </if>
+		  <if test="ledgerRemark != null" >
+		    #{ledgerRemark,jdbcType=VARCHAR},
+		  </if>
+		  <if test="analyType != null">
+		  	#{analyType,jdbcType=NUMERIC},
+		  </if>
+		  <if test="inherit != -1">
+		  	#{inherit,jdbcType=NUMERIC},
+		  </if>
+		  <if test="userNo != null" >
+	        #{userNo,jdbcType=VARCHAR},
+	      </if>
+	      <if test="industryType != null" >
+	        #{industryType,jdbcType=DECIMAL},
+	      </if>
+	      <if test="region != null" >
+	        #{region,jdbcType=VARCHAR},
+	      </if>
+	      <if test="contacts != null" >
+	        #{contacts,jdbcType=VARCHAR},
+	      </if>
+	      <if test="contactInfo != null" >
+	        #{contactInfo,jdbcType=VARCHAR},
+	      </if>
+	      <if test="address != null" >
+	        #{address,jdbcType=VARCHAR},
+	      </if>
+          <if test="lineloss != null" >
+            #{lineloss,jdbcType=NUMERIC},
+          </if>
+          <if test="addAttr != null" >
+            #{addAttr,jdbcType=NUMERIC},
+          </if>
+          <if test="showPicUrl != null and showPicUrl != ''">
+            #{showPicUrl,jdbcType=VARCHAR},
+          </if>
+          <if test="energyType != null">
+              #{energyType,jdbcType=NUMERIC},
+          </if>
+			<if test="eqpTypeId != -1">
+				#{eqpTypeId,jdbcType=DECIMAL},
+			</if>
+            <if test="startPower != null">
+                #{startPower,jdbcType=NUMERIC},
+            </if>
+            <if test="baseQ != null">
+                #{baseQ,jdbcType=NUMERIC},
+            </if>
+			<if test="waterLimitThres != null">
+				#{waterLimitThres,jdbcType=NUMERIC},
+			</if>
+			<if test="gasLimitThres != null">
+				#{gasLimitThres,jdbcType=NUMERIC},
+			</if>
+			<if test="electLimitThres != null">
+				#{electLimitThres,jdbcType=NUMERIC},
+			</if>
+			<if test="qCalcDate != null">
+				#{qCalcDate},
+			</if>
+			<if test="qCalcInherit != null">
+				#{qCalcInherit},
+			</if>
+			<if test="pollutId != null">
+				#{pollutId,jdbcType=VARCHAR},
+			</if>
+			<if test="pollutctlId != null">
+				#{pollutctlId,jdbcType=VARCHAR}
+			</if>
+		</trim>
+	</insert>
+	
+	<!-- 添加分户费率历史信息 -->
+	<insert id="addLedgerRateHisInfo" parameterType="HashMap">
+		INSERT INTO T_LEDGER_RATE_HIS (HIS_REC_ID, LEDGER_ID, RATE_ID, START_TIME, END_TIME)
+			SELECT #{hisRecId} HIS_REC_ID, #{ledgerId} LEDGER_ID, A.RATE_ID, A.BEGIN_EFFECT_DATE, A.END_EFFECT_DATE 
+			FROM T_RATE A, T_LEDGER B 
+			WHERE A.RATE_ID = B.RATE_ID AND B.LEDGER_ID = #{ledgerId}
+	</insert>
+	
+	<!-- 添加分户阀值关联关系 -->
+	<insert id="addLedgerThreshold" parameterType="HashMap">
+		INSERT INTO T_LEDGER_THRESHOLD_RELATION (THRESHOLD_ID, LEDGER_ID, THRESHOLD_VALUE)
+		VALUES (#{thresholdId}, #{ledgerId}, #{thresholdValue})
+	</insert>
+	
+	<!-- 删除分户阀值关联关系 -->
+	<delete id="deleteLedgerThreshold" parameterType="long">
+		DELETE FROM T_LEDGER_THRESHOLD_RELATION WHERE LEDGER_ID = #{ledgerId}
+	</delete>
+	
+	<!-- 更新分户信息(只更新不为空的字段) -->
+	<update id="updateBySelective" parameterType="com.linyang.energy.model.LedgerBean" >
+	  UPDATE T_LEDGER
+	  <set >
+	    <if test="ledgerName != null" >
+	      LEDGER_NAME = #{ledgerName,jdbcType=VARCHAR},
+	    </if>
+	    <if test="numberOfPeople != null" >
+	      NUMBER_OF_PEOPLE = #{numberOfPeople,jdbcType=DECIMAL},
+	    </if>
+	    <if test="useArea != null" >
+	      USE_AREA = #{useArea,jdbcType=DECIMAL},
+	    </if>
+	    <if test="depth != null" >
+	      DEPTH = #{depth,jdbcType=DECIMAL},
+	    </if>
+	    <if test="ledgerLft != null" >
+	      LEDGER_LFT = #{ledgerLft,jdbcType=DECIMAL},
+	    </if>
+	    <if test="ledgerRgt != null" >
+	      LEDGER_RGT = #{ledgerRgt,jdbcType=DECIMAL},
+	    </if>
+	    <if test="parentLedgerId != null" >
+	      PARENT_LEDGER_ID = #{parentLedgerId,jdbcType=DECIMAL},
+	    </if>
+	    <if test="collmeterNumber != null" >
+	      COLLMETER_NUMBER = #{collmeterNumber,jdbcType=DECIMAL},
+	    </if>
+	    <if test="rateId != null" >
+	      RATE_ID = #{rateId,jdbcType=DECIMAL},
+	    </if>
+          <if test="rateWId != null and rateWId > 0" >
+              RATE_W_ID = #{rateWId,jdbcType=DECIMAL},
+          </if>
+          <if test="rateGId != null and rateGId > 0" >
+              RATE_G_ID = #{rateGId,jdbcType=DECIMAL},
+          </if>
+          <if test="rateHId != null and rateHId > 0" >
+              RATE_H_ID = #{rateHId,jdbcType=DECIMAL},
+          </if>
+	    <if test="ledgerRemark != null" >
+	      LEDGER_REMARK = #{ledgerRemark,jdbcType=VARCHAR},
+	    </if>
+        <if test="analyType != null" >
+            ANALY_TYPE = #{analyType,jdbcType=NUMERIC},
+        </if>
+		<if test="inherit != -1">
+		  INHERIT = #{inherit,jdbcType=NUMERIC},
+		</if>
+		<if test="userNo != null" >
+	      USER_NO = #{userNo,jdbcType=VARCHAR},
+	    </if>
+	    <if test="industryType != null" >
+	      INDUSTRY_TYPE = #{industryType,jdbcType=DECIMAL},
+	    </if>
+	    <if test="region != null" >
+	      REGION = #{region,jdbcType=VARCHAR},
+	    </if>
+	    <if test="contacts != null" >
+	      CONTACTS = #{contacts,jdbcType=VARCHAR},
+	    </if>
+	    <if test="contactInfo != null" >
+	      CONTACT_INFO = #{contactInfo,jdbcType=VARCHAR},
+	    </if>
+	    <if test="address != null" >
+	      ADDRESS = #{address,jdbcType=VARCHAR},
+	    </if>
+	    <if test="ledgerType != null" >
+	      LEDGER_TYPE = #{ledgerType,jdbcType=DECIMAL},
+	    </if>
+	    <if test="lineloss != null" >
+	      LINELOSS = #{lineloss,jdbcType=DECIMAL},
+	    </if>
+        <if test="addAttr != null" >
+          ADD_ATTR = #{addAttr,jdbcType=NUMERIC},
+        </if>
+        <if test="logoColor != null" >
+          COLOR = #{logoColor,jdbcType=VARCHAR},
+        </if>
+        <if test="logoIcon != null" >
+          LOGO_ICON = #{logoIcon,jdbcType=VARCHAR},
+        </if>
+        <if test="x != null" >
+              X = #{x},
+        </if>
+        <if test="y != null" >
+              Y = #{y},
+        </if>
+        <if test="showPicUrl != null and showPicUrl != ''">
+              SHOW_PIC_URL = #{showPicUrl,jdbcType=VARCHAR},
+        </if>
+        <if test="energyType != null">
+              ENERGY_TYPE = #{energyType,jdbcType=NUMERIC},
+        </if>
+        <if test="url != null">
+              URL = #{url,jdbcType=VARCHAR},
+        </if>
+        <if test="eqpTypeId != -1">
+            EQPTYPE_ID = #{eqpTypeId,jdbcType=DECIMAL},
+        </if>
+        <if test="startPower != null" >
+            START_POWER = #{startPower,jdbcType=NUMERIC},
+        </if>
+		  <if test="pollutId != null">
+			  POLLUT_ID = #{pollutId,jdbcType=VARCHAR},
+		  </if>
+
+		  <if test="pollutctlId != null">
+			  POLLUTCTL_ID = #{pollutctlId,jdbcType=VARCHAR},
+		  </if>
+		WATER_LIMIT_THRES = #{waterLimitThres,jdbcType=NUMERIC},
+		  GAS_LIMIT_THRES = #{gasLimitThres,jdbcType=NUMERIC},
+		  ELECT_LIMIT_THRES = #{electLimitThres,jdbcType=NUMERIC},
+		  Q_CALC_DATE = #{qCalcDate,jdbcType=NUMERIC},
+		  Q_CALC_INHERIT = #{qCalcInherit,jdbcType=NUMERIC},
+        BASE_Q = #{baseQ,jdbcType=NUMERIC},
+	  </set>
+	  WHERE LEDGER_ID = #{ledgerId,jdbcType=DECIMAL}
+	</update>
+
+    <update id="updateRelationLedgerName" parameterType="com.linyang.energy.model.LedgerBean">
+        UPDATE t_ledger_relation t set t.RELATION_NAME = #{ledgerName} where t.RELATION_TYPE=1 and t.RELATION_ID=#{ledgerId}
+    </update>
+	
+	<!-- 更新分户左右边距(用于添加) -->
+	<update id="updateLftRgtForAdd" parameterType="com.linyang.energy.dto.LedgerTreeBean" >
+		UPDATE T_LEDGER
+	  	<set>
+	  		<!-- 更新左边界 -->
+	  		<if test="ledgerLft != null and ledgerLft != 0">
+	  			LEDGER_LFT = LEDGER_LFT + 2 WHERE LEDGER_LFT > #{ledgerLft}
+	  		</if>
+	  		<!-- 更新右边界 -->
+	  		<if test="ledgerRgt != null and ledgerRgt != 0">
+	  			LEDGER_RGT = LEDGER_RGT + 2 WHERE LEDGER_RGT > #{ledgerRgt}
+	  		</if>
+	  	</set>
+	</update>
+  
+  	<!-- 更新分户左右边距(用于删除) -->
+	<update id="updateLftRgtForDel" parameterType="com.linyang.energy.dto.LedgerTreeBean" >
+		UPDATE T_LEDGER
+	  	<set>
+	  		<!-- 更新左边界 -->
+	  		<if test="ledgerLft != null and ledgerLft != 0">
+	  			LEDGER_LFT = LEDGER_LFT - 2 WHERE LEDGER_LFT > #{ledgerLft}
+	  		</if>
+	  		<!-- 更新右边界 -->
+	  		<if test="ledgerRgt != null and ledgerRgt != 0">
+	  			LEDGER_RGT = LEDGER_RGT - 2 WHERE LEDGER_RGT > #{ledgerRgt}
+	  		</if>
+	  	</set>
+	</update>
+	
+	<!-- 更新分户右边距 -->
+	<update id="updateLedgerRgt">
+		UPDATE T_LEDGER set LEDGER_RGT = LEDGER_RGT+#{span} where LEDGER_RGT>#{ledgerRgt}
+	</update>
+	
+	<!-- 更新分户左边距 -->
+	<update id="updateLedgerLft">
+		UPDATE T_LEDGER set LEDGER_LFT = LEDGER_LFT+#{span} where LEDGER_LFT>#{ledgerLft}
+	</update>
+	
+	<!-- 更新分户左右边距 -->
+	<update id="updateLftRgt" parameterType="LedgerBean" >
+		UPDATE T_LEDGER SET LEDGER_LFT = #{ledgerLft},LEDGER_RGT = #{ledgerRgt},DEPTH=#{depth} 
+		WHERE LEDGER_ID = #{ledgerId}
+	</update>
+	
+	<!-- 根据父分户查询子分户列表 -->
+	<select id="getLedgerListByParent" resultMap="BaseResultMap" >
+		SELECT A.LEDGER_ID, A.LEDGER_NAME, A.NUMBER_OF_PEOPLE, A.USE_AREA, A.DEPTH, A.LEDGER_LFT, A.LEDGER_RGT, A.PARENT_LEDGER_ID, 
+			   A.COLLMETER_NUMBER, A.RATE_ID, A.RATE_W_ID, A.RATE_G_ID, A.RATE_H_ID, A.LEDGER_REMARK, A.X, A.Y, A.PIC_ID, A.ANALY_TYPE, A.INHERIT, B.THRESHOLD_VALUE, A.ADD_ATTR
+		FROM T_LEDGER A LEFT JOIN T_LEDGER_THRESHOLD_RELATION B ON A.LEDGER_ID = B.LEDGER_ID
+		WHERE A.LEDGER_LFT BETWEEN #{ledgerLft} AND #{ledgerRgt}
+	</select>
+  
+ 	<!-- 查询一个分户下子分户的个数 -->
+	<select id="countLedgerByLedgerId" resultType="int">
+		SELECT COUNT(*) CNT FROM T_LEDGER WHERE PARENT_LEDGER_ID=#{parentLedgerId}
+	</select>
+	
+	<!-- 电力拓扑树下查询一个企业分户下子节点的个数 -->
+	<select id="countSubNodeByLedgerId" resultType="int">
+		<if test="childObjType == 1">
+			SELECT COUNT(*) FROM T_LEDGER A WHERE  A.PARENT_LEDGER_ID=#{ledgerId}
+		</if>
+		<if test="childObjType == 2">
+			SELECT COUNT(*) CNT FROM T_METER m JOIN T_LINELOSS_METER_INFO l ON m.METER_ID = l.METER_ID WHERE m.LEDGER_ID IN (SELECT l1.LEDGER_ID 
+	      	FROM T_LEDGER l1,T_LEDGER l2 WHERE l1.LEDGER_LFT >= l2.LEDGER_LFT 
+	      	AND l1.LEDGER_RGT &lt;= l2.LEDGER_RGT AND l2.LEDGER_ID = #{ledgerId})AND l.PAREMENT_METER_ID = 0 AND m.METER_STATUS =1
+		</if>
+	</select>
+ 	
+ 	<!-- 得到一个用户的父类分户树(如果是超级管理员的话那么ledgerId=-100,特殊处理) -->
+	<select id="getUserParentLedgerTree" resultType="com.linyang.energy.dto.LedgerTreeBean">
+		SELECT A.LEDGER_ID  id,A.PARENT_LEDGER_ID  pId,A.LEDGER_NAME  name,A.RATE_ID rateId,1  treeNodeType, case when A.ANALY_TYPE = 102 then 1 else 0 end isCompany  FROM T_LEDGER A
+		WHERE  
+		 	<if test="ledgerId == -100">A.PARENT_LEDGER_ID = 0</if>
+		 	<if test="ledgerId != -100">A.LEDGER_ID=#{ledgerId}</if>
+		  ORDER BY nlssort(A.LEDGER_NAME, 'NLS_SORT=SCHINESE_PINYIN_M')
+	</select>
+	
+	<!-- 根据组权限得到一个用户的父类分户树 -->
+	<select id="getUserParentLedgerTreeGroup" resultType="com.linyang.energy.dto.LedgerTreeBean">
+		SELECT A.LEDGER_ID  id,A.PARENT_LEDGER_ID  pId,A.LEDGER_NAME  name,A.RATE_ID rateId,1  treeNodeType FROM T_LEDGER A,v_group_ledger g
+		WHERE A.LEDGER_ID=g.ledger_id and g.account_id=#{acountId} ORDER BY nlssort(A.LEDGER_NAME, 'NLS_SORT=SCHINESE_PINYIN_M')
+	</select>
+	
+	<!-- 得到子类分户树信息 -->
+	<select id="getChildLedgerTree" resultType="com.linyang.energy.dto.LedgerTreeBean">
+		select * from
+		(
+		SELECT A.LEDGER_ID id, A.PARENT_LEDGER_ID pId, A.LEDGER_NAME name,
+		1 treeNodeType, 0 meterType, A.RATE_ID rateId, A.POLLUT_ID polluteId, A.POLLUTCTL_ID controlId, case when A.ANALY_TYPE = 102 then 1 else 0 end isCompany
+		FROM T_LEDGER A
+		WHERE  A.PARENT_LEDGER_ID=#{parentLedgerId}
+		UNION ALL
+		SELECT B.METER_ID id, B.LEDGER_ID pId, B.METER_NAME name,
+		2 treeNodeType, B.METER_TYPE meterType, A.RATE_ID rateId, null polluteId, null controlId, 0 isCompany
+		FROM T_LEDGER A ,T_METER B,T_LEDGER_SHOW C
+		WHERE A.LEDGER_ID = C.LEDGER_ID AND C.METER_ID = B.METER_ID AND B.METER_STATUS =1 AND A.LEDGER_ID=#{parentLedgerId}
+		)
+		ORDER BY treeNodeType,nlssort(name, 'NLS_SORT=SCHINESE_PINYIN_M')
+	</select>
+	
+	<!-- 得到企业分户电力拓扑树信息 -->
+	<select id="getChildEleTree" resultType="com.linyang.energy.dto.LedgerTreeBean">
+		<if test="objType == 1 and childObjType ==1">
+			SELECT A.LEDGER_ID  id,A.PARENT_LEDGER_ID  pId,A.LEDGER_NAME  name,A.RATE_ID rateId,1  treeNodeType,0 meterType,case when A.ANALY_TYPE = 102 then 1 else 0 end isCompany FROM T_LEDGER A 
+			WHERE  A.PARENT_LEDGER_ID=#{parentId} ORDER BY nlssort(name, 'NLS_SORT=SCHINESE_PINYIN_M')
+		</if>
+		<if test="objType == 1 and childObjType ==2">
+			select m.meter_id as id,#{parentId} as pId,m.meter_name as name ,tl.rate_id rateId,2 treeNodeType,
+            m.meter_type meterType, m.IS_VIRTUAL as isVirtual
+            from t_lineloss_meter_info l,t_meter m
+			  join t_ledger tl on tl.ledger_id = m.ledger_id where l.meter_id=m.meter_id and m.ledger_id in (
+			    select l1.ledger_id from t_ledger l1,t_ledger l2
+			        where l1.ledger_lft>=l2.ledger_lft and l1.ledger_rgt &lt;=l2.ledger_rgt
+			        and l2.ledger_id = #{parentId}
+			  ) and l.parement_meter_id = 0 and m.meter_status = 1
+			order by m.meter_type,nlssort(name, 'NLS_SORT=SCHINESE_PINYIN_M')
+		</if>
+		<if test="objType == 2">
+			SELECT l.METER_ID as id,l.PAREMENT_METER_ID as pId,m.METER_NAME as name,a.RATE_ID as rateId,2 treeNodeType,
+            m.METER_TYPE meterType, m.IS_VIRTUAL as isVirtual
+            FROM T_LINELOSS_METER_INFO l
+			JOIN T_METER m ON m.METER_ID = l.METER_ID
+			JOIN T_LEDGER a ON m.LEDGER_ID = a.LEDGER_ID
+			WHERE l.PAREMENT_METER_ID = #{parentId}
+            <if test="meterType != null">
+                AND m.METER_TYPE = #{meterType}
+            </if>
+            AND m.METER_STATUS =1 ORDER BY nlssort(name, 'NLS_SORT=SCHINESE_PINYIN_M')
+		</if>
+	</select>
+	
+	<resultMap id="ledgerMeterMap" type="LedgerAllMeterBean">
+		<id property="ledgerId" column="ledgerId" />
+		<result property="parentLedgerId" column="parentLedgerId"/>
+		<collection property="meters" ofType="LedgerMeterBean">
+			<result property="meterId" column="meterId" />
+			<result property="meterAttr" column="meterAttr"/>
+			<result property="meterType" column="meterType"/>
+		</collection>
+	</resultMap>
+	
+	<!-- 得到所有分户及其所属计量点列表 -->
+	<select id="getLedgerAllMeter" resultMap="ledgerMeterMap">
+		select t.ledger_id as ledgerId,t.parent_ledger_id as parentLedgerId,m.meter_id as meterId,m.meter_attr as meterAttr,m.meter_type as meterType
+		from t_ledger t left join t_meter m on m.ledger_id=t.ledger_id and m.meter_status=1 and m.attribute_id &lt;>3
+		order by t.depth desc
+	</select>
+	
+	<!-- 清空分户计量表 -->
+	<delete id="delLedgerMeter">
+		delete from t_ledger_meter
+		where 1=1
+        <if test="ledgerId != null">
+            and LEDGER_ID = #{ledgerId}
+        </if>
+	</delete>
+    <!-- 为了便于计算，分户计量表中，1表示"+"、-1表示"-" -->
+    <update id="changeLedgerMeter">
+        update t_ledger_meter set ADD_ATTR = -1 where ADD_ATTR = 2
+    </update>
+	
+	<!-- 插入分户计量表 -->
+	<insert id="insertLedgerMeter" parameterType="HashMap">
+		insert into t_ledger_meter (ledger_id,meter_id,add_attr) values (#{ledgerId},#{meterId},#{addAttr})
+	</insert>
+	
+	<!-- 根据分户id查询计量总表 -->
+	<select id="querySummaryMeterByLedgerId" parameterType="long" resultType="com.linyang.energy.model.MeterBean">
+		select tm.METER_NAME meterName, tm.METER_ID meterId from t_meter tm JOIN T_LINELOSS_METER_INFO l ON l.METER_ID = tm.METER_ID WHERE tm.LEDGER_ID IN (
+			    select l1.ledger_id from t_ledger l1,t_ledger l2
+			        where l1.ledger_lft>=l2.ledger_lft and l1.ledger_rgt &lt;=l2.ledger_rgt
+			        and l2.ledger_id = #{ledgerId}
+			  )AND l.PAREMENT_METER_ID = 0 AND tm.METER_STATUS = 1 AND tm.VOLUME_TYPE = 1 AND tm.VOLUME > 0
+	</select>
+	
+	<!-- 得到所有分项及其所属计量点列表 -->
+	<select id="getDeviceAllMeter" resultMap="ledgerMeterMap">
+		select t.type_id as ledgerId,t.parent_type_id as parentLedgerId,m.meter_id as meterId,m.meter_attr as meterAttr,m.meter_type as meterType
+	    from t_device_type t left join t_meter m on m.type_id=t.type_id and m.meter_status=1 and m.attribute_id &lt;>3
+	    order by t.depth desc
+	</select>
+	
+	<!-- 清空分项计量表 -->
+	<delete id="delDeviceMeter">
+		delete from t_device_meter
+	</delete>
+	
+	<!-- 插入分项计量表 -->
+	<insert id="insertDeviceMeter" parameterType="HashMap">
+		insert into t_device_meter (type_id,meter_id) values (#{ledgerId},#{meterId})
+	</insert>
+	
+	<resultMap id="ledgerDeviceMeterMap" type="LedgerDeviceAllMeterBean">
+		<id property="bigLedgerId" column="bigLedgerId" />
+		<collection property="allDevices" ofType="LedgerAllMeterBean">
+			<result property="ledgerId" column="ledgerId" />
+			<result property="parentLedgerId" column="parentLedgerId"/>
+			<collection property="meters" ofType="LedgerMeterBean">
+				<result property="meterId" column="meterId" />
+				<result property="meterAttr" column="meterAttr"/>
+				<result property="meterType" column="meterType"/>
+			</collection>
+		</collection>
+	</resultMap>
+	
+	<!-- 得到所有分户分项及其所属计量点列表 -->
+	<select id="getLedgerDeviceMeter" resultMap="ledgerDeviceMeterMap">
+		select a.p_id as bigLedgerId, a.t_type_id as ledgerId,d.parent_type_id as parentLedgerId, m.meter_id as meterId,m.meter_type as meterType,m.meter_attr as meterAttr 
+		from (select distinct l.ledger_id as p_id,parentD.Type_Id as t_type_id from t_ledger l,t_device_type d,t_device_type parentD,
+				(SELECT parent.ledger_id as ledger_id,t.meter_id as t_meter_id,t.type_id as type_id,t.meter_id,t.meter_type,t.meter_attr FROM t_ledger node, t_ledger parent, t_meter t
+ 				WHERE node.LEDGER_LFT BETWEEN parent.LEDGER_LFT AND parent.LEDGER_RGT and t.ledger_id = node.ledger_id) t
+        where d.type_id=t.type_id and d.lft between parentD.Lft and parentD.Rgt and l.ledger_id=t.ledger_id) a left join 
+        (SELECT parent.ledger_id as p_id,t.meter_id as t_meter_id,t.type_id as type_id,t.meter_id,t.meter_status,t.meter_type,t.meter_attr FROM t_ledger node, t_ledger parent, t_meter t
+ 		WHERE node.LEDGER_LFT BETWEEN parent.LEDGER_LFT AND parent.LEDGER_RGT and t.ledger_id = node.ledger_id) m on a.t_type_id=m.type_id and a.p_id=m.p_id,t_device_type d
+		where a.t_type_id=d.type_id  and m.meter_status=1 order by a.p_id,d.depth desc
+	</select>
+	
+	<!-- 清空分户分项计量表 -->
+	<delete id="delLedgerDeviceMeter">
+		delete from t_ledger_device_meter
+	</delete>
+	
+	<!-- 插入分户分项计量表 -->
+	<insert id="insertLedgerDeviceMeter" parameterType="HashMap">
+		insert into t_ledger_device_meter (ledger_id,type_id,meter_id,add_attr) values (#{ledgerId},#{typeId},#{meterId},#{addAttr})
+	</insert>
+	
+	<!-- 得到一个用户的父类分户树(如果是超级管理员的话那么ledgerId=-100,特殊处理,不包含测量点) -->
+	<select id="getParentLedgerTree" resultType="com.linyang.energy.dto.LedgerTreeBean">
+		SELECT A.LEDGER_ID id, A.PARENT_LEDGER_ID pId, A.LEDGER_NAME name, A.RATE_ID rateId, 1 treeNodeType FROM T_LEDGER A
+		WHERE  
+		 	<if test="ledgerId == -100">A.PARENT_LEDGER_ID = 0</if>
+		 	<if test="ledgerId != -100">A.LEDGER_ID=#{ledgerId}</if>	
+	</select>
+	
+	<!-- 得到子类分户树信息(不包含测量点) -->
+	<select id="getSubLedgerTree" resultType="com.linyang.energy.dto.LedgerTreeBean">
+		SELECT A.LEDGER_ID id, A.PARENT_LEDGER_ID pId, A.LEDGER_NAME name, A.RATE_ID rateId, 1 treeNodeType FROM T_LEDGER A 
+		WHERE  A.PARENT_LEDGER_ID=#{parentLedgerId}
+	</select>
+	
+	<!-- 更新子分户的费率 -->
+	<update id="updateNodeRate" parameterType="com.linyang.energy.model.LedgerBean">
+		update t_ledger set rate_id=#{rateId},inherit=1 where ledger_id in (SELECT node.ledger_id 
+		FROM t_ledger node, t_ledger parent WHERE node.ledger_lft BETWEEN parent.ledger_lft 
+		AND parent.ledger_rgt AND parent.ledger_id = #{ledgerId})
+	</update>
+	
+	<!-- 更新子分户的分户类型 -->
+	<update id="updateNodeLedgerType" parameterType="com.linyang.energy.model.LedgerBean">
+		update t_ledger set ledger_type=#{ledgerType} where ledger_id in (SELECT node.ledger_id 
+		FROM t_ledger node, t_ledger parent WHERE node.ledger_lft BETWEEN parent.ledger_lft 
+		AND parent.ledger_rgt AND parent.ledger_id = #{ledgerId})
+	</update>
+	
+	
+	<!-- 根据条件查询分户信息 by guosen -->
+	<select id="getLedgerInfoPageList" parameterType="HashMap" resultMap="BaseResultMap">
+		SELECT 
+		<include refid="Base_Column_List" />
+		FROM   T_LEDGER
+		<where>
+			<if test="ledgerName != null &amp; ledgerName !='' ">
+				AND LEDGER_NAME like '%' || #{ledgerName} || '%'
+			</if>
+			<if test="userNo != null &amp; userNo !='' ">
+				AND USER_NO = #{userNo}
+			</if>
+			<if test="industryId != null &amp; industryId !='' ">
+				AND INDUSTRY_TYPE = #{industryId}
+			</if>
+			<if test="analyType != null &amp; analyType != '' ">
+				AND ANALY_TYPE = #{analyType}
+			</if>
+			<if test="regionId != null &amp; regionId !='' ">
+				AND REGION = #{regionId}
+			</if>
+			<if test="assetNumber != null &amp; assetNumber !='' ">
+				AND LEDGER_ID IN (SELECT LEDGER_ID FROM T_METER WHERE ASSET_NUMBER = #{assetNumber})
+			</if>
+			<if test="ledgerId != null &amp; ledgerId != -100">
+				AND LEDGER_ID IN (
+					SELECT NODE_LEDGER FROM V_LEDGER_TREE WHERE PARENT_LEDGER = #{ledgerId}
+				)
+			</if>
+			<if test="accountId != null &amp; accountId != '' ">
+				AND LEDGER_ID IN (
+					SELECT NODE_LEDGER FROM V_LEDGER_TREE WHERE PARENT_LEDGER in (
+      					SELECT L.LEDGER_ID FROM V_GROUP_LEDGER L WHERE L.ACCOUNT_ID = #{accountId}
+					)
+				)
+			</if>
+		</where>
+		ORDER BY nlssort(LEDGER_NAME, 'NLS_SORT=SCHINESE_PINYIN_M')
+	</select>
+	
+	<!-- 根据条件查询分户信息 -->
+	<select id="getLedgerInfoList" parameterType="HashMap" resultMap="BaseResultMap">
+		SELECT 
+		<include refid="Base_Column_List" />
+		FROM  T_LEDGER
+		<where>
+			<if test="ledgerName != null &amp; ledgerName !='' ">
+				AND LEDGER_NAME like '%' || #{ledgerName} || '%'
+			</if>
+			<if test="userNo != null &amp; userNo !='' ">
+				AND USER_NO = #{userNo}
+			</if>
+			<if test="industryId != null &amp; industryId !='' ">
+				AND INDUSTRY_TYPE = #{industryId}
+			</if>
+			<if test="analyType != null &amp; analyType != '' ">
+				AND ANALY_TYPE = #{analyType}
+			</if>
+			<if test="regionId != null &amp; regionId !='' ">
+				AND REGION = #{regionId}
+			</if>
+			<if test="assetNumber != null &amp; assetNumber !='' ">
+				AND LEDGER_ID IN (SELECT LEDGER_ID FROM T_METER WHERE ASSET_NUMBER = #{assetNumber})
+			</if>
+			<if test="ledgerId != null &amp; ledgerId != -100">
+				AND LEDGER_ID IN (
+					SELECT NODE_LEDGER FROM V_LEDGER_TREE WHERE PARENT_LEDGER = #{ledgerId}
+				)
+			</if>
+			<if test="accountId != null &amp; accountId != '' ">
+				AND LEDGER_ID IN (
+					SELECT NODE_LEDGER FROM V_LEDGER_TREE WHERE PARENT_LEDGER in (
+      					SELECT L.LEDGER_ID FROM V_GROUP_LEDGER L WHERE L.ACCOUNT_ID = #{accountId}
+					)
+				)
+			</if>
+			<if test="parentLedgerId !=null &amp; parentLedgerId != ''">
+				AND PARENT_LEDGER_ID = #{parentLedgerId}
+			</if>
+			<!-- 加载同级EMO -->
+			<if test="depth !=null &amp; depth != ''">
+				AND DEPTH = #{depth}
+			</if>
+			<if test="depthLedgerId !=null &amp; depthLedgerId != ''">
+				AND PARENT_LEDGER_ID = (select PARENT_LEDGER_ID from t_ledger where ledger_id=#{depthLedgerId})
+			</if>
+		</where>
+		ORDER BY nlssort(LEDGER_NAME, 'NLS_SORT=SCHINESE_PINYIN_M')
+	</select>
+	
+	<!-- 查询一个分户下所有分户和测量点的数量 -->
+	<select id="getAllLedgerCount" resultType="Integer">
+		select sum(a) from
+		(select count(1) as a from t_ledger p,t_ledger l
+		where l.ledger_lft between p.ledger_lft and p.ledger_rgt and p.ledger_id=#{ledgerId}
+		union all
+		select count(1) as a from t_ledger p,t_ledger l,t_meter m
+		where m.ledger_id=l.ledger_id and m.meter_status=1 and l.ledger_lft between p.ledger_lft and p.ledger_rgt and p.ledger_id=#{ledgerId})
+	</select>
+	
+	<!-- 根据组权限查询一个分户下所有分户和测量点的数量 -->
+	<select id="getAllLedgerCountByGroup" resultType="Integer">
+		select sum(a) from
+		(select count(1) as a from t_ledger p,t_ledger l
+		where l.ledger_lft between p.ledger_lft and p.ledger_rgt
+		and p.ledger_id in (select g.ledger_id from v_group_ledger g where g.account_id=#{accountId})
+		union all
+		select count(1) as a
+		from t_ledger p,t_ledger l,t_meter m
+		where m.ledger_id=l.ledger_id and m.meter_status=1 and l.ledger_lft between p.ledger_lft and p.ledger_rgt
+		and p.ledger_id in (select g.ledger_id from v_group_ledger g where g.account_id=#{accountId}))
+	</select>
+	
+	<!-- 获取用户群组下分户列表  by chengq 2014-08-19 -->
+	<select id="getUserLedger" parameterType="Long" resultType="com.linyang.energy.model.LedgerBean">
+		<!-- 原始sql 不查出子孙分户 
+		select tl.LEDGER_ID AS ledgerId,tl.LEDGER_NAME AS ledgerName
+		from t_account ta, t_group_account tga, t_group_ledger tgl,t_ledger tl
+		where ta.account_id = tga.account_id
+		and tga.group_id = tgl.group_id
+    	and tgl.ledger_id = tl.ledger_id 
+    	<if test="accountId != null">
+    		and ta.account_id = #{accountId}
+    	</if>
+    	group by tl.ledger_id ,tl.ledger_name
+		order by tl.ledger_id asc
+		-->	
+		<!-- 原始sql 查出所有子孙分户 -->
+		select distinct ledger_id as ledgerId, ledger_name as ledgerName
+        from t_ledger Start With ledger_id in (
+        select tl.LEDGER_ID AS ledgerId 
+			from t_account ta, t_group_account tga, t_group_ledger tgl,t_ledger tl
+			where ta.account_id = tga.account_id
+			and tga.group_id = tgl.group_id
+    		and tgl.ledger_id = tl.ledger_id  
+    			and ta.account_id = #{accountId}
+    		)
+    	Connect By Prior ledger_id = parent_ledger_id
+	</select>
+	<!-- 递归查询所有祖先分户 -->
+	<select id="queryRecursiveLedgerById" parameterType="Long" resultMap="BaseResultMap">
+		select <include refid="Base_Column_List" />
+  		from t_ledger
+ 		Start With ledger_id = #{ledgerId}
+		Connect By Prior parent_ledger_id = ledger_id
+	</select>
+	
+	<!-- 查询是否可以设置线损配置 -->
+	<select id="checkLineloss" parameterType="HashMap" resultType="Integer">
+		 select count(analy_type) from (
+		  select ledger_id,analy_type from t_ledger 
+			start with ledger_id  = #{ledgerId}
+			connect by prior parent_ledger_id = ledger_id
+      	union
+      	  select ledger_id,analy_type from t_ledger 
+			start with parent_ledger_id  = #{ledgerId}
+			connect by prior parent_ledger_id = ledger_id
+			) t where t.analy_type = 102 and t.ledger_id not in (#{ledgerId}) 
+	</select>
+	
+	<!-- 查询是否可以设置线损配置 -->
+	<select id="checkLinelossByParentId" parameterType="HashMap" resultType="Integer">
+		 select count(analy_type) from (
+		  select ledger_id,analy_type from t_ledger 
+			start with ledger_id  = #{parentLedgerId}
+			connect by prior parent_ledger_id = ledger_id
+			) t where analy_type = 102
+	</select>
+	
+	
+	<!-- 查询当前分户是否为企业分析类型 -->
+	<select id="isFirmAnalyType" parameterType="Long" resultType="Integer">
+		 select count(*) from t_ledger where ledger_id  = #{ledgerId} and ANALY_TYPE = 102
+	</select>
+
+    <!-- 得到父级的"累加属性"和ID -->
+    <select id="getParentAddAttr" resultType="HashMap">
+        <if test="type == 1">
+            select pa.ledger_id as id,pa.add_attr as add_attr
+            from t_ledger ch inner join t_ledger pa on ch.parent_ledger_id=pa.ledger_id
+            where ch.ledger_id=#{id}
+        </if>
+        <if test="type == 2">
+            select l.ledger_id as id, l.add_attr as add_attr
+            from t_meter m inner join t_ledger l on m.ledger_id=l.ledger_id
+            where m.meter_id=#{id}
+        </if>
+    </select>
+
+    <!-- 得到分户上级的名称、和企业类型 -->
+    <select id="getParentLedgerCompany" resultType="HashMap">
+            select pa.LEDGER_ID as LEDGER_ID,pa.LEDGER_NAME as LEDGER_NAME,pa.ANALY_TYPE as ANALY_TYPE
+            from t_ledger ch inner join t_ledger pa on ch.parent_ledger_id=pa.ledger_id
+            where ch.ledger_id=#{ledgerId}
+    </select>
+
+    <!-- 得到配置了计算模型的所有分户 -->
+    <select id="getAllCompLedgerIds" resultType="Long">
+        select t.LEDGER_ID
+        from
+        (
+        select distinct l.LEDGER_ID, l.depth
+        from T_LEDGER_RELATION r inner join t_ledger l on r.LEDGER_ID = l.LEDGER_ID
+        order by l.depth desc
+        ) t
+    </select>
+    
+    <!-- 获取能管对象得到所有父级能管对象 -->
+    <select id="getAllParentLedgersByLedgerId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" /> 
+		FROM T_LEDGER start with ledger_id in (SELECT parent_ledger_id FROM T_LEDGER where ledger_id = #{ledgerId})
+        connect by prior parent_ledger_id = ledger_id
+    </select>
+
+    <!-- 根据ledgerId得到该分户所配置的计算模型 -->
+    <select id="getLedgerMeterRelation" resultType="com.linyang.energy.model.LedgerRelationBean">
+        select r.RELATION_TYPE as type, r.RELATION_ID as id, (3 - 2*r.ATTR_TYPE) as attr, r.PCT as pct
+        from T_LEDGER_RELATION r
+        where r.LEDGER_ID = #{ledgerId}
+        <if test="relationType != null">
+            and r.RELATION_TYPE = #{relationType}
+        </if>
+    </select>
+
+    <!-- 根据ledgerId得到配置父级 -->
+    <select id="getParentRelation" resultType="com.linyang.energy.model.LedgerRelationBean">
+        select r.LEDGER_ID as ledgerId, r.RELATION_TYPE as type, r.RELATION_ID as id, (1.5 - r.ATTR_TYPE)*2 as attr, r.PCT as pct
+        from T_LEDGER_RELATION r inner join t_ledger l on r.RELATION_ID = l.LEDGER_ID
+        where r.RELATION_TYPE = 1 and r.RELATION_ID = #{ledgerId}
+        and r.LEDGER_ID = l.PARENT_LEDGER_ID
+    </select>
+
+    <select id="getChildLedgerMeter" resultType="HashMap">
+        select lm.METER_ID as METER_ID, (lm.ADD_ATTR)*(#{attrType}) as ADD_ATTR, trunc((lm.PCT)*(#{percent})/100) as PCT
+        from T_LEDGER_METER lm
+        where lm.LEDGER_ID = #{ledgerId}
+    </select>
+
+    <!-- 得到ledger_meter数据条数 -->
+    <select id="getOneRelationcount" resultType="int">
+        select count(1) from t_ledger_meter t where t.ledger_id = #{ledgerId} and t.meter_id = #{meterId}
+    </select>
+
+
+    <!-- 插分户计量表 -->
+    <insert id="insertLedgerMeterNew" parameterType="HashMap">
+        insert into t_ledger_meter (ledger_id,meter_id,add_attr,pct) values (#{ledgerId},#{meterId},#{addAttr},#{percent})
+    </insert>
+
+    <!-- 更新分户计量表 -->
+    <update id="updateLedgerMeterNew" parameterType="HashMap">
+        update t_ledger_meter t set t.pct = t.add_attr * t.pct + #{addAttr} * #{percent}, t.add_attr = 1
+        where t.ledger_id = #{ledgerId} and t.meter_id = #{meterId}
+    </update>
+
+    
+    <!-- 得到所属企业ID -->
+    <select id="getCompanyId" resultType="Long">
+    	select t2.ledger_id from ( select t1.ledger_id, t1.ledger_name, t1.analy_type from t_ledger t1
+	      start with t1.ledger_id  = #{ledgerId}
+	      connect by prior parent_ledger_id = ledger_id
+	      ) t2 where t2.analy_type = 102 and rownum = 1
+    </select>
+
+
+    <!-- 得到旧计算模型中，分户下的总、分表 对应到t_ledger_relation表的数据 -->
+    <select id="getPointRelations" resultType="LedgerRelationBean">
+        select #{ledgerId} as ledgerId, 2 as type, m.METER_ID as id,
+        m.ATTRIBUTE_ID as attr, 100 as pct, m.METER_NAME as name
+        from t_meter m
+        where m.LEDGER_ID = #{ledgerId} and m.METER_STATUS = 1 and (m.ATTRIBUTE_ID = 1 or m.ATTRIBUTE_ID = 2)
+        <if test="meterType == 1">
+            and (m.METER_ATTR = 1 or m.METER_ATTR = 4)
+        </if>
+        <if test="meterType == 2">
+            and (m.METER_ATTR = 2 or m.METER_ATTR = 3)
+        </if>
+    </select>
+
+    <!-- 得到旧计算模型中，分户下的子分户 对应到t_ledger_relation表的数据 -->
+    <select id="getLedgerRelations" resultType="LedgerRelationBean">
+        select #{ledgerId} as ledgerId, 1 as type, t.LEDGER_ID as id,
+        t.ADD_ATTR as attr, 100 as pct, t.LEDGER_NAME as name
+        from t_ledger t
+        where t.PARENT_LEDGER_ID = #{ledgerId} and (t.ADD_ATTR = 1 or t.ADD_ATTR = 2)
+    </select>
+
+    <!-- 删T_LEDGER_RELATION -->
+    <delete id="deleteLedgerRelation">
+        DELETE FROM T_LEDGER_RELATION WHERE 1=1
+    </delete>
+
+    <!-- 插T_LEDGER_RELATION -->
+    <insert id="addLedgerRelation" parameterType="LedgerRelationBean">
+        insert into  T_LEDGER_RELATION(rec_id,ledger_id,relation_type,relation_id,attr_type,pct,relation_name)
+        values(#{recId},#{ledgerId},#{type},#{id},#{attr},#{pct},#{name})
+    </insert>
+
+    <!-- 得到管辖区域内未设置经纬度的企业列表 -->
+    <select id="getNoPositionLedgerList" resultType="HashMap">
+        select l.ledger_id, l.ledger_name
+        from t_ledger l
+        where l.analy_type = 102
+        and (l.x is null or l.y is null)
+        and l.ledger_id in (SELECT t1.ledger_id from t_ledger t1,t_ledger t2
+                             where t1.ledger_lft>=t2.ledger_lft and t1.ledger_rgt&lt;=t2.ledger_rgt and t2.ledger_id=#{ledgerId})
+    </select>
+    
+    <!-- 得到所有的企业列表 -->
+    <select id="getAllCompanyList" resultType="com.linyang.energy.model.LedgerBean">
+    	select ledger_id as ledgerId,ledger_name as ledgerName,ledger_type as ledgerType from t_ledger
+    	where analy_type = 102 order by ledger_id
+    </select>
+    
+    <!-- 得到父级企业 -->
+    <select id="getParentCompany" resultType="HashMap">
+    	select t2.ledger_id,t2.ledger_name from ( select t1.ledger_id, t1.ledger_name, t1.analy_type from t_ledger t1
+        start with t1.ledger_id  = #{ledgerId}
+        connect by prior   parent_ledger_id  = ledger_id
+	      ) t2 where t2.analy_type = #{analyType} AND ROWNUM = 1 order by t2.ledger_name
+    </select>
+       
+    <!-- 得到该用户下的企业列表 -->
+    <select id="getCompanyList" resultType="HashMap">
+    	select t2.ledger_id,t2.ledger_name from ( select t1.ledger_id, t1.ledger_name, t1.analy_type from t_ledger t1
+        	start with t1.ledger_id  = #{ledgerId}
+        	connect by prior ledger_id = parent_ledger_id   
+	      ) t2 where t2.analy_type  = #{analyType} order by t2.ledger_name
+    </select>
+    
+    <!-- 获取下一级子节点数量 -->
+    <select id="getNextLedgerAmount" resultType="Integer">
+    	select count(*) from t_ledger t where t.parent_ledger_id = #{ledgerId}
+    </select>
+    
+    <!-- 获取能管对象及路径 -->
+    <select id="getEMOPath" resultType="HashMap">
+    	SELECT c.ledger_id AS id,c.node_ledger_name AS name,c.node_depth AS depth,
+		       listagg(c.parent_ledger_name, '>') within GROUP(ORDER BY c.parent_ledger_id asc) AS path
+		FROM (SELECT   parent.depth       as depth,
+					   parent.ledger_id   as parent_ledger_id,
+		               parent.ledger_name || ',' || parent.ledger_id || ',' || parent.depth || ',' || nvl(parent.analy_type,-1) as parent_ledger_name,
+		               node.ledger_id     as ledger_id,
+		               node.ledger_name   as node_ledger_name,
+		               node.depth         as node_depth
+		          FROM t_ledger node, t_ledger parent
+		         WHERE node.ledger_lft BETWEEN parent.ledger_lft AND
+		               parent.ledger_rgt
+		           AND node.ledger_name like '%' || #{keyword} || '%'
+		           AND parent.ledger_id != 1
+		         order by parent.depth) c
+		WHERE 1=1 		         
+		<if test="ledgerId != null &amp; ledgerId != -100">
+			AND c.ledger_id IN (
+				SELECT NODE_LEDGER FROM V_LEDGER_TREE WHERE PARENT_LEDGER = #{ledgerId}
+			)
+		</if>
+		AND c.LEDGER_ID NOT IN(select distinct l1.ledger_id from t_ledger l1,t_ledger l2
+			where l1.ledger_lft &lt;= l2.ledger_lft and l1.ledger_rgt >= l2.ledger_rgt
+			and l2.analy_type = 102 and l1.analy_type != 102 and l1.analy_type != 101)
+		GROUP BY c.ledger_id, c.node_ledger_name,c.node_depth
+    </select>
+    
+    <select id="getChildLedgerIds" resultType="Long">
+    	select ledger_id from t_ledger where PARENT_LEDGER_ID = #{ledgerId} order by LEDGER_NAME
+    </select>
+    
+    <select id="getLedgerThresholdInfo" resultType="HashMap">
+   		SELECT sum(to_number(mtr.THRESHOLD_VALUE) * tlm.ADD_ATTR * tlm.PCT/100) AS thresholdValue ,tl.ledger_name AS ledgerName
+		FROM T_METER_THRESHOLD_RELATION mtr
+		JOIN (SELECT t.METER_ID METER_ID, t.ADD_ATTR ADD_ATTR,t.PCT PCT FROM T_LEDGER_METER t JOIN T_METER tm ON t.mETER_ID = tm.METER_ID WHERE t.LEDGER_ID = #{ledgerId}) tlm
+		ON mtr.METER_ID = tlm.METER_ID 
+		JOIN t_ledger tl on tl.ledger_id = #{ledgerId}
+		where mtr.THRESHOLD_ID = #{thresholdId}
+		GROUP BY tl.ledger_name
+    </select>
+    
+    <select id="countCompanyLedgerByLedgerId" resultType="int">
+		select count(analy_type) from (
+		  select ledger_id,analy_type from t_ledger 
+			start with
+            <if test="ledgerId == -100"> parent_ledger_id = 0</if>
+		 	<if test="ledgerId != -100"> parent_ledger_id=#{ledgerId}</if>
+			connect by prior ledger_id = parent_ledger_id
+			) t where analy_type = 102
+	</select>
+    
+    <select id="countMeterByLedgerId" resultType="int">
+        select count(m.meter_id)
+        from t_meter m
+        where m.METER_STATUS = 1
+        <if test="ledgerId > 0">
+        and m.ledger_id in (SELECT t1.ledger_id from t_ledger t1,t_ledger t2
+            where t1.ledger_lft>=t2.ledger_lft and t1.ledger_rgt&lt;=t2.ledger_rgt
+            and t2.ledger_id=#{ledgerId})
+        </if>
+	</select>
+    
+    <select id="countProvinceByLedgerId" resultType="int">
+        select count(1)
+            from t_region reg
+            where reg.REGION_ID in (
+                select concat(SUBSTR(r.REGION_ID, 1, 2), '0000') as REGION_ID
+                from t_ledger l inner join t_region r on l.region=r.region_id
+                where l.ledger_id in (
+                select ledger_id from t_ledger 
+                    start with
+                    <if test="ledgerId == -100"> parent_ledger_id = 0</if>
+                    <if test="ledgerId != -100"> parent_ledger_id=#{ledgerId}</if>
+                    connect by prior ledger_id = parent_ledger_id
+                )
+                and r.REGION_LEVEL >= 0
+            )
+	</select>
+    
+    <select id="countCityByLedgerId" resultType="int">
+            select count(1)
+            from t_region reg
+            where reg.REGION_ID in (
+            select concat(SUBSTR(r.REGION_ID, 1, 4), '00') as REGION_ID
+            from t_ledger l inner join t_region r on l.region=r.region_id
+            where l.ledger_id in (select ledger_id from t_ledger 
+            start with
+            <if test="ledgerId == -100"> parent_ledger_id = 0</if>
+            <if test="ledgerId != -100"> parent_ledger_id=#{ledgerId}</if>
+            connect by prior ledger_id = parent_ledger_id)
+            and r.REGION_LEVEL > 0
+            )
+	</select>
+    
+    <select id="countPartnerByLedgerId" resultType="int">
+        select count(1)
+        from t_ledger t where t.analy_type = 105
+        <if test="ledgerId > 0">
+            and t.ledger_id in (SELECT t1.ledger_id from t_ledger t1,t_ledger t2
+                                where t1.ledger_lft>=t2.ledger_lft and t1.ledger_rgt&lt;=t2.ledger_rgt and t2.ledger_id=#{ledgerId})
+        </if>
+	</select>
+
+    <!-- 删除分户坐标 -->
+    <update id="deleteLedgerPosition">
+        update t_ledger t set t.x = null,t.y = null where t.ledger_id = #{ledgerId}
+    </update>
+
+    <!-- 得到首页地图需要显示的企业的List -->
+    <select id="getMapShowLedgerList1" resultMap="BaseResultMap">
+        SELECT distinct child.LEDGER_ID, child.LEDGER_NAME, child.NUMBER_OF_PEOPLE, child.USE_AREA, child.DEPTH, child.LEDGER_LFT, child.LEDGER_RGT,
+        child.PARENT_LEDGER_ID, child.COLLMETER_NUMBER, child.RATE_ID, child.LEDGER_REMARK, child.X, child.Y, child.PIC_ID, child.ANALY_TYPE,
+        child.INHERIT, child.USER_NO, child.INDUSTRY_TYPE, child.REGION, child.CONTACTS, child.CONTACT_INFO, child.ADDRESS, child.LEDGER_TYPE,
+        child.LINELOSS, child.ADD_ATTR, child.COLOR, child.LOGO_ICON, child.RATE_W_ID, child.RATE_G_ID, child.RATE_H_ID
+        from t_ledger child,t_ledger parent
+        where child.ledger_lft>=parent.ledger_lft and child.ledger_rgt&lt;=parent.ledger_rgt and parent.ledger_id in
+        (
+        select l.ledger_id
+        from t_ledger l inner join t_region r on l.region=r.region_id
+        where l.ledger_id in (SELECT t1.ledger_id from t_ledger t1,t_ledger t2
+                          where t1.ledger_lft>=t2.ledger_lft and t1.ledger_rgt&lt;=t2.ledger_rgt and t2.ledger_id=#{ledgerId})
+        and l.analy_type = 104
+        <if test="searchModel == 1">
+            and concat(SUBSTR(r.REGION_ID, 1, 2), '0000')=#{selectId}  and r.REGION_LEVEL>=0
+        </if>
+        <if test="searchModel == 2">
+            and concat(SUBSTR(r.REGION_ID, 1, 4), '00')=#{selectId}  and r.REGION_LEVEL>0
+        </if>
+        )
+        and child.analy_type = 102
+        and (child.x is not null and child.y is not null)
+    </select>
+
+    <select id="getMapShowLedgerList2" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" />
+        FROM   T_LEDGER l
+        where l.analy_type = 102
+        and (l.x is not null and l.y is not null)
+        and l.ledger_name like '%' || #{keyWord} || '%'
+        and l.ledger_id in (SELECT t1.ledger_id from t_ledger t1,t_ledger t2
+                        where t1.ledger_lft>=t2.ledger_lft and t1.ledger_rgt&lt;=t2.ledger_rgt and t2.ledger_id=#{ledgerId})
+    </select>
+    
+    <!-- 得到一个用户的父类分组树 -->
+	<select id="getUserGroupParentLedgerTree" resultType="com.linyang.energy.dto.LedgerTreeBean">
+        <if test="level == 1">
+            select t.group_id as id,0 as pId,t.group_name as name,100 treeNodeType,0 meterType,0 isCompany,0 rateId from t_group t
+            join t_account p on t.create_account = p.account_id
+            where 1 = 1
+            <if test="nodeId != null">
+                and (p.account_id = #{nodeId} or t.public_type = 1 
+                AND T.GROUP_ID IN (SELECT GL.GROUP_ID
+                FROM T_GROUP_LEDGER GL
+               WHERE GL.LEDGER_ID IN (SELECT T1.LEDGER_ID
+                                        FROM T_LEDGER T1, T_LEDGER T2
+                                       WHERE T1.LEDGER_LFT >= T2.LEDGER_LFT
+                                         AND T1.LEDGER_RGT &lt;= T2.LEDGER_RGT
+                                         AND T2.LEDGER_ID = #{ledgerId})))
+            </if>
+            and t.group_type = #{groupType}
+        </if>
+        <if test="level == 2 and groupType == 1">
+            SELECT DISTINCT l.LEDGER_ID id,gl.group_id pId,l.LEDGER_NAME  name,1 treeNodeType,0 meterType,case when l.ANALY_TYPE = 102 then 1 else 0 end isCompany,l.RATE_ID rateId FROM T_LEDGER l,t_group_ledger gl
+            where l.LEDGER_ID = gl.LEDGER_ID and gl.group_id = #{nodeId} and l.ANALY_TYPE = 102
+            and l.LEDGER_ID in (SELECT t1.ledger_id from t_ledger t1,t_ledger t2
+                          where t1.ledger_lft>=t2.ledger_lft and t1.ledger_rgt&lt;=t2.ledger_rgt and t2.ledger_id=#{ledgerId})
+            order by nlssort(name, 'NLS_SORT=SCHINESE_PINYIN_M')
+        </if>
+        <if test="level == 2 and groupType == 2">
+            select m.meter_id as id,gm.group_id as pId,m.meter_name as name,2 treeNodeType,m.meter_type meterType,0 isCompany,,l.RATE_ID rateId from t_meter m,t_group_meter gm,T_LEDGER l
+            where m.meter_id = gm.meter_id and gm.group_id = #{nodeId} and m.meter_status = 1 and m.LEDGER_ID = l.LEDGER_ID
+            order by m.meter_type,nlssort(name, 'NLS_SORT=SCHINESE_PINYIN_M')
+        </if>
+	</select>
+    
+    <select id="countSubNodesByGroupIdAndLedgerId" resultType="int">
+        <if test="groupType == 1">
+            SELECT count(1) FROM T_LEDGER l,t_group_ledger gl
+            where l.LEDGER_ID = gl.LEDGER_ID and gl.group_id = #{groupId} and l.ANALY_TYPE = 102
+            and l.LEDGER_ID in (SELECT t1.ledger_id from t_ledger t1,t_ledger t2
+                          where t1.ledger_lft>=t2.ledger_lft and t1.ledger_rgt&lt;=t2.ledger_rgt and t2.ledger_id=#{ledgerId})
+        </if>
+        <if test="groupType == 2">
+            select count(1) from t_meter m,t_group_meter gm
+            where m.meter_id = gm.meter_id and gm.group_id = #{groupId} and m.meter_status = 1
+        </if>
+	</select>
+
+    <!-- 得到首页地图 某种搜索模式 下的自动完成结果 -->
+    <select id="getSearchModelDataList" resultType="HashMap">
+        <!-- 省 -->
+        <if test="searchModel == 1">
+            select reg.REGION_ID as ID, reg.REGION_NAME as NAME
+            from t_region reg
+            where reg.REGION_ID in (
+                select concat(SUBSTR(r.REGION_ID, 1, 2), '0000') as REGION_ID
+                from t_ledger l inner join t_region r on l.region=r.region_id
+                where l.ledger_id in (SELECT t1.ledger_id from t_ledger t1,t_ledger t2
+                where t1.ledger_lft>=t2.ledger_lft and t1.ledger_rgt&lt;=t2.ledger_rgt and t2.ledger_id=#{ledgerId})
+                and l.analy_type = 104
+                and r.REGION_LEVEL >= 0
+            )
+        </if>
+        <!-- 市 -->
+        <if test="searchModel == 2">
+            select reg.REGION_ID as ID, reg.REGION_NAME as NAME
+            from t_region reg
+            where reg.REGION_ID in (
+            select concat(SUBSTR(r.REGION_ID, 1, 4), '00') as REGION_ID
+            from t_ledger l inner join t_region r on l.region=r.region_id
+            where l.ledger_id in (SELECT t1.ledger_id from t_ledger t1,t_ledger t2
+            where t1.ledger_lft>=t2.ledger_lft and t1.ledger_rgt&lt;=t2.ledger_rgt and t2.ledger_id=#{ledgerId})
+            and l.analy_type = 104
+            and r.REGION_LEVEL > 0
+            )
+        </if>
+        <!-- 平台运营商 -->
+        <if test="searchModel == 3">
+            select l.LEDGER_ID as ID, l.LEDGER_NAME as NAME
+            from t_ledger l
+            where l.ledger_id in (SELECT t1.ledger_id from t_ledger t1,t_ledger t2
+            where t1.ledger_lft>=t2.ledger_lft and t1.ledger_rgt&lt;=t2.ledger_rgt and t2.ledger_id=#{ledgerId})
+            and l.analy_type = 105
+        </if>
+        <!-- 企业 -->
+        <if test="searchModel == 4">
+            select l.LEDGER_ID as ID, l.LEDGER_NAME as NAME
+            from t_ledger l
+            where l.ledger_id in (SELECT t1.ledger_id from t_ledger t1,t_ledger t2
+            where t1.ledger_lft>=t2.ledger_lft and t1.ledger_rgt&lt;=t2.ledger_rgt and t2.ledger_id=#{ledgerId})
+            and l.analy_type = 102
+            and (l.x is not null and l.y is not null)
+        </if>
+    </select>
+    
+    <select id="getEmoDemandDecalre" resultType="Double">
+		SELECT sum(tdr.DECLARE_VALUE)
+		FROM T_DEMAND_REC tdr JOIN T_METER tm ON tdr.METER_ID = tm.METER_ID
+	    WHERE tm.LEDGER_ID IN (
+			    select l1.ledger_id from t_ledger l1,t_ledger l2
+			        where l1.ledger_lft>=l2.ledger_lft and l1.ledger_rgt &lt;=l2.ledger_rgt
+			        and l2.ledger_id = #{ledgerId}
+			  )AND tm.METER_STATUS = 1 AND tm.VOLUME_TYPE = 1 AND tm.VOLUME > 0 and tdr.DECLARE_TYPE = 2 and tdr.begin_time = #{date}
+	</select>
+    
+    <!-- 获取能管对象得到所有子能管对象 -->
+    <select id="getAllSubLedgersByLedgerId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" /> 
+		FROM T_LEDGER start with ledger_id = #{ledgerId}
+        connect by prior ledger_id = parent_ledger_id
+    </select>
+    
+    <!-- 得到该用户下的企业和平台运营商列表 -->
+    <select id="getEMOList" resultType="HashMap">
+    	select t2.ledger_id,t2.ledger_name from ( select t1.ledger_id, t1.ledger_name, t1.analy_type from t_ledger t1
+        	start with t1.ledger_id  = #{ledgerId}
+        	connect by prior ledger_id = parent_ledger_id   
+	      ) t2 where t2.analy_type  in (102,105)  order by t2.analy_type desc,t2.ledger_id
+    </select>
+    
+      
+    <!-- 得到父级企业和平台运营商列表 -->
+    <select id="getParentEMO" resultType="HashMap">
+    	select t2.ledger_id,t2.ledger_name from ( select t1.ledger_id, t1.ledger_name, t1.analy_type from t_ledger t1
+        start with t1.ledger_id  = #{ledgerId}
+        connect by prior   parent_ledger_id  = ledger_id
+	      ) t2 where t2.analy_type in (102,105) AND ROWNUM = 1  order by t2.analy_type desc,t2.ledger_id
+    </select>
+    
+    <!-- 得到下拉能管单元列表 -->
+    <select id="getLedgersByLedgerId" resultType="HashMap">
+       	SELECT t1.ledger_id as id, t1.ledger_name as name, 1 as type from t_ledger t1,t_ledger t2
+        where t1.ledger_lft>t2.ledger_lft and t1.ledger_rgt&lt;t2.ledger_rgt and t2.ledger_id=#{ledgerId}
+    </select>
+
+    <select id="getLedgersForGroup" resultType="HashMap">
+        SELECT l.ledger_id as id, l.ledger_name as name, 1 as type
+        from t_group_account ga inner join t_group_ledger gl on ga.GROUP_ID = gl.GROUP_ID
+                                 inner join t_ledger l on gl.LEDGER_ID=l.LEDGER_ID
+        where ga.ACCOUNT_ID = #{accountId}
+    </select>
+
+    <select id="getLedgersForGroup2" resultType="HashMap">
+        SELECT l.ledger_id, l.ledger_name
+        from t_group_account ga inner join t_group_ledger gl on ga.GROUP_ID = gl.GROUP_ID
+        inner join t_ledger l on gl.LEDGER_ID=l.LEDGER_ID
+        where ga.ACCOUNT_ID = #{accountId}
+    </select>
+    
+    <!-- 得到下拉采集点列表 -->
+    <select id="getMetersByLedgerId" resultType="HashMap">
+    	select m.meter_id as id, m.meter_name as name, 2 as type
+        from t_ledger l inner join t_meter m on l.ledger_id = m.ledger_id
+        where meter_status = 1 and l.ledger_id in (SELECT t1.ledger_id from t_ledger t1,t_ledger t2
+        where t1.ledger_lft>=t2.ledger_lft and t1.ledger_rgt&lt;=t2.ledger_rgt and t2.ledger_id=#{ledgerId})
+    </select>
+
+    <select id="getMetersForGroup" resultType="HashMap">
+        select m.meter_id as id, m.meter_name as name, 2 as type
+        from t_ledger l inner join t_meter m on l.ledger_id = m.ledger_id
+        where meter_status = 1
+        and l.ledger_id in (SELECT gl.ledger_id
+                             from t_group_account ga inner join t_group_ledger gl on ga.GROUP_ID = gl.GROUP_ID
+                             where ga.ACCOUNT_ID = #{accountId})
+    </select>
+    
+    <!-- 得到采集点得上级能管单元 -->
+    <select id="getLedgerByMeterId" resultType="Long">
+    	select s.ledger_id from t_ledger_show s left join t_ledger l on s.ledger_id = l.ledger_id 
+    	where s.meter_id=#{meterId} and l.ledger_id is not null
+    </select>
+
+    <!-- 得到分户上级能管单元 -->
+    <select id="getParentCompanys" resultType="Long">
+        select s.ledger_id from t_ledger s
+        where s.ANALY_TYPE = 102 and s.ledger_id in (SELECT t2.ledger_id from t_ledger t1,t_ledger t2
+        where t1.ledger_lft>=t2.ledger_lft and t1.ledger_rgt&lt;=t2.ledger_rgt and t1.ledger_id=#{ledgerId})
+    </select>
+    
+    <!-- 如果为群组则获取群组中第一个ledger -->
+    <select id="getLedgerIfNull" resultType="Long">
+    	select a.ledger_id from(select t.*,rownum from(select l.ledger_id
+		from t_account a, t_group_account g , t_ledger l, t_group_ledger gl
+		where a.account_id = g.account_id
+		and g.group_id = gl.group_id
+		and l.ledger_id = gl.ledger_id
+		and a.account_id = #{accountId}
+		order by nlssort(l.ledger_name, 'NLS_SORT=SCHINESE_PINYIN_M')) t
+		where rownum = 1)a
+    </select>
+     
+     <!-- 通过测量点id,找能管对象id 从 T_LEDGER_SHOW-->
+    <select id="getLegerIdByMeterId" resultType="java.lang.Long">
+    	 SELECT s.LEDGER_ID   from T_LEDGER_SHOW s where  s.METER_ID = #{meterId} 
+    </select>
+    
+    <!-- 通过测量点ids,找能管对象id 从 T_LEDGER_SHOW -->
+    <select id="getLedgerIdByMeterIds" resultType="java.lang.Long">
+     SELECT s.LEDGER_ID   from T_LEDGER_SHOW s where  s.METER_ID 
+     in 
+     <foreach collection="meterIds" item="meterId" open="(" close=")" separator=",">
+     		#{meterId}
+     </foreach>
+    </select>
+    <!-- 通过测量点id,找能管对象id 从 T_LEDGER_RELATION -->
+    <select id="getLegerIdByMeterId1" resultType="java.lang.Long">
+    	select l.LEDGER_ID 
+			from 
+			T_LEDGER_RELATION r ,T_LEDGER l 
+			where l.LEDGER_ID = r.LEDGER_ID
+			and r.RELATION_ID = #{meterId} 
+			ORDER BY l.ANALY_TYPE DESC
+    </select>
+    
+    <!-- 通过测量点ids,找能管对象id 从 T_LEDGER_RELATION -->
+    <select id="getLedgerIdByMeterIds1" resultType="java.lang.Long">
+    	select r.LEDGER_ID from T_LEDGER_RELATION r ,T_LEDGER l 
+    	where 
+    	l.LEDGER_ID = r.LEDGER_ID
+    	and r.RELATION_ID  in 
+    	 <foreach collection="meterIds" item="meterId" open="(" close=")" separator=",">
+     		#{meterId}
+    	 </foreach>
+    	 ORDER BY l.ANALY_TYPE DESC
+    </select>
+    <!-- 获取测量点的父测量点集 -->
+    <select id="getMeterIdsByMeterId" resultType="java.lang.Long">
+    	select  METER_ID from  T_LINELOSS_METER_INFO 
+		where METER_ID != #{meterId}
+		start with METER_ID = #{meterId}
+		connect  by prior PAREMENT_METER_ID = METER_ID
+    </select>
+    <!-- 通过测量点id,找能管对象根id -->
+    <select id="getRootLedgerIdByMeterId" resultType="java.lang.Long">
+    	SELECT l.LEDGER_ID
+		from T_LEDGER l LEFT JOIN 
+		(	SELECT m.LEDGER_ID
+			from 
+			T_METER m
+			where m.METER_ID = #{meterId}
+		) t on l.LEDGER_ID = t.LEDGER_ID
+		where l.PARENT_LEDGER_ID = 0
+		start with l.LEDGER_ID = t.LEDGER_ID 
+		connect by prior l.PARENT_LEDGER_ID= l.LEDGER_ID
+    </select>
+    
+    <!-- 通过测量点id,查询企业id -->
+    <select id="getCompanyIdByMeterId" resultType="java.lang.Long">
+    	select LEDGER_ID from T_METER where METER_ID = #{meterId}
+    </select>
+    
+    <!-- 通过能管对象id,查询相关联能管对象id集合 -->
+    <select id="getLedgerIdsByLedgerId"  resultType="java.lang.Long">
+    	SELECT l.LEDGER_ID
+		from T_LEDGER l 
+		start with l.LEDGER_ID = #{ledgerId}
+		connect by prior l.PARENT_LEDGER_ID= l.LEDGER_ID
+    </select>
+
+    <!-- ledger的计算模型中包含的meter -->
+    <select id="getMeterIdsByLedgerId"  resultType="java.lang.Long">
+        SELECT METER_ID from T_LEDGER_METER where LEDGER_ID = #{ledgerId}
+    </select>
+
+    <!-- 查询热泵最新状态 -->
+    <select id="getHeatStatusBy"  resultType="java.lang.Integer">
+        SELECT HEATPUMP_STATUS from T_CUR_HEATSTATUS
+        where METER_ID = #{meterId} and rate_number = #{tag} and HEATPUMP_STATUS is not null
+        and FREEZE_TIME between #{beginTime,jdbcType=TIME} AND #{endTime,jdbcType=TIME}
+        order by FREEZE_TIME desc
+    </select>
+
+    <select id="getHeatRoomTempBy"  resultType="java.lang.Double">
+        SELECT OUTDOOR_T from T_CUR_UNIT_T
+        where METER_ID = #{meterId} and OUTDOOR_T is not null
+        and FREEZE_TIME between #{beginTime,jdbcType=TIME} AND #{endTime,jdbcType=TIME}
+        order by FREEZE_TIME desc
+    </select>
+
+    <select id="getHeatWaterTempBy"  resultType="java.lang.Double">
+        SELECT OUTLET_WATER_T from T_CUR_TEMP
+        where METER_ID = #{meterId} and OUTLET_WATER_T is not null
+        and FREEZE_TIME between #{beginTime,jdbcType=TIME} AND #{endTime,jdbcType=TIME}
+        order by FREEZE_TIME desc
+    </select>
+
+    <select id="getHeatUbBy"  resultType="java.lang.Double">
+        SELECT vb from T_CUR_V
+        where METER_ID = #{meterId} and vb is not null
+        and FREEZE_TIME between #{beginTime,jdbcType=TIME} AND #{endTime,jdbcType=TIME}
+        order by FREEZE_TIME desc
+    </select>
+
+    <select id="getHeatIbBy"  resultType="java.lang.Double">
+        SELECT ib from T_CUR_I
+        where METER_ID = #{meterId} and ib is not null
+        and FREEZE_TIME between #{beginTime,jdbcType=TIME} AND #{endTime,jdbcType=TIME}
+        order by FREEZE_TIME desc
+    </select>
+
+    <select id="getHeatQVal2"  resultType="HashMap">
+        SELECT fae_value as VAL, to_char(freeze_time,'yyyy-mm-dd hh24:mi') as DATE_TIME from t_cur_e_total
+        where METER_ID = #{meterId} and fae_value is not null
+        and FREEZE_TIME between #{beginTime,jdbcType=TIME} AND #{endTime,jdbcType=TIME}
+        order by FREEZE_TIME desc
+    </select>
+
+    <select id="getHeatQVal1"  resultType="java.lang.Double">
+        SELECT fae_value from t_cur_e_total
+        where METER_ID = #{meterId} and fae_value is not null
+        and to_char(freeze_time,'yyyy-mm-dd hh24:mi') = #{dateTime}
+    </select>
+
+    <select id="getHeatHotVal2"  resultType="HashMap">
+        SELECT CUMU_HEAT as VAL, to_char(freeze_time,'yyyy-mm-dd hh24:mi') as DATE_TIME from T_CUR_HEATCUMU
+        where METER_ID = #{meterId} and CUMU_HEAT is not null
+        and FREEZE_TIME between #{beginTime,jdbcType=TIME} AND #{endTime,jdbcType=TIME}
+        order by FREEZE_TIME desc
+    </select>
+
+    <select id="getHeatHotVal1"  resultType="java.lang.Double">
+        SELECT CUMU_HEAT from T_CUR_HEATCUMU
+        where METER_ID = #{meterId} and CUMU_HEAT is not null
+        and to_char(freeze_time,'yyyy-mm-dd hh24:mi') = #{dateTime}
+    </select>
+
+    <select id="getLedgerFontstyleNumBy" resultType="Long">
+        SELECT COUNT(LEDGER_ID) FROM T_LEDGER_FONTSTYLE  WHERE LEDGER_ID=#{ledgerId}
+    </select>
+
+    <update id="updateLedgerBackImg">
+        UPDATE T_LEDGER_FONTSTYLE t set t.IMAGE_URL = #{fileName} where t.LEDGER_ID=#{ledgerId}
+    </update>
+
+    <insert id="addLedgerBackImg">
+        INSERT INTO T_LEDGER_FONTSTYLE(LEDGER_ID, IMAGE_URL) VALUES (#{ledgerId}, #{fileName})
+    </insert>
+
+    <select id="getLedgerFontstyleById" resultType="HashMap">
+        SELECT LEDGER_ID "ledgerId", DISPLAY_FORM "displayForm", FONT_SIZE "fontSize", FONT_WEIGHT "fontWeight", FONT_COLOR "fontColor",
+                BUBBLE "bubble", IMAGE_URL "imageUrl", BACK_COLOR "backColor", DATA_COLOR "dataColor"
+        FROM T_LEDGER_FONTSTYLE
+        WHERE LEDGER_ID=#{ledgerId}
+    </select>
+
+    <update id="updateLedgerStyle">
+        UPDATE T_LEDGER_FONTSTYLE t
+        set t.DISPLAY_FORM = #{displayForm}, t.FONT_SIZE = #{fontSize}, t.FONT_WEIGHT = #{fontWeight}, t.FONT_COLOR = #{fontColor}, t.BUBBLE = #{bubble},
+        t.BACK_COLOR=#{backColor}, t.DATA_COLOR = #{dataColor}
+        where t.LEDGER_ID=#{ledgerId}
+    </update>
+
+    <insert id="addLedgerStyle">
+        INSERT INTO T_LEDGER_FONTSTYLE(LEDGER_ID, DISPLAY_FORM, FONT_SIZE, FONT_WEIGHT, FONT_COLOR, BUBBLE, BACK_COLOR, DATA_COLOR)
+        VALUES (#{ledgerId}, #{displayForm}, #{fontSize}, #{fontWeight}, #{fontColor}, #{bubble}, #{backColor}, #{dataColor})
+    </insert>
+
+    <select id="getLedgerRelateNumBy" resultType="Long">
+        SELECT COUNT(1) FROM T_LEDGER_METER_FONTSTYLE t where t.LEDGER_ID=#{ledgerId} and t.OBJECT_ID = #{objectId} and t.OBJECT_TYPE = #{objectType}
+    </select>
+
+    <update id="updateLedgerRelate">
+        UPDATE T_LEDGER_METER_FONTSTYLE t set t.DATA_TYPE = #{dataType}, t.X = #{x}, t.Y = #{y}, t.OBJECT_ID=#{newObjectId}, t.OBJECT_TYPE=#{newObjectType}, t.POSITION = #{newPosition}
+        where t.LEDGER_ID=#{ledgerId} and t.OBJECT_ID = #{oldObjectId} and t.OBJECT_TYPE = #{oldObjectType}
+    </update>
+
+    <insert id="addLedgerRelate">
+        INSERT INTO T_LEDGER_METER_FONTSTYLE(LEDGER_ID, OBJECT_ID, OBJECT_TYPE, DATA_TYPE, X, Y, POSITION)
+        VALUES (#{ledgerId}, #{objectId}, #{objectType}, #{dataType}, #{x}, #{y}, #{newPosition})
+    </insert>
+
+    <delete id="removeLedgerRelate">
+        DELETE FROM T_LEDGER_METER_FONTSTYLE WHERE LEDGER_ID = #{ledgerId} and OBJECT_ID = #{objectId} and OBJECT_TYPE = #{objectType}
+    </delete>
+
+    <select id="getLedgerRelatesById" resultType="HashMap">
+        SELECT t.LEDGER_ID "ledgerId", t.OBJECT_ID "objectId", t.OBJECT_TYPE "objectType", l.ledger_name "objectName", t.DATA_TYPE "dataType",
+                t.X "x", t.Y "y", t.POSITION "position", 0 "meterType"
+        FROM T_LEDGER_METER_FONTSTYLE t inner join t_ledger l on t.OBJECT_ID=l.ledger_id
+        WHERE t.LEDGER_ID=#{ledgerId} and t.OBJECT_TYPE = 1
+        union
+        SELECT t.LEDGER_ID "ledgerId", t.OBJECT_ID "objectId", t.OBJECT_TYPE "objectType", m.meter_name "objectName", t.DATA_TYPE "dataType",
+                t.X "x", t.Y "y", t.POSITION "position", m.METER_TYPE "meterType"
+        FROM T_LEDGER_METER_FONTSTYLE t inner join t_meter m on t.OBJECT_ID = m.METER_ID
+        WHERE t.LEDGER_ID = #{ledgerId} and t.OBJECT_TYPE = 2
+    </select>
+
+    <select id="getLedgerMeterFontstyleBy" resultType="HashMap">
+        SELECT t.LEDGER_ID "ledgerId", t.OBJECT_ID "objectId", t.OBJECT_TYPE "objectType", t.DATA_TYPE "dataType", t.X "x", t.Y "y", t.POSITION "position"
+        FROM T_LEDGER_METER_FONTSTYLE t
+        WHERE t.LEDGER_ID=#{ledgerId} and t.OBJECT_ID = #{objectId} and t.OBJECT_TYPE = #{objectType}
+    </select>
+
+    <select id="getDayDataInImg"  resultType="java.lang.Double">
+        <if test="temp == 1">
+            <if test="objectType == 1">
+                select sum(t.FAQ_VALUE * t2.add_attr * t2.pct /100)
+                from T_DAY_Q t inner join T_LEDGER_METER t2 on t.METER_ID = t2.METER_ID
+                where t2.LEDGER_ID = #{objectId} and to_char(t.FREEZE_TIME,'yyyy-mm-dd') = #{yesterday}
+            </if>
+            <if test="objectType == 2">
+                select FAQ_VALUE
+                from T_DAY_Q
+                where METER_ID = #{objectId} and to_char(FREEZE_TIME,'yyyy-mm-dd') = #{yesterday}
+            </if>
+        </if>
+        <if test="temp == 2">
+            <if test="objectType == 1">
+                select sum(t.WFLOW_VALUE * t2.add_attr * t2.pct /100)
+                from t_day_wflow_stat t inner join T_LEDGER_METER t2 on t.METER_ID = t2.METER_ID
+                where t2.LEDGER_ID = #{objectId} and to_char(t.FREEZE_TIME,'yyyy-mm-dd') = #{yesterday}
+            </if>
+            <if test="objectType == 2">
+                select WFLOW_VALUE
+                from t_day_wflow_stat
+                where METER_ID = #{objectId} and to_char(FREEZE_TIME,'yyyy-mm-dd') = #{yesterday}
+            </if>
+        </if>
+        <if test="temp == 3">
+            <if test="objectType == 1">
+                select sum(t.GFLOW_VALUE * t2.add_attr * t2.pct /100)
+                from T_DAY_GFLOW_STAT t inner join T_LEDGER_METER t2 on t.METER_ID = t2.METER_ID
+                where t2.LEDGER_ID = #{objectId} and to_char(t.FREEZE_TIME,'yyyy-mm-dd') = #{yesterday}
+            </if>
+            <if test="objectType == 2">
+                select GFLOW_VALUE
+                from T_DAY_GFLOW_STAT
+                where METER_ID = #{objectId} and to_char(FREEZE_TIME,'yyyy-mm-dd') = #{yesterday}
+            </if>
+        </if>
+    </select>
+
+    <select id="getCurApInImg"  resultType="java.lang.Double">
+        <if test="objectType == 1">
+            select sum(t2.AP * t.ADD_ATTR * t.PCT / 100)
+            from t_ledger_meter t inner join T_CUR_AP t2 on t.METER_ID = t2.METER_ID
+            where t.ledger_id = #{objectId} and t2.freeze_time = #{curTime,jdbcType=TIME}
+        </if>
+        <if test="objectType == 2">
+            select AP
+            from T_CUR_AP
+            where METER_ID = #{objectId} and freeze_time = #{curTime,jdbcType=TIME}
+        </if>
+    </select>
+
+    <select id="getCurVInImg" parameterType="HashMap" resultType="HashMap">
+        select
+        <choose>
+            <when test="commMode != null &amp; commMode == 1">
+                t.va as A, t.vc as C
+            </when>
+            <otherwise>
+                round(t.va*1.732,2) as A, round(t.vb*1.732,2) as B, round(t.vc*1.732,2) as C
+            </otherwise>
+        </choose>
+        from t_cur_v t where t.freeze_time = #{curTime,jdbcType=TIME} and t.meter_id=#{objectId}
+    </select>
+
+    <select id="getCurIInImg" parameterType="HashMap" resultType="HashMap">
+        select
+        <choose>
+            <when test="commMode != null &amp; commMode == 1">
+                t.ia as A, t.ic as C
+            </when>
+            <otherwise>
+                t.ia as A, t.ib as B, t.ic as C
+            </otherwise>
+        </choose>
+        from t_cur_i t where t.freeze_time = #{curTime,jdbcType=TIME} and t.meter_id=#{objectId}
+    </select>
+
+    <select id="getCurEInImg"  resultType="java.lang.Double">
+        select (t.FAE_VALUE * mp.PT * mp.CT)
+        from t_cur_e_total t
+        inner join T_METER m on t.meter_id=m.meter_id
+        inner join T_MPED_INFO mp on m.MPED_ID=mp.MPED_ID
+        where t.freeze_time = #{curTime,jdbcType=TIME} and t.meter_id=#{objectId}
+    </select>
+
+    <select id="getParentCompLedger" resultType="Long">
+        SELECT t1.ledger_id
+        from t_ledger t1,t_ledger t2
+        where t1.ledger_lft&lt;=t2.ledger_lft and t1.ledger_rgt>=t2.ledger_rgt and t2.ledger_id=#{ledgerId}
+        and t1.ANALY_TYPE = 102
+    </select>
+
+    <select id="getRelateLedgerMeterList" resultType="HashMap">
+        <if test="searchModel == 1">
+            SELECT t1.ledger_id as ID, t1.ledger_name as NAME
+            from t_ledger t1,t_ledger t2
+            where t1.ledger_lft>=t2.ledger_lft and t1.ledger_rgt&lt;=t2.ledger_rgt and t2.ledger_id=#{ledgerId}
+            and t1.ledger_id not in (select OBJECT_ID from T_LEDGER_METER_FONTSTYLE where LEDGER_ID = #{ledgerId} and OBJECT_TYPE = 1)
+        </if>
+        <if test="searchModel == 2">
+            select m.meter_id as ID, m.meter_name as NAME
+            from t_meter m
+            where m.ledger_id in (SELECT t1.ledger_id from t_ledger t1,t_ledger t2
+                                   where t1.ledger_lft>=t2.ledger_lft and t1.ledger_rgt&lt;=t2.ledger_rgt and t2.ledger_id=#{ledgerId})
+            and m.meter_id not in(select OBJECT_ID from T_LEDGER_METER_FONTSTYLE where LEDGER_ID = #{ledgerId} and OBJECT_TYPE = 2)
+        </if>
+    </select>
+
+    <select id="getDataTypeCount" resultType="Long">
+        select count(1)
+        from T_LEDGER_METER_FONTSTYLE
+        where LEDGER_ID = #{ledgerId} and instr(DATA_TYPE, ',') > 0
+    </select>
+
+
+	<select id="getLedgerThresholdValue" resultType="HashMap">
+		SELECT LEDGER_NAME LEDGERNAME,
+		<if test="eventTypeId == 1109 or eventTypeId == 1110">
+			WATER_LIMIT_THRES
+		</if>
+		<if test="eventTypeId == 1111">
+			GAS_LIMIT_THRES
+		</if>
+		<if test="eventTypeId == 1112">
+			ELECT_LIMIT_THRES
+		</if>
+		AS THRESHOLDVALUE
+
+		FROM T_LEDGER WHERE LEDGER_ID = #{ledgerId}
+		<if test="eventTypeId == 1109 or eventTypeId == 1110">
+			AND WATER_LIMIT_THRES IS NOT NULL
+		</if>
+		<if test="eventTypeId == 1111">
+			AND GAS_LIMIT_THRES IS NOT NULL
+		</if>
+		<if test="eventTypeId == 1112">
+			AND ELECT_LIMIT_THRES IS NOT NULL
+		</if>
+	</select>
+
+    <select id="getDataMaintainPage" resultType="HashMap">
+        select t1.LEDGER_ID, t2.LEDGER_NAME, t1.COLL_TIME1, t1.COLL_TIME2, t1.COLL_TIME3
+        from T_LEDGER_COLL t1 inner join T_LEDGER t2 on t1.LEDGER_ID=t2.LEDGER_ID
+        where t1.LEDGER_ID in (SELECT m1.ledger_id from t_ledger m1,t_ledger m2
+        where m1.ledger_lft >= m2.ledger_lft and m1.ledger_rgt &lt;= m2.ledger_rgt and m2.ledger_id=#{ledgerId})
+        <if test="searchName != ''">
+            and t2.ledger_name LIKE '%' || #{searchName} || '%'
+        </if>
+    </select>
+
+    <select id="getCompLedgerList" resultType="HashMap">
+        SELECT t1.ledger_id, t1.ledger_name
+        from t_ledger t1,t_ledger t2
+        where t1.ledger_lft>t2.ledger_lft and t1.ledger_rgt&lt;t2.ledger_rgt and t2.ledger_id=#{ledgerId}
+        and t1.analy_type = 102
+        and t1.ledger_id not in (select LEDGER_ID from T_LEDGER_COLL)
+    </select>
+
+    <select id="getDataMaintain" resultType="HashMap">
+        select t1.LEDGER_ID as "ledgerId", t2.LEDGER_NAME as "ledgerName", t1.COLL_TIME1 as "time1", t1.COLL_TIME2 as "time2", t1.COLL_TIME3 as "time3"
+        from T_LEDGER_COLL t1 inner join T_LEDGER t2 on t1.LEDGER_ID=t2.LEDGER_ID
+        where t1.LEDGER_ID = #{ledgerId}
+    </select>
+
+    <delete id="deleteMaintain">
+        delete from T_LEDGER_COLL where LEDGER_ID = #{ledgerId}
+    </delete>
+
+    <insert id="insertDataMaintain" >
+        INSERT INTO T_LEDGER_COLL
+        <trim prefix="(" suffix=")" suffixOverrides="," >
+            <if test="ledgerId != null" >
+                LEDGER_ID,
+            </if>
+            <if test="time1 != null" >
+                COLL_TIME1,
+            </if>
+            <if test="time2 != null" >
+                COLL_TIME2,
+            </if>
+            <if test="time3 != null" >
+                COLL_TIME3,
+            </if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides="," >
+            <if test="ledgerId != null" >
+                #{ledgerId,jdbcType=DECIMAL},
+            </if>
+            <if test="time1 != null" >
+                #{time1,jdbcType=VARCHAR},
+            </if>
+            <if test="time2 != null" >
+                #{time2,jdbcType=VARCHAR},
+            </if>
+            <if test="time3 != null" >
+                #{time3,jdbcType=VARCHAR},
+            </if>
+        </trim>
+    </insert>
+
+	<!-- 通过产污/治污id删除关联关系表数据 -->
+	<delete id="deleteFacil" parameterType="com.linyang.energy.model.LedgerBean">
+		<if test="pollutType == 0">
+			DELETE FROM T_EP_FACIL_RELATION WHERE LEDGER_ID_POLLUT = #{ledgerId}
+		</if>
+		<if test="pollutType == 1">
+			DELETE FROM T_EP_FACIL_RELATION WHERE LEDGER_ID_POLLUTCTL = #{ledgerId}
+		</if>
+	</delete>
+
+	<select id="selectParent" resultType="HashMap">
+        select p.ledger_id,p.POLLUTCTL_ID,p.POLLUT_ID from t_ledger l,t_ledger p where l.ledger_id=#{ledgerId} and p.ledger_lft &lt; l.ledger_lft and p.ledger_rgt > l.ledger_rgt
+        AND P.ANALY_TYPE IN (101,106,0)
+        UNION ALL
+        SELECT
+		 t1.ledger_id,t1.POLLUTCTL_ID,t1.POLLUT_ID
+	   FROM
+		 T_LEDGER t1,
+		 T_LEDGER t2
+	   WHERE
+		 T1.LEDGER_LFT > T2.LEDGER_LFT
+		AND T1.LEDGER_RGT &lt; T2.LEDGER_RGT
+		AND T2.LEDGER_ID = #{ledgerId}
+	    AND T1.ANALY_TYPE IN (101,106,0)
+    </select>
+
+	<!-- 通过产污/治污id删除关联关系表数据 -->
+	<select id="queryPollut" resultType="HashMap">
+			SELECT * FROM T_EP_FACIL_RELATION WHERE LEDGER_ID_POLLUT = #{ledgerId}
+	</select>
+
+	<!-- 通过产污/治污id删除关联关系表数据 -->
+	<select id="queryPollutctl" resultType="HashMap">
+			SELECT * FROM T_EP_FACIL_RELATION WHERE LEDGER_ID_POLLUTCTL = #{ledgerId}
+	</select>
+
+	<!-- 验证同级下是否有相同的分户名称 -->
+	<select id="checkdeviceCode" parameterType="HashMap" resultType="Long">
+		SELECT
+		COUNT(t1.LEDGER_ID)
+		FROM
+		T_LEDGER t1,
+		T_LEDGER t2
+		WHERE
+		T1.LEDGER_LFT >= T2.LEDGER_LFT
+		AND T1.LEDGER_RGT &lt;= T2.LEDGER_RGT
+		AND T2.LEDGER_ID = #{parentId}
+		AND T1.LEDGER_ID &lt;> #{ledgerId}
+		<if test="pollutType == 0">
+			AND T1.POLLUT_ID = #{pol}
+		</if>
+		<if test="pollutType == 1">
+			AND T1.POLLUTCTL_ID = #{pol}
+		</if>
+		AND T1.DEVICE_CODE = #{deviceCode}
+		AND ROWNUM = 1
+	</select>
+
+</mapper>

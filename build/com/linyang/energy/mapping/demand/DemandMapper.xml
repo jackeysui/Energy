@@ -1,0 +1,216 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.linyang.energy.mapping.demand.DemandMapper" >
+
+
+    <!-- 得到下拉de企业列表 -->
+    <select id="getCompLedgerList" resultType="HashMap">
+        select l.ledger_id, l.ledger_name
+        from t_ledger l
+        where l.analy_type = 102
+        and l.ledger_id in (SELECT t1.ledger_id from t_ledger t1,t_ledger t2
+        where t1.ledger_lft>=t2.ledger_lft and t1.ledger_rgt&lt;=t2.ledger_rgt and t2.ledger_id=#{ledgerId})
+    </select>
+
+    <!-- 根据ledgerId得到响应方案列表 -->
+    <select id="getLedgerDemandMethod" resultType="HashMap">
+        select t.PLAN_ID, t.PLAN_NAME
+        from T_RESPONSE_PLAN t
+        where t.ledger_id = #{ledgerId}
+    </select>
+
+    <!-- 根据methodId获取相关的EMO、DCP -->
+    <select id="getDetailsByDemand" resultType="HashMap">
+        select 1 as TYPE,r.emo_dcp_id as ID,l.ledger_name as NAME
+        from T_RESPONSE_PLAN_CONFIG r left join t_ledger l on r.emo_dcp_id=l.ledger_id
+        where r.plan_id=#{planId} and r.type=1
+        union
+        select 2 as TYPE,r.emo_dcp_id as ID,m.meter_name as NAME
+        from T_RESPONSE_PLAN_CONFIG r left join t_meter m on r.emo_dcp_id=m.meter_id
+        where r.plan_id=#{planId} and r.type=2
+    </select>
+
+    <!-- 先检查响应名称是否重复 -->
+    <select id="getDemandNumBy" resultType="java.lang.Integer">
+        select count(1) from T_RESPONSE_PLAN
+        where ledger_id=#{ledgerId} and PLAN_NAME = #{planName}
+        <if test="planId > 0">
+            and PLAN_ID != #{planId}
+        </if>
+    </select>
+
+    <!-- 插入T_RESPONSE_PLAN -->
+    <insert id="insertDemand">
+        insert into T_RESPONSE_PLAN(PLAN_ID,PLAN_NAME,LEDGER_ID) values(#{planId},#{planName},#{ledgerId})
+    </insert>
+
+    <!-- 插入T_RESPONSE_PLAN_CONFIG -->
+    <insert id="insertDemandRelation">
+        insert into T_RESPONSE_PLAN_CONFIG(PLAN_ID,EMO_DCP_ID,TYPE) values(#{planId},#{id},#{type})
+    </insert>
+
+    <!-- 更新T_RESPONSE_PLAN -->
+    <update id="updateDemand">
+        update T_RESPONSE_PLAN t set t.PLAN_NAME = #{planName} where t.PLAN_ID = #{planId}
+    </update>
+
+    <!-- 删除T_RESPONSE_PLAN -->
+    <delete id="deleteDemand" parameterType="Long">
+        delete from T_RESPONSE_PLAN t where t.PLAN_ID = #{planId}
+    </delete>
+
+    <!-- 删除T_RESPONSE_PLAN_CONFIG -->
+    <delete id="deleteDemandRelation" parameterType="Long">
+        delete from T_RESPONSE_PLAN_CONFIG t where t.PLAN_ID = #{planId}
+    </delete>
+
+    <!-- 计算“基线负荷（修正前）” -->
+    <select id="getLedgerBaseAp" resultType="Double">
+        select avg(t.DATA) from
+        (
+            select ap.FREEZE_TIME as FREEZE_TIME, sum(ap.AP* lm.add_attr * lm.pct /100) as DATA
+                from t_ledger_meter lm inner join T_CUR_AP ap on lm.METER_ID = ap.METER_ID
+                where lm.LEDGER_ID = #{ledgerId}
+                group by ap.FREEZE_TIME
+        ) t
+        where 1=1 and
+        <foreach collection="baseList" item="base" open="(" separator="or" close=")">
+            t.FREEZE_TIME between #{base.begin,jdbcType=TIME} and #{base.end,jdbcType=TIME}
+        </foreach>
+    </select>
+
+    <!-- 计算“响应时段平均负荷” -->
+    <select id="getLedgerAverageAp" resultType="Double">
+        select avg(t.DATA) from
+        (
+        select ap.FREEZE_TIME as FREEZE_TIME, sum(ap.AP* lm.add_attr * lm.pct /100) as DATA
+        from (
+             select *
+             from t_ledger_meter
+             where LEDGER_ID = #{ledgerId}
+             <if test="planId != null and planId > 0">
+                 union all
+                 select #{ledgerId} as LEDGER_ID, p0.emo_dcp_id as METER_ID, -1 as ADD_ATTR, 100 as PCT
+                 from t_response_plan_config p0
+                 where p0.plan_id = #{planId} and p0.type = 2
+                 and p0.emo_dcp_id not in (
+                 select m1.meter_id as meter_id
+                 from t_response_plan_config p1 inner join t_ledger_meter m1 on p1.emo_dcp_id = m1.ledger_id
+                 where p1.plan_id = #{planId} and p1.type = 1)
+                 union all
+                 select #{ledgerId} as LEDGER_ID, m2.METER_ID as METER_ID, -m2.ADD_ATTR as ADD_ATTR, m2.PCT as PCT
+                 from t_response_plan_config p2 inner join t_ledger_meter m2 on p2.emo_dcp_id = m2.ledger_id
+                 where p2.plan_id = #{planId} and p2.type = 1
+             </if>
+        ) lm
+        inner join T_CUR_AP ap on lm.METER_ID = ap.METER_ID
+        where lm.LEDGER_ID = #{ledgerId}
+        <if test="timeFlag == 1">
+            and ap.FREEZE_TIME between #{beginTime,jdbcType=TIME} and #{endTime,jdbcType=TIME}
+        </if>
+        <if test="timeFlag != 1">
+            and ap.FREEZE_TIME >= #{beginTime,jdbcType=TIME} and ap.FREEZE_TIME &lt; #{endTime,jdbcType=TIME}
+        </if>
+        group by ap.FREEZE_TIME
+        ) t
+    </select>
+
+    <!-- 计算“实际负荷曲线” -->
+    <select id="getLedgerActualAp" resultType="HashMap">
+        select to_char(ap.FREEZE_TIME,'hh24:mi') as FREEZE_TIME, sum(ap.AP* lm.add_attr * lm.pct /100) as DATA
+        from (
+        select *
+        from t_ledger_meter
+        where LEDGER_ID = #{ledgerId}
+        <if test="planId != null and planId > 0">
+            union all
+            select #{ledgerId} as LEDGER_ID, p0.emo_dcp_id as METER_ID, -1 as ADD_ATTR, 100 as PCT
+            from t_response_plan_config p0
+            where p0.plan_id = #{planId} and p0.type = 2
+            and p0.emo_dcp_id not in (
+            select m1.meter_id as meter_id
+            from t_response_plan_config p1 inner join t_ledger_meter m1 on p1.emo_dcp_id = m1.ledger_id
+            where p1.plan_id = #{planId} and p1.type = 1)
+            union all
+            select #{ledgerId} as LEDGER_ID, m2.METER_ID as METER_ID, -m2.ADD_ATTR as ADD_ATTR, m2.PCT as PCT
+            from t_response_plan_config p2 inner join t_ledger_meter m2 on p2.emo_dcp_id = m2.ledger_id
+            where p2.plan_id = #{planId} and p2.type = 1
+        </if>
+        ) lm
+        inner join T_CUR_AP ap on lm.METER_ID = ap.METER_ID
+        where ap.FREEZE_TIME between #{beginTime,jdbcType=TIME} and #{endTime,jdbcType=TIME}
+        group by ap.FREEZE_TIME
+        order by FREEZE_TIME
+    </select>
+
+    <!-- 按条件得到已保存的响应的个数 -->
+    <select id="getExistDemandNumBy" resultType="java.lang.Integer">
+        select count(1) from t_response_incident where LEDGER_ID=#{ledgerId}
+        and START_TIME = #{beginTime,jdbcType=TIME}
+        and END_TIME = #{endTime,jdbcType=TIME}
+    </select>
+
+    <!-- 插入t_response_incident -->
+    <insert id="insertResponse">
+        insert into t_response_incident (incident_id,ledger_id,start_time,end_time,load_change_before,load_change_after,factor,average_load,reduction)
+          values(#{incidentId},#{ledgerId},#{beginDate},#{endDate},#{baseValBefore},#{baseValAfter},#{adjust},#{average},#{cutDownVal})
+    </insert>
+
+    <!-- 根据响应历史ID查询信息 -->
+    <select id="getHistoryDetailById" resultType="HashMap">
+        select LEDGER_ID, START_TIME, END_TIME, LOAD_CHANGE_BEFORE as BASE_BEFORE, LOAD_CHANGE_AFTER as BASE_AFTER,
+                FACTOR, AVERAGE_LOAD as AVERAGE, REDUCTION
+        from T_RESPONSE_INCIDENT
+        where INCIDENT_ID = #{incidentId}
+    </select>
+
+    <!-- 根据ledgerId得到响应历史列表 -->
+    <select id="getLedgerDemandHistory" resultType="HashMap">
+        select t.INCIDENT_ID, to_char(t.START_TIME,'yyyy-mm-dd hh24:mi') as START_TIME, to_char(t.END_TIME,'hh24:mi') as END_TIME
+        from T_RESPONSE_INCIDENT t
+        where t.LEDGER_ID = #{ledgerId}
+        order by t.START_TIME desc
+    </select>
+
+    <!-- 删除历史响应 -->
+    <delete id="deleteHistoryDetail" parameterType="Long">
+        delete from t_response_incident t where t.INCIDENT_ID = #{incidentId}
+    </delete>
+
+    <!-- 用来判断是否配置过“厂休时段” -->
+    <select id="getRestDayNumByLedger" resultType="java.lang.Integer">
+        select count(1) from t_ledger_rest_day where LEDGER_ID=#{ledgerId}
+    </select>
+
+    <!-- 电网需求响应：根据ledgerId得到响应方案列表 -->
+    <select id="getEleDemandPlanBy" resultType="HashMap">
+        select p.PLAN_ID, p.PLAN_NAME
+        from T_PLAN_LEDGER_CONFIG t inner join T_POWERGRID_DEMAND_PLAN p on t.PLAN_ID=p.PLAN_ID
+        where t.ledger_id = #{ledgerId}
+    </select>
+
+    <!-- 电网需求响应：根据planId得到 电网方案信息 -->
+    <select id="getElePlanDetailBy" resultType="HashMap">
+        select to_char(t.START_DATE,'yyyy-mm-dd') as "startDate", to_char(t.END_DATE,'yyyy-mm-dd') as "endDate",
+        to_char(t.RESPOND_START_TIME,'hh24:mi') as "startTime", to_char(t.RESPOND_END_TIME,'hh24:mi') as "endTime"
+        from T_POWERGRID_DEMAND_PLAN t
+        where t.PLAN_ID = #{planId}
+    </select>
+
+    <!-- 电网需求响应：查数据 -->
+    <select id="getEleDemandData" resultType="HashMap">
+        select to_char(temp.FREEZE_TIME, 'hh24:mi') as FREEZE_TIME, avg(temp.DATA) as DATA
+        from (
+              select ap.FREEZE_TIME as FREEZE_TIME, sum(ap.AP* lm.add_attr * lm.pct /100) as DATA
+              from (select * from t_ledger_meter where LEDGER_ID = #{ledgerId}) lm
+              inner join T_CUR_AP ap on lm.METER_ID = ap.METER_ID
+              where to_char(ap.FREEZE_TIME,'yyyy-mm-dd') >= #{planBegin} and to_char(ap.FREEZE_TIME,'yyyy-mm-dd') &lt;= #{planEnd}
+              and to_char(ap.FREEZE_TIME,'hh24:mi') >= #{beginTime} and to_char(ap.FREEZE_TIME,'hh24:mi') &lt;= #{endTime}
+              group by ap.FREEZE_TIME
+              order by ap.FREEZE_TIME
+        ) temp
+        group by to_char(temp.FREEZE_TIME, 'hh24:mi')
+        order by to_char(temp.FREEZE_TIME, 'hh24:mi')
+    </select>
+
+</mapper>

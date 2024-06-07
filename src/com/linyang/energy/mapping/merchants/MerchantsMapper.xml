@@ -1,0 +1,371 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+
+<mapper namespace="com.linyang.energy.mapping.merchants.MerchantsMapper">
+
+    <resultMap id="merchantMap" type="com.linyang.energy.model.MerchantBean">
+        <id     property="ledgerId"          column="LEDGER_ID"/>
+        <result property="ledgerName"        column="LEDGER_NAME"/>
+        <result property="userNo"            column="USER_NO"/>
+        <result property="startTime"         column="START_TIME"/>
+        <result property="startValue"        column="START_VALUE"/>
+        <result property="endTime"           column="END_TIME"/>
+        <result property="endValue"          column="END_VALUE"/>
+        <result property="coalValue"         column="COAL_VALUE"/>
+        <result property="unitPrice"         column="UNIT_PRICE"/>
+        <result property="totalPrice"        column="TOTALPRICE"/>
+        <result property="status"            column="STATUS"/>
+        <result property="rateId"            column="RATE_ID"/>
+        <result property="wRateId"           column="RATE_W_ID"/>
+        <result property="gRateId"           column="RATE_G_ID"/>
+        <result property="hRateId"           column="RATE_H_ID"/>
+        <result property="inherit"           column="INHERIT"/>
+    </resultMap>
+
+    <select id="getMerchants" resultMap="merchantMap">
+        SELECT * FROM (
+        SELECT LEDGER_ID,LEDGER_NAME,USER_NO,RATE_ID,RATE_W_ID,RATE_G_ID,RATE_H_ID,INHERIT FROM T_LEDGER T
+        START WITH T.LEDGER_ID = #{ledgerId}
+        CONNECT BY PRIOR T.LEDGER_ID = T.PARENT_LEDGER_ID
+        ) WHERE LEDGER_ID NOT IN (
+        SELECT PARENT_LEDGER_ID FROM T_LEDGER T
+        START WITH T.LEDGER_ID = #{ledgerId}
+        CONNECT BY PRIOR T.LEDGER_ID = T.PARENT_LEDGER_ID
+        )
+        <if test="userNo != null and userNo != ''">
+            AND USER_NO = #{userNo}
+        </if>
+        <if test="ledgerName != null and ledgerName != ''">
+            AND LEDGER_NAME LIKE '%${ledgerName}%'
+        </if>
+    </select>
+
+    <!-- 查询能管对象下拥有费率的最底层能管对象的数量,用于判断是否有没有配置费率的能管对象 -->
+    <select id="getMerchantsNum" resultType="Integer">
+    SELECT COUNT(LEDGER_ID) num FROM (
+    SELECT LEDGER_ID,LEDGER_NAME,USER_NO,RATE_ID,RATE_W_ID,RATE_G_ID,RATE_H_ID FROM T_LEDGER T
+    START WITH T.LEDGER_ID =#{ledgerId}
+    CONNECT BY PRIOR T.LEDGER_ID = T.PARENT_LEDGER_ID
+    ) WHERE LEDGER_ID NOT IN (
+        SELECT T1.LEDGER_ID FROM T_LEDGER T1,T_LEDGER T2
+        WHERE T1.LEDGER_LFT>T2.LEDGER_LFT AND T1.LEDGER_RGT&lt;T2.LEDGER_RGT AND T2.LEDGER_ID=#{ledgerId}
+    )
+    <if test="userNo != null and userNo != ''">
+        AND USER_NO = #{userNo}
+    </if>
+    <if test="ledgerName != null and ledgerName != ''">
+        AND LEDGER_NAME LIKE '%${ledgerName}%'
+    </if>
+    <if test="dataType == 1 ">
+        AND RATE_ID &lt;>0
+    </if>
+    <if test="dataType == 2">
+        AND RATE_W_ID IS NOT NULL
+    </if>
+    <if test="dataType == 3">
+        AND RATE_G_ID IS NOT NULL
+    </if>
+    <if test="dataType == 4">
+        AND RATE_H_ID IS NOT NULL
+    </if>
+    </select>
+
+
+    <!-- 查询电能 起始值,结束值,电量(用于展示总示值,电量)(能管对象) -->
+    <select id="queryTotalValue" resultType="HashMap">
+                SELECT case when sum(t1.day_fae_total )  is null
+                then -1
+                else sum(t1.day_fae_total )  end startVal
+                ,
+                case when sum(t2.day_fae_total )  is null
+                then -1
+                else sum(t2.day_fae_total ) end  endval
+                ,
+                case when sum(t2.ENERGY- t1.ENERGY)  is null
+                then -1
+                else sum(t2.ENERGY- t1.ENERGY) end  energy,max(t1.FREEZE_TIME) startTime,max(t2.FREEZE_TIME) overTime FROM (
+				SELECT t1.pt,t1.ct,t3.day_fae_total,T2.METER_ID,t1.pt*t1.ct*t3.day_fae_total energy,t3.FREEZE_TIME FROM t_mped_info t1,t_meter t2,T_DAY_E_TOTAL t3	where t1.MPED_ID = t2.MPED_ID and  t2.METER_ID in
+                    <foreach collection="meterIds" item="id" open="(" separator="," close=")">
+                        #{id}
+                    </foreach>
+				and t3.METER_ID = t2.METER_ID
+				and t3.FREEZE_TIME = (SELECT max(freeze_time) FROM t_day_wflow WHERE freeze_time &lt; #{beginTime})
+				) T1 ,
+				(
+				SELECT t1.pt,t1.ct,t3.day_fae_total,T2.METER_ID,t1.pt*t1.ct*t3.day_fae_total energy,t3.FREEZE_TIME FROM t_mped_info t1,t_meter t2,T_DAY_E_TOTAL t3	where t1.MPED_ID = t2.MPED_ID and  t2.METER_ID in
+                    <foreach collection="meterIds" item="id" open="(" separator="," close=")">
+                        #{id}
+                    </foreach>
+				and t3.METER_ID = t2.METER_ID
+				and t3.FREEZE_TIME = (SELECT max(freeze_time) FROM t_day_wflow WHERE freeze_time &lt; #{endTime})
+				) t2
+				WHERE T1.METER_ID = T2.METER_ID
+    </select>
+
+    <!-- 查询电能 起始值,结束值,电量(用于展示分示值,电量)(能管对象) -->
+   <select id="queryPointValue" resultType="HashMap">
+                   SELECT
+                   case when sum(t1.day_fae_rate )  is null
+                   then -1
+                   else sum(t1.day_fae_rate )  end startVal
+                   ,
+                   case when sum(t2.day_fae_rate )  is null
+                   then -1
+                   else sum(t2.day_fae_rate ) end  endval
+                   ,
+                   case when sum(t2.ENERGY- t1.ENERGY)  is null
+                   then -1
+                   else sum(t2.ENERGY- t1.ENERGY) end  energy,max(t1.FREEZE_TIME) startTime,max(t2.FREEZE_TIME) overTime FROM (
+				SELECT t1.pt,t1.ct,t3.day_fae_rate,T2.METER_ID,t1.pt*t1.ct*t3.day_fae_rate energy,t3.FREEZE_TIME FROM t_mped_info t1,t_meter t2,T_DAY_E_RATE t3	where t1.MPED_ID = t2.MPED_ID and  t2.METER_ID in
+                   <foreach collection="meterIds" item="id" open="(" separator="," close=")">
+                       #{id}
+                   </foreach>
+				 and t3.METER_ID = t2.METER_ID
+				and t3.FREEZE_TIME = (SELECT max(freeze_time) FROM t_day_wflow WHERE freeze_time &lt; #{beginTime})
+				and t3.rate_number = #{rateNum}
+				) T1 ,
+				(
+				SELECT t1.pt,t1.ct,t3.day_fae_rate,T2.METER_ID,t1.pt*t1.ct*t3.day_fae_rate energy,t3.FREEZE_TIME FROM t_mped_info t1,t_meter t2,T_DAY_E_RATE t3	where t1.MPED_ID = t2.MPED_ID and  t2.METER_ID in
+                   <foreach collection="meterIds" item="id" open="(" separator="," close=")">
+                       #{id}
+                   </foreach>
+				and t3.METER_ID = t2.METER_ID
+				and t3.FREEZE_TIME = (SELECT max(freeze_time) FROM t_day_wflow WHERE freeze_time &lt; #{endTime})
+				and t3.rate_number = #{rateNum}
+				) t2
+				WHERE T1.METER_ID = T2.METER_ID
+   </select>
+
+    <!-- 查询水 起始值,结束值,水量 (能管对象) -->
+    <select id="queryWaterValue" resultType="HashMap">
+        		SELECT case when sum(t1.wflow_value )  is null
+                then -1
+                else sum(t1.wflow_value )  end startVal
+                ,
+                case when sum(t2.wflow_value )  is null
+                then -1
+                else sum(t2.wflow_value ) end  endval
+                ,
+                case when sum(t2.ENERGY- t1.ENERGY)  is null
+                then -1
+                else sum(t2.ENERGY- t1.ENERGY) end  energy,max(t1.FREEZE_TIME) startTime,max(t2.FREEZE_TIME) overTime FROM (
+				SELECT t1.pt,t1.ct,t3.wflow_value,T2.METER_ID,t1.pt*t3.wflow_value energy,t3.FREEZE_TIME FROM t_mped_info t1,t_meter t2,t_day_wflow t3	where t1.MPED_ID = t2.MPED_ID and  t2.METER_ID in
+                    <foreach collection="meterIds" item="id" open="(" separator="," close=")">
+                        #{id}
+                    </foreach>
+				and t3.METER_ID = t2.METER_ID
+				and t3.FREEZE_TIME = (SELECT max(freeze_time) FROM t_day_wflow WHERE freeze_time &lt; #{beginTime})
+				) T1 ,
+				(
+				SELECT t1.pt,t1.ct,t3.wflow_value,T2.METER_ID,t1.pt*t3.wflow_value energy,t3.FREEZE_TIME FROM t_mped_info t1,t_meter t2,t_day_wflow t3	where t1.MPED_ID = t2.MPED_ID and  t2.METER_ID in
+                    <foreach collection="meterIds" item="id" open="(" separator="," close=")">
+                        #{id}
+                    </foreach>
+                and t3.METER_ID = t2.METER_ID
+				and t3.FREEZE_TIME = (SELECT max(freeze_time) FROM t_day_wflow WHERE freeze_time &lt; #{endTime})
+				) t2
+				WHERE T1.METER_ID = T2.METER_ID
+    </select>
+
+    <!-- 查询气 起始值,结束值,气量 (能管对象) -->
+    <select id="queryHeatValue" resultType="HashMap">
+                SELECT case when sum(t1.heat_value )  is null
+                then -1
+                else sum(t1.heat_value )  end startVal
+                ,
+                case when sum(t2.heat_value )  is null
+                then -1
+                else sum(t2.heat_value ) end  endval
+                ,
+                case when sum(t2.ENERGY- t1.ENERGY)  is null
+                then -1
+                else sum(t2.ENERGY- t1.ENERGY) end  energy,max(t1.FREEZE_TIME) startTime,max(t2.FREEZE_TIME) overTime FROM (
+				SELECT t3.heat_value,T2.METER_ID,t3.heat_value energy,t3.FREEZE_TIME FROM t_mped_info t1,t_meter t2,t_day_heat t3	where t1.MPED_ID = t2.MPED_ID and  t2.METER_ID in
+                    <foreach collection="meterIds" item="id" open="(" separator="," close=")">
+                        #{id}
+                    </foreach>
+				and t3.METER_ID = t2.METER_ID
+				and t3.FREEZE_TIME = (SELECT max(freeze_time) FROM t_day_wflow WHERE freeze_time &lt; #{beginTime})
+				) T1 ,
+				(
+				SELECT t3.heat_value,T2.METER_ID,t3.heat_value energy,t3.FREEZE_TIME FROM t_mped_info t1,t_meter t2,t_day_heat t3	where t1.MPED_ID = t2.MPED_ID and  t2.METER_ID in
+                    <foreach collection="meterIds" item="id" open="(" separator="," close=")">
+                        #{id}
+                    </foreach>
+				and t3.METER_ID = t2.METER_ID
+				and t3.FREEZE_TIME = (SELECT max(freeze_time) FROM t_day_wflow WHERE freeze_time &lt; #{endTime})
+				) t2
+				WHERE T1.METER_ID = T2.METER_ID
+    </select>
+
+
+
+
+
+
+
+
+
+
+
+
+    <!-- 测量点 start -->
+
+
+
+
+
+
+
+
+    <!-- 查询正向有功分费率电能示值(用于显示示值,flag 1 表示为替代数据,0表示为非替代数据正常展示) -->
+    <select id="queryFaeRate" resultType="HashMap">
+        select day_fae_rate FEEVALUE,
+         case when FREEZE_TIME = #{date}
+				then 1
+				else 0
+				end flag
+		from T_DAY_E_RATE
+        where meter_id = #{meterId}
+        <if test="instead == 1">
+            and freeze_time =  (SELECT max(freeze_time) FROM T_DAY_E_RATE WHERE meter_id = #{meterId} and freeze_time &lt;= #{date})
+        </if>
+        <if test="instead == 2">
+            and freeze_time =  (SELECT min(freeze_time) FROM T_DAY_E_RATE WHERE meter_id = #{meterId} and freeze_time >= #{date})
+        </if>
+        and rate_number = #{rate}
+    </select>
+
+    <!-- 查询正向有功分费率电能示值(用于计算电量) -->
+    <select id="getViewDayERate" resultType="Double">
+        select day_fae_rate
+		from view_day_e_rate
+        where meter_id = #{meterId}
+        <if test="instead == 1">
+            and freeze_time =  (SELECT max(freeze_time) FROM view_day_e_rate WHERE meter_id = #{meterId} and freeze_time &lt;= #{date})
+        </if>
+        <if test="instead == 2">
+            and freeze_time =  (SELECT min(freeze_time) FROM view_day_e_rate WHERE meter_id = #{meterId} and freeze_time >= #{date})
+        </if>
+        and RATE_NUMBER = #{rate}
+    </select>
+
+    <!-- 查询正向有功总电能示值(用于显示示值,flag表现方式同上) -->
+    <select id="queryTotalFaeRate" resultType="HashMap">
+        select day_fae_total FEEVALUE,
+         case when FREEZE_TIME = #{date}
+				then 1
+				else 0
+				end flag
+         from T_DAY_E_TOTAL
+        where meter_id = #{meterId}
+        <if test="instead == 1">
+            and freeze_time =  (SELECT max(freeze_time) FROM T_DAY_E_TOTAL WHERE meter_id = #{meterId} and freeze_time &lt;= #{date})
+        </if>
+        <if test="instead == 2">
+            and freeze_time =  (SELECT min(freeze_time) FROM T_DAY_E_TOTAL WHERE meter_id = #{meterId} and freeze_time >= #{date})
+        </if>
+    </select>
+
+    <!-- 查询正向有功总电能示值(用于计算电量) -->
+    <select id="getViewDayETotal" resultType="Double">
+        select DAY_FAE_TOTAL
+         from view_day_e_total
+        where meter_id = #{meterId}
+        <if test="instead == 1">
+            and freeze_time =  (SELECT max(freeze_time) FROM view_day_e_total WHERE meter_id = #{meterId} and freeze_time &lt;= #{date})
+        </if>
+        <if test="instead == 2">
+            and freeze_time =  (SELECT min(freeze_time) FROM view_day_e_total WHERE meter_id = #{meterId} and freeze_time >= #{date})
+        </if>
+    </select>
+
+
+    <!-- 得到水能示值(flag表现方式同上) -->
+    <select id="queryEWater" resultType="HashMap">
+        select wflow_value,
+         case when FREEZE_TIME = #{date}
+				then 1
+				else 0
+				end flag
+         from t_day_wflow
+        where meter_id = #{meterId}
+        <if test="instead == 1">
+            and freeze_time =  (SELECT max(freeze_time) FROM t_day_wflow WHERE meter_id = #{meterId} and freeze_time &lt;= #{date})
+        </if>
+        <if test="instead == 2">
+            and freeze_time =  (SELECT min(freeze_time) FROM t_day_wflow WHERE meter_id = #{meterId} and freeze_time >= #{date})
+        </if>
+    </select>
+
+    <!-- 查询气能示值(flag表现方式同上) -->
+    <select id="queryEGas" resultType="HashMap">
+        select gflow_value,
+         case when FREEZE_TIME = #{date}
+				then 1
+				else 0
+				end flag
+         from t_day_gflow
+        where meter_id = #{meterId}
+        <if test="instead == 1">
+            and freeze_time =  (SELECT max(freeze_time) FROM t_day_gflow WHERE meter_id = #{meterId} and freeze_time &lt;= #{date})
+        </if>
+        <if test="instead == 2">
+            and freeze_time =  (SELECT min(freeze_time) FROM t_day_gflow WHERE meter_id = #{meterId} and freeze_time >= #{date})
+        </if>
+    </select>
+
+    <!-- 查询热能示值(暂未使用热能数据,flag表现方式同上) -->
+    <select id="queryEHeat" resultType="HashMap">
+        select heat_value,
+         case when FREEZE_TIME = #{date}
+				then 1
+				else 0
+				end flag
+         from t_day_heat
+        where meter_id = #{meterId}
+        <if test="instead == 1">
+            and freeze_time =  (SELECT max(freeze_time) FROM t_day_heat WHERE meter_id = #{meterId} and freeze_time &lt;= #{date})
+        </if>
+        <if test="instead == 2">
+            and freeze_time =  (SELECT min(freeze_time) FROM t_day_heat WHERE meter_id = #{meterId} and freeze_time >= #{date})
+        </if>
+    </select>
+
+    <!-- 得到父节点层级(包含自己,所以要减 1 ) -->
+    <select id="queryLevel" resultType="Integer">
+        SELECT (SELECT max(level) lev1 FROM T_LEDGER WHERE LEDGER_ID = #{ledgerId} START WITH LEDGER_ID = #{parLedgerId}
+        CONNECT BY PRIOR LEDGER_ID = PARENT_LEDGER_ID)+(SELECT max(level) lev2 FROM T_LEDGER  START WITH LEDGER_ID = #{ledgerId}
+        CONNECT BY PRIOR LEDGER_ID = PARENT_LEDGER_ID)-1 FROM DUAL
+    </select>
+
+    <!-- 得到父节点名称字符串(多个),以'>'符号拼接 -->
+    <select id="queryParName" resultType="String">
+        SELECT SYS_CONNECT_BY_PATH(LEDGER_NAME,'>') LEDGER_IDS,level LEDGER_LEVEL FROM T_LEDGER WHERE LEDGER_ID = #{parLedgerId}
+		START WITH LEDGER_ID = #{ledgerId} CONNECT BY PRIOR PARENT_LEDGER_ID=LEDGER_ID
+    </select>
+
+    <!-- 查询能管对象的缴费状态 -->
+    <select id="queryPayCost" resultType="HashMap">
+      SELECT LEDGER_ID,FREEZE_TIME,PAY_STATUS FROM T_MON_LEDGER_PAY WHERE LEDGER_ID = #{ledgerId}
+      AND FREEZE_TIME >= #{beginTime} AND FREEZE_TIME &lt;= #{endTime}
+    </select>
+
+    <!-- 记录缴费状态(0未交费,1已缴费) -->
+    <insert id="doPayCost" >
+            INSERT INTO T_MON_LEDGER_PAY ( LEDGER_ID ,  FREEZE_TIME , PAY_STATUS)
+			VALUES (#{ledgerId},#{dateTime},1)
+    </insert>
+
+
+    <select id="queryParentRateId" resultType="HashMap">
+      SELECT RATE_ID,RATE_W_ID,RATE_H_ID,RATE_G_ID,PARENT_LEDGER_ID,INHERIT FROM T_LEDGER WHERE LEDGER_ID = #{ledgerId}
+    </select>
+
+
+    <select id="queryCalcData" resultType="HashMap">
+        SELECT PARENT_LEDGER_ID PARENTLEDGERID,Q_CALC_DATE QCALCDATE,Q_CALC_INHERIT QCALCINHERIT
+        FROM T_LEDGER WHERE LEDGER_ID = #{ledgerId}
+    </select>
+
+</mapper>

@@ -1,0 +1,179 @@
+<?xml version="1.0" encoding="UTF-8" ?> 
+<!DOCTYPE mapper PUBLIC "-//ibatis.apache.org//DTD Mapper 3.0//EN" "http://ibatis.apache.org/dtd/ibatis-3-mapper.dtd">
+
+<mapper namespace="com.linyang.energy.mapping.energysavinganalysis.EnergySavingRankingMapper">
+	<!-- 产量统计数据bean -->
+	<resultMap id="productResultMap" type="com.linyang.energy.model.ProductStatBean">
+		<result property="productId"       column="PRODUCT_ID"/>
+		<result property="productName"     column="PRODUCT_NAME"/>
+		<result property="unitConsumer"    column="UNIT_CONSUMER"/>
+		<result property="productValue"    column="PRODUCT_VALUE"/>
+		<result property="assembleId"      column="ASSEMBLE_ID"/>
+		<result property="assembleName"    column="ASSEMBLE_NAME"/>
+		<result property="analyDate"       column="ANALY_DATE"/>
+		<result property="convertData"     column="CONVERT_DATA"/>
+		<result property="totalUse"        column="TOTAL_USE"/>
+		<result property="typeId"          column="TYPE_ID"/>
+		<result property="typeName"        column="DETAIL_NAME"/>
+		<result property="costValue"       column="COST_VALUE"/>
+		<result property="unit"            column="UNIT_NAME"/>
+		<result property="cateId"          column="CATE_ID"/>
+		<result property="cateName"        column="CATE_NAME"/>
+	</resultMap>
+	<!-- 建筑统计数据bean -->
+	<resultMap id="ledgerResultMap" type="com.linyang.energy.model.LedgerStatBean">
+		<result property="ledgerId"        column="LEDGER_ID"/>
+		<result property="ledgerName"      column="LEDGER_NAME"/>
+		<result property="assembleId"      column="ASSEMBLE_ID"/>
+		<result property="assembleName"    column="ASSEMBLE_NAME"/>
+		<result property="analyDate"       column="ANALY_DATE"/>
+		<result property="convertData"     column="CONVERT_DATA"/>
+		<result property="totalUse"        column="TOTAL_USE"/>
+		<result property="typeId"          column="TYPE_ID"/>
+		<result property="typeName"        column="TYPE_NAME"/>
+		<result property="costValue"       column="COST_VALUE"/>
+		<result property="unit"            column="UNIT_NAME"/>
+		<result property="temperature"     column="TEMPER"/>
+		<result property="useArea"         column="USE_AREA"/>
+	</resultMap>
+	
+    <!-- 查询产品统计Top数据 -->
+    <select id="queryProductStatTopData" parameterType="HashMap" resultMap="productResultMap">
+    	<choose>
+    		<!-- 能耗对标 -->
+    		<when test="queryType == 1">
+    			SELECT A.CONVERT_DATA, A.TOTAL_USE, B.PRODUCT_ID, B.PRODUCT_NAME, B.UNIT_CONSUMER
+				FROM   ( 
+				       SELECT SUM(TOTAL_USE) CONVERT_DATA, AVG(CONVERT_DATA) TOTAL_USE, PRODUCT_ID FROM T_PRODUCT_ANALY_DATA
+				       WHERE ANALY_DATE BETWEEN #{beginTime} AND #{endTime}
+				       GROUP BY PRODUCT_ID
+				       ORDER BY CONVERT_DATA DESC
+				) A, T_PRODUCT B
+				WHERE  A.PRODUCT_ID = B.PRODUCT_ID
+    		</when>
+    		<!-- 综合能耗 -->
+    		<when test="queryType == 2">
+    			SELECT A.TOTAL_USE, B.PRODUCT_ID, B.PRODUCT_NAME, B.UNIT_CONSUMER
+				FROM   ( 
+				       SELECT SUM(TOTAL_USE) TOTAL_USE, PRODUCT_ID FROM T_PRODUCT_ANALY_DATA
+				       WHERE ANALY_DATE BETWEEN #{beginTime} AND #{endTime}
+				       GROUP BY PRODUCT_ID
+				       ORDER BY TOTAL_USE DESC
+				) A, T_PRODUCT B
+				WHERE  A.PRODUCT_ID = B.PRODUCT_ID
+    		</when>
+    		<!-- 流水线能耗 -->
+    		<when test="queryType == 3">
+    			SELECT A.TOTAL_USE, B.ASSEMBLE_ID, B.ASSEMBLE_NAME
+				FROM   ( 
+				       SELECT SUM(TOTAL_USE) TOTAL_USE, ASSEMBLE_ID FROM T_PRODUCT_ANALY_DATA
+				       WHERE ANALY_DATE BETWEEN #{beginTime} AND #{endTime}
+				       GROUP BY ASSEMBLE_ID
+				       ORDER BY TOTAL_USE DESC
+				) A, T_ASSEMBLE B
+				WHERE  A.ASSEMBLE_ID = B.ASSEMBLE_ID 
+    		</when>
+    		<!-- 耗电、水、气量 -->
+    		<otherwise>
+    			SELECT A.COST_VALUE, B.PRODUCT_NAME, C.TYPE_REMARK UNIT_NAME, #{typeId} TYPE_ID FROM (
+				        SELECT SUM(COST_VALUE) COST_VALUE, PRODUCT_ID
+				        FROM   T_PRODUCT_ENERGY_DATA 
+				        WHERE  ANALY_DATE BETWEEN #{beginTime} AND #{endTime}
+				        AND    TYPE_ID = #{typeId}
+				        GROUP  BY PRODUCT_ID
+				        ORDER  BY COST_VALUE DESC
+				) A, T_PRODUCT B, T_DICT_TYPE_DETAIL C
+				WHERE A.PRODUCT_ID = B.PRODUCT_ID
+				AND   C.DETAIL_ID = #{typeId}
+    		</otherwise>
+    	</choose>
+    </select>
+    
+    <!-- 查询能耗类型 -->
+    <select id="getEnergyTypes" parameterType="HashMap" resultMap="productResultMap">
+    	SELECT A.TYPE_ID, B.DETAIL_NAME FROM (
+			    SELECT DISTINCT (K.DETAIL_ID) TYPE_ID 
+			    FROM   T_PRODUCT_ENERGY_DATA T, T_DICT_TYPE_DETAIL K
+			    WHERE  T.TYPE_ID = K.DETAIL_ID
+			    AND    T.ANALY_DATE BETWEEN #{beginTime} AND #{endTime}
+		) A, T_DICT_TYPE_DETAIL B
+		WHERE A.TYPE_ID = B.DETAIL_ID
+    </select>
+    
+    <!-- 查询建筑统计Top数据 -->
+    <select id="queryLedgerStatTopData" parameterType="HashMap" resultMap="ledgerResultMap">
+    	<choose>
+    		<!-- 综合能效 -->
+    		<when test="queryType == 1">
+    			SELECT T.LEDGER_ID, T.TOTAL_USE, K.LEDGER_NAME, K.USE_AREA FROM (
+				    SELECT A.LEDGER_ID, SUM(A.TOTAL_USE) TOTAL_USE 
+				    FROM   T_LEDGER_ANALY_DATA A, T_LEDGER B
+				    WHERE  A.LEDGER_ID = B.LEDGER_ID 
+				    AND    B.ANALY_TYPE = 101
+				    AND    A.ANALY_DATE  BETWEEN #{beginTime} AND #{endTime}
+				    GROUP BY A.LEDGER_ID
+				) T, T_LEDGER K
+				WHERE T.LEDGER_ID = K.LEDGER_ID
+    		</when>
+    		<!-- 空调能效 -->
+    		<when test="queryType == 2">
+    			SELECT T.LEDGER_ID, T.COST_VALUE, K.LEDGER_NAME, K.USE_AREA, T.TOTAL_USE FROM (
+	    			SELECT SUM(A.COST_VALUE) COST_VALUE, A.LEDGER_ID, AVG(A.COST_VALUE) TOTAL_USE
+					FROM   T_LEDGER_ENERGY_DATA A, T_LEDGER B
+					WHERE  A.LEDGER_ID = B.LEDGER_ID 
+					AND    A.TYPE_ID = 11 /* 表示空调 */
+					AND    B.ANALY_TYPE = 101 /* 建筑分户 */
+					AND    A.ANALY_DATE BETWEEN #{beginTime} AND #{endTime}
+					GROUP BY A.LEDGER_ID
+				) T, T_LEDGER K
+				WHERE T.LEDGER_ID = K.LEDGER_ID
+    		</when>
+    		<!-- 综合耗能量 -->
+    		<when test="queryType == 3">
+    			SELECT A.LEDGER_ID, B.LEDGER_NAME, SUM(A.TOTAL_USE) TOTAL_USE 
+				FROM   T_LEDGER_ANALY_DATA A, T_LEDGER B
+				WHERE  A.LEDGER_ID = B.LEDGER_ID 
+				AND    B.ANALY_TYPE = 101
+				AND    A.ANALY_DATE  BETWEEN #{beginTime} AND #{endTime} 
+				GROUP BY A.LEDGER_ID, B.LEDGER_NAME
+				ORDER BY TOTAL_USE DESC
+    		</when>
+    		<!-- 耗电、水、气量 -->
+    		<otherwise>
+    			SELECT SUM(A.COST_VALUE) COST_VALUE, A.LEDGER_ID, B.LEDGER_NAME, #{typeId} TYPE_ID
+				FROM   T_LEDGER_ENERGY_DATA A, T_LEDGER B
+				WHERE  A.LEDGER_ID = B.LEDGER_ID 
+				AND    A.TYPE_ID = #{typeId}
+				AND    B.ANALY_TYPE = 101
+				AND    A.ANALY_DATE BETWEEN #{beginTime} AND #{endTime}
+				GROUP BY A.LEDGER_ID, B.LEDGER_NAME
+				ORDER BY COST_VALUE DESC
+    		</otherwise>
+    	</choose>
+    </select>
+    
+    <!-- 查询建筑能效温度 -->
+    <select id="queryLedgerBaseTemp" parameterType="HashMap" resultMap="ledgerResultMap">
+    	SELECT AVG(TEMPER) TEMPER, LEDGER_ID
+		FROM   T_DAY_LEDGER_STAT
+		WHERE  STAT_DATE BETWEEN #{beginTime} AND #{endTime}
+		GROUP  BY LEDGER_ID
+    </select>
+    
+    <!-- 查询分项根节点数据 -->
+    <select id="getDeviceTypes" resultType="DeviceTypeBean">
+    	SELECT TYPE_ID typeId, TYPE_NAME typeName FROM T_DEVICE_TYPE WHERE PARENT_TYPE_ID = 0
+    </select>
+    
+    <!-- 查询分项用电、水统计数据 -->
+    <select id="queryParticalStatData" parameterType="HashMap" resultMap="ledgerResultMap">
+    	SELECT SUM(A.COST_VALUE) COST_VALUE, C.TYPE_ID, C.TYPE_NAME
+		FROM   T_LEDGER_ENERGY_DATA A, T_LEDGER B, T_DEVICE_TYPE C
+		WHERE  A.LEDGER_ID = B.LEDGER_ID 
+		AND    A.TYPE_ID = C.TYPE_ID
+		AND    C.PARENT_TYPE_ID = #{typeId}
+		AND    B.ANALY_TYPE = 101
+		AND    A.ANALY_DATE BETWEEN #{beginTime} AND #{endTime}
+		GROUP BY C.TYPE_ID, C.TYPE_NAME
+    </select>
+</mapper>

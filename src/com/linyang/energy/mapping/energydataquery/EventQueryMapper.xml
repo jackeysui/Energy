@@ -1,0 +1,779 @@
+<?xml version="1.0" encoding="UTF-8" ?> 
+<!DOCTYPE mapper PUBLIC "-//ibatis.apache.org//DTD Mapper 3.0//EN" "http://ibatis.apache.org/dtd/ibatis-3-mapper.dtd">
+
+<mapper namespace="com.linyang.energy.mapping.energydataquery.EventQueryMapper">
+	<!-- 事件记录map -->
+	<resultMap id="eventResultMap" type="com.linyang.energy.model.EventBean">
+		<id property="eventRecId"          column="EVENT_RECID"/>
+        <result property="eventStartTime"  column="EVENT_START_TIME"/>
+        <result property="eventEndTime"    column="EVENT_END_TIME"/>
+		<result property="eventStartTimeStr"  column="EVENT_START_TIME_STR"/>
+		<result property="eventEndTimeStr"    column="EVENT_END_TIME_STR"/>
+		<result property="eventName"       column="EVENT_NAME"/>
+		<result property="eventId"         column="EVENT_ID"/>
+		<result property="eventStatus"     column="EVENT_STATUS"/>
+		<result property="objectId"        column="OBJECT_ID"/>
+		<result property="objectType"      column="OBJECT_TYPE"/>
+		<result property="objectName"      column="OBJECT_NAME"/>
+		<result property="eventContent"      column="CONTENT"/>
+        <result property="companyName"      column="COMPANY_NAME"/>
+	</resultMap>
+
+    <!-- 污染源、治理源事件map -->
+    <resultMap id="eventPolluteMap" type="com.linyang.energy.model.EventPolluteBean">
+        <id property="polluteId"          column="POLLUT_LEDGER_ID"/>
+        <result property="polluteName"  column="POLLUT_LEDGER_NAME"/>
+        <result property="polluteDoor"  column="POLLUT_THRESHOLD"/>
+        <result property="resolveId"  column="GOV_LEDGER_ID"/>
+        <result property="resolveName"  column="GOV_LEDGER_NAME"/>
+        <result property="resolveDoor"  column="GOV_THRESHOLD"/>
+        <result property="parentLedgerId"  column="LEDGER_ID"/>
+        <result property="parentLedgerName"  column="LEDGER_NAME"/>
+    </resultMap>
+
+	
+	<!-- 电工首页时间带格式的事件查询 -->
+    <!-- 查询事件 -->
+    <select id="queryEventPageList" parameterType="HashMap" resultMap="eventResultMap">
+    SELECT t.EVENT_RECID, to_char(t.EVENT_START_TIME,'yyyy-mm-dd hh24:mi') as EVENT_START_TIME_STR, to_char(t.EVENT_END_TIME,'yyyy-mm-dd hh24:mi') as EVENT_END_TIME_STR, t.EVENT_NAME, t.EVENT_ID,
+        t.EVENT_STATUS, t.OBJECT_ID, t.OBJECT_TYPE, t.OBJECT_NAME, t.CONTENT
+    FROM (
+	    	SELECT A.EVENT_RECID, A.EVENT_START_TIME,A.EVENT_END_TIME, A.EVENT_NAME, A.EVENT_ID, A.EVENT_STATUS, 
+			       A.OBJECT_ID, A.OBJECT_TYPE, B.LEDGER_NAME OBJECT_NAME,A.CONTENT  
+			FROM   T_EVENT A, T_LEDGER B
+			<where>
+					A.OBJECT_ID = B.LEDGER_ID
+					AND A.OBJECT_TYPE = 1
+				<if test="eventStatus != null">
+					AND A.EVENT_STATUS = #{eventStatus}
+				</if>
+				<if test="objectType != null">
+					AND A.OBJECT_TYPE = #{objectType}
+				</if>
+				<if test="objectId != null">
+					AND A.OBJECT_ID = #{objectId}
+				</if>
+				<if test="beginTime != null">
+					AND A.EVENT_START_TIME >= #{beginTime,jdbcType=TIME}
+				</if>
+				<if test="endTime != null">
+					AND A.EVENT_START_TIME &lt;= #{endTime,jdbcType=TIME}
+				</if>
+				<if test="ledgerId!=null and ledgerId != -1 and ledgerId != 0">
+					AND B.LEDGER_ID IN (SELECT t1.ledger_id from t_ledger t1,t_ledger t2 
+					where t1.ledger_lft>=t2.ledger_lft and t1.ledger_rgt&lt;=t2.ledger_rgt and t2.ledger_id=#{ledgerId})
+				</if>
+				<if test="ledgerId!=null and ledgerId != -1 and ledgerId == 0">
+					AND B.LEDGER_ID IN (select t2.ledger_id from V_GROUP_LEDGER t1,t_ledger t2,t_ledger t3 
+					where t1.account_id=#{accountId} and t1.ledger_id=t3.ledger_id and t2.ledger_lft>=t3.ledger_lft and t2.ledger_rgt&lt;=t3.ledger_rgt)
+				</if>
+			</where>
+			UNION
+	    	SELECT A.EVENT_RECID, A.EVENT_START_TIME,A.EVENT_END_TIME, A.EVENT_NAME, A.EVENT_ID, A.EVENT_STATUS, 
+			       A.OBJECT_ID, A.OBJECT_TYPE, B.METER_NAME OBJECT_NAME,A.CONTENT  
+			FROM   T_EVENT A, T_METER B
+			<if test="ledgerId!=null and ledgerId != -1">
+				, T_LEDGER L
+			</if>
+			<where>
+					A.OBJECT_ID = B.METER_ID
+					AND A.OBJECT_TYPE = 2
+				<if test="eventStatus != null">
+					AND A.EVENT_STATUS = #{eventStatus}
+				</if>
+				<if test="objectType != null">
+					AND A.OBJECT_TYPE = #{objectType}
+				</if>
+				<if test="objectId != null">
+					AND A.OBJECT_ID = #{objectId}
+				</if>
+				<if test="beginTime != null">
+					AND A.EVENT_START_TIME >= #{beginTime,jdbcType=TIME}
+				</if>
+				<if test="endTime != null">
+					AND A.EVENT_START_TIME &lt;= #{endTime,jdbcType=TIME}
+				</if>
+				<if test="ledgerId!=null and ledgerId != -1 and ledgerId != 0">
+					AND b.ledger_id=l.ledger_id AND L.LEDGER_ID IN (SELECT t1.ledger_id from t_ledger t1,t_ledger t2 
+					where t1.ledger_lft>=t2.ledger_lft and t1.ledger_rgt&lt;=t2.ledger_rgt and t2.ledger_id=#{ledgerId})
+				</if>
+				<if test="ledgerId!=null and ledgerId != -1 and ledgerId == 0">
+					AND b.ledger_id=l.ledger_id AND L.LEDGER_ID IN (select t2.ledger_id from V_GROUP_LEDGER t1,t_ledger t2,t_ledger t3 
+					where t1.account_id=#{accountId} and t1.ledger_id=t3.ledger_id and t2.ledger_lft>=t3.ledger_lft and t2.ledger_rgt&lt;=t3.ledger_rgt)
+				</if>
+			</where>
+		) T where T.EVENT_ID>=1100
+		ORDER BY T.EVENT_START_TIME DESC
+    </select>
+    
+    <!-- 带筛选条件的查询事件 -->
+    <select id="queryEventPageList2" parameterType="HashMap" resultMap="eventResultMap">
+    select t.EVENT_RECID, to_char(t.EVENT_START_TIME,'yyyy-mm-dd hh24:mi') as EVENT_START_TIME_STR, to_char(t.EVENT_END_TIME,'yyyy-mm-dd hh24:mi') as EVENT_END_TIME_STR, t.EVENT_NAME, t.EVENT_ID,
+        t.EVENT_STATUS, t.OBJECT_ID, t.OBJECT_TYPE, t.OBJECT_NAME, t.CONTENT, t.company_name
+    from (
+    <if test="ledgerIds == null and meterIds == null">
+    select a.event_recid, a.event_start_time, a.event_end_time, a.event_name, a.event_id, a.event_status,
+    		a.object_id,a.object_type, b.ledger_name object_name, a.content,c.ledger_name company_name
+    	from t_event a, t_ledger b
+        left join (select ledger_name,ledger_id from t_ledger where analy_type = 102 ) c on b.ledger_id in (select distinct l1.ledger_id from t_ledger l1,t_ledger l2
+            where l1.ledger_lft>=l2.ledger_lft and l1.ledger_rgt&lt;=l2.ledger_rgt and l2.ledger_id = c.ledger_id)
+    	<where>
+    		a.object_id = b.ledger_id
+    		and a.object_type = 1
+    		and a.object_id in
+            (
+            select distinct l1.ledger_id from t_ledger l1,t_ledger l2
+            where l1.ledger_lft>=l2.ledger_lft and l1.ledger_rgt&lt;=l2.ledger_rgt and l2.ledger_id = #{ledgerId}
+            )
+    	</where>
+    	union
+    	select a.event_recid, a.event_start_time, a.event_end_time, a.event_name, a.event_id, a.event_status,
+    		a.object_id,a.object_type, b.meter_name object_name, a.content ,c.ledger_name company_name
+    	from t_event a, t_meter b
+        left join t_ledger c on b.ledger_id = c.ledger_id
+    	<where>
+    		a.object_id = b.meter_id
+    		and a.object_type = 2
+    		and a.object_id in (
+    		select distinct m.meter_id
+            from t_meter m inner join
+            (
+            select distinct l1.ledger_id from t_ledger l1,t_ledger l2
+            where l1.ledger_lft>=l2.ledger_lft and l1.ledger_rgt&lt;=l2.ledger_rgt and l2.ledger_id = #{ledgerId}
+            ) a on m.ledger_id=a.ledger_id
+    		)
+    	</where>
+    </if>
+    
+    <if test="ledgerIds == null and meterIds != null">
+    select a.event_recid, a.event_start_time, a.event_end_time, a.event_name, a.event_id, a.event_status,
+    		a.object_id,a.object_type, b.meter_name object_name, a.content, c.ledger_name company_name 
+    	from t_event a, t_meter b
+        left join t_ledger c on b.ledger_id = c.ledger_id
+    	<where>
+    		a.object_id = b.meter_id
+    		and a.object_type = 2
+    		<if test="meterIds != null">and a.object_id in   <foreach collection="meterIds" item="ids" open="(" separator="," close=")"> #{ids} </foreach></if>
+    	</where>
+    </if>
+    
+    <if test="ledgerIds != null and meterIds == null">
+    select a.event_recid, a.event_start_time, a.event_end_time, a.event_name, a.event_id, a.event_status,
+    		a.object_id,a.object_type, b.ledger_name object_name, a.content, c.ledger_name company_name
+    	from t_event a, t_ledger b
+        left join (select ledger_name,ledger_id from t_ledger where analy_type = 102 )c on b.ledger_id in (select distinct l1.ledger_id from t_ledger l1,t_ledger l2
+            where l1.ledger_lft>=l2.ledger_lft and l1.ledger_rgt&lt;=l2.ledger_rgt and l2.ledger_id = c.ledger_id)
+    	<where>
+    		a.object_id = b.ledger_id
+    		and a.object_type = 1
+    		and a.object_id in
+            (
+            select distinct l1.ledger_id from t_ledger l1,t_ledger l2
+            where l1.ledger_lft>=l2.ledger_lft and l1.ledger_rgt&lt;=l2.ledger_rgt  <if test="ledgerIds != null"> and l2.ledger_id in  <foreach collection="ledgerIds" item="ids" open="(" separator="," close=")"> #{ids} </foreach></if>
+            )
+    	</where> 
+    	union
+    	select a.event_recid, a.event_start_time, a.event_end_time, a.event_name, a.event_id, a.event_status,
+    		a.object_id,a.object_type, b.meter_name object_name, a.content, c.ledger_name company_name
+    	from t_event a, t_meter b
+        left join t_ledger c on b.ledger_id = c.ledger_id
+    	<where>
+    		a.object_id = b.meter_id
+    		and a.object_type = 2
+    		and a.object_id in (
+    		select distinct m.meter_id from t_meter m inner join
+            (
+            select distinct l1.ledger_id from t_ledger l1,t_ledger l2
+            where l1.ledger_lft>=l2.ledger_lft and l1.ledger_rgt&lt;=l2.ledger_rgt
+            <if test="ledgerIds != null"> and l2.ledger_id in  <foreach collection="ledgerIds" item="ids" open="(" separator="," close=")"> #{ids} </foreach></if>
+            ) a on m.ledger_id=a.ledger_id
+    		)
+
+    	</where>
+    </if>
+    
+    <if test="ledgerIds != null and meterIds != null">
+    select a.event_recid, a.event_start_time, a.event_end_time, a.event_name, a.event_id, a.event_status,
+    		a.object_id,a.object_type, b.meter_name object_name, a.content, c.ledger_name company_name
+    	from t_event a, t_meter b
+        left join t_ledger c on b.ledger_id = c.ledger_id
+    	<where>
+    		a.object_id = b.meter_id
+    		and a.object_type = 2
+    		<if test="meterIds != null"> and a.object_id in  <foreach collection="meterIds" item="ids" open="(" separator="," close=")"> #{ids} </foreach></if>
+    	</where>
+    	union
+    	select a.event_recid, a.event_start_time, a.event_end_time, a.event_name, a.event_id, a.event_status,
+    		a.object_id,a.object_type, b.ledger_name object_name, a.content, c.ledger_name company_name
+    	from t_event a, t_ledger b
+        left join (select ledger_name,ledger_id from t_ledger where analy_type = 102 )c on b.ledger_id in (select distinct l1.ledger_id from t_ledger l1,t_ledger l2
+            where l1.ledger_lft>=l2.ledger_lft and l1.ledger_rgt&lt;=l2.ledger_rgt and l2.ledger_id = c.ledger_id)
+    	<where>
+    		a.object_id = b.ledger_id
+    		and a.object_type = 1
+    		and a.object_id in
+            (
+            select distinct l1.ledger_id from t_ledger l1,t_ledger l2
+            where l1.ledger_lft>=l2.ledger_lft and l1.ledger_rgt&lt;=l2.ledger_rgt
+           	<if test="ledgerIds != null"> and l2.ledger_id in  <foreach collection="ledgerIds" item="ids" open="(" separator="," close=")"> #{ids} </foreach></if>
+            )
+    	</where> 
+    	union
+    	select a.event_recid, a.event_start_time, a.event_end_time, a.event_name, a.event_id, a.event_status,
+    		a.object_id,a.object_type, b.meter_name object_name, a.content, c.ledger_name company_name
+    	from t_event a, t_meter b
+        left join t_ledger c on b.ledger_id = c.ledger_id
+    	<where>
+    		a.object_id = b.meter_id
+    		and a.object_type = 2
+    		and a.object_id in (
+    		select distinct m.meter_id
+            from t_meter m inner join
+            (
+            select distinct l1.ledger_id from t_ledger l1,t_ledger l2
+            where l1.ledger_lft>=l2.ledger_lft and l1.ledger_rgt&lt;=l2.ledger_rgt <if test="ledgerIds != null"> and l2.ledger_id in  <foreach collection="ledgerIds" item="ids" open="(" separator="," close=")"> #{ids} </foreach></if>) a
+            on m.ledger_id=a.ledger_id
+    		)
+    	</where>
+    </if>
+    ) t
+    <where>
+        t.event_id>=1100
+	    	<if test="eventId > 0">
+    		and t.event_id = #{eventId}
+    		</if>
+    		<if test="beginTime != null">
+			and t.event_start_time >= #{beginTime,jdbcType=TIME}
+			</if>
+			<if test="endTime != null">
+			and t.event_start_time &lt;= #{endTime,jdbcType=TIME}
+			</if>
+    </where>
+    <if test="sortName != null and sortName != ''">
+        <if test="sortOrder != null and sortOrder != ''">
+            <if test="sortName == 'eventName'">
+                order by nlssort(t.EVENT_NAME, 'NLS_SORT=SCHINESE_PINYIN_M')  ${sortOrder}
+            </if>
+            <if test="sortName == 'companyName'">
+                order by nlssort(t.company_name, 'NLS_SORT=SCHINESE_PINYIN_M')  ${sortOrder}
+            </if>
+            <if test="sortName == 'objName'">
+                order by nlssort(t.OBJECT_NAME, 'NLS_SORT=SCHINESE_PINYIN_M') ${sortOrder}
+            </if>
+            <if test="sortName == 'startTime'">
+                order by t.event_start_time  ${sortOrder}
+            </if>
+            <if test="sortName == 'endTime'">
+                order by t.event_end_time  ${sortOrder}
+            </if>
+        </if>
+        <if test="sortOrder == null or sortOrder == ''">
+            <if test="sortName == 'eventName'">
+                order by nlssort(t.EVENT_NAME, 'NLS_SORT=SCHINESE_PINYIN_M')
+            </if>
+            <if test="sortName == 'companyName'">
+                order by nlssort(t.company_name, 'NLS_SORT=SCHINESE_PINYIN_M')
+            </if>
+            <if test="sortName == 'objName'">
+                order by nlssort(t.OBJECT_NAME, 'NLS_SORT=SCHINESE_PINYIN_M')
+            </if>
+            <if test="sortName == 'startTime'">
+                order by t.event_start_time
+            </if>
+            <if test="sortName == 'endTime'">
+                order by t.event_end_time
+            </if>
+        </if>
+    </if>
+    <if test="sortName == null or sortName == ''">
+        order by t.event_start_time desc
+    </if>
+    </select>  
+    
+    <!-- 电工首页时间带格式的事件查询 -->
+    <select id="queryEventPageList3" parameterType="HashMap" resultMap="eventResultMap">
+    SELECT *
+    FROM (
+	    	SELECT A.EVENT_RECID, to_char(A.EVENT_START_TIME,'hh24:mi') as EVENT_START_TIME_STR, to_char(A.EVENT_END_TIME,'hh24:mi') as EVENT_END_TIME_STR, A.EVENT_NAME, A.EVENT_ID, A.EVENT_STATUS,
+			       A.OBJECT_ID, A.OBJECT_TYPE, B.LEDGER_NAME OBJECT_NAME,A.CONTENT  
+			FROM   T_EVENT A, T_LEDGER B
+			<where>
+					A.OBJECT_ID = B.LEDGER_ID
+					AND A.OBJECT_TYPE = 1
+				<if test="eventStatus != null">
+					AND A.EVENT_STATUS = #{eventStatus}
+				</if>
+				<if test="objectType != null">
+					AND A.OBJECT_TYPE = #{objectType}
+				</if>
+				<if test="objectId != null">
+					AND A.OBJECT_ID = #{objectId}
+				</if>
+				<if test="beginTime != null">
+					AND A.EVENT_START_TIME >= #{beginTime,jdbcType=TIME}
+				</if>
+				<if test="endTime != null">
+					AND A.EVENT_START_TIME &lt;= #{endTime,jdbcType=TIME}
+				</if>
+				<if test="ledgerId!=null and ledgerId != -1 and ledgerId != 0">
+					AND B.LEDGER_ID IN (SELECT t1.ledger_id from t_ledger t1,t_ledger t2 
+					where t1.ledger_lft>=t2.ledger_lft and t1.ledger_rgt&lt;=t2.ledger_rgt and t2.ledger_id=#{ledgerId})
+				</if>
+				<if test="ledgerId!=null and ledgerId != -1 and ledgerId == 0">
+					AND B.LEDGER_ID IN (select t2.ledger_id from V_GROUP_LEDGER t1,t_ledger t2,t_ledger t3 
+					where t1.account_id=#{accountId} and t1.ledger_id=t3.ledger_id and t2.ledger_lft>=t3.ledger_lft and t2.ledger_rgt&lt;=t3.ledger_rgt)
+				</if>
+			</where>
+			UNION
+	    	SELECT A.EVENT_RECID, to_char(A.EVENT_START_TIME,'hh24:mi') as EVENT_START_TIME_STR,to_char(A.EVENT_END_TIME,'hh24:mi') as EVENT_END_TIME_STR, A.EVENT_NAME, A.EVENT_ID, A.EVENT_STATUS,
+			       A.OBJECT_ID, A.OBJECT_TYPE, B.METER_NAME OBJECT_NAME,A.CONTENT  
+			FROM   T_EVENT A, T_METER B
+			<if test="ledgerId!=null and ledgerId != -1">
+				, T_LEDGER L
+			</if>
+			<where>
+					A.OBJECT_ID = B.METER_ID
+					AND A.OBJECT_TYPE = 2
+				<if test="eventStatus != null">
+					AND A.EVENT_STATUS = #{eventStatus}
+				</if>
+				<if test="objectType != null">
+					AND A.OBJECT_TYPE = #{objectType}
+				</if>
+				<if test="objectId != null">
+					AND A.OBJECT_ID = #{objectId}
+				</if>
+				<if test="beginTime != null">
+					AND A.EVENT_START_TIME >= #{beginTime,jdbcType=TIME}
+				</if>
+				<if test="endTime != null">
+					AND A.EVENT_START_TIME &lt;= #{endTime,jdbcType=TIME}
+				</if>
+				<if test="ledgerId!=null and ledgerId != -1 and ledgerId != 0">
+					AND b.ledger_id=l.ledger_id AND L.LEDGER_ID IN (SELECT t1.ledger_id from t_ledger t1,t_ledger t2 
+					where t1.ledger_lft>=t2.ledger_lft and t1.ledger_rgt&lt;=t2.ledger_rgt and t2.ledger_id=#{ledgerId})
+				</if>
+				<if test="ledgerId!=null and ledgerId != -1 and ledgerId == 0">
+					AND b.ledger_id=l.ledger_id AND L.LEDGER_ID IN (select t2.ledger_id from V_GROUP_LEDGER t1,t_ledger t2,t_ledger t3 
+					where t1.account_id=#{accountId} and t1.ledger_id=t3.ledger_id and t2.ledger_lft>=t3.ledger_lft and t2.ledger_rgt&lt;=t3.ledger_rgt)
+				</if>
+			</where>
+		) T
+        where T.EVENT_ID>=1100
+		ORDER BY T.EVENT_START_TIME_STR DESC
+    </select>
+      
+  	<select id="queryLedgerMinusPF" resultType="com.linyang.energy.model.EventBean">
+	  	 select a.ledger_id as objectId, a.freeze_time as eventStartTime, a.freeze_time as eventEndTime,
+	    '1' as objectType, '分户名: '||b.ledger_name||';  分户ID: '||a.ledger_id||';  事件： 功率因数越限;  越限门限: '
+	    ||c.threshold_value||';  实际功率因数值:'||a.pf as eventContent
+	   from t_cur_ledger_pf a, t_ledger b, t_ledger_threshold_relation c
+	   where a.pf &lt; 0 and a.ledger_id=#{ledgerId} 
+	  and a.freeze_time between #{beginTime} and #{endTime}
+	  and a.ledger_id = b.ledger_id
+	  and a.ledger_id = c.ledger_id
+	  and c.threshold_id=1  
+	 </select>  
+ 
+  <insert id="savePFEvent" parameterType="com.linyang.energy.model.EventBean">
+	merge into t_event t using (select #{eventRecId} as event_recid,#{eventStartTime,jdbcType=TIMESTAMP} as event_start_time,
+	#{eventName} as event_name,#{eventId} as event_id,#{eventStatus} as event_status,#{objectId} as object_id,
+	#{objectType} as object_type,#{eventEndTime,jdbcType=TIMESTAMP} as event_end_time,#{eventContent} as content from dual) s
+    on (t.event_start_time = s.event_start_time and t.object_id = s.object_id and t.object_type = s.object_type and t.event_status = s.event_status)
+    when matched then update set t.content = s.content  
+    when not matched then insert(event_recid,event_start_time,event_name,event_id,event_status,object_id,object_type,
+    content) values (s.event_recid,to_date(to_char(s.event_start_time,'yyyy-mm-dd hh24:mi:ss'),'yyyy-mm-dd hh24:mi:ss'),
+    s.event_name,s.event_id,s.event_status,s.object_id,s.object_type,s.content)
+  </insert>
+  
+  <insert id="savePFREvent" parameterType="com.linyang.energy.model.EventBean">
+	merge into t_event t using (select #{eventRecId} as event_recid,#{eventStartTime,jdbcType=TIMESTAMP} as event_start_time,
+	#{eventName} as event_name,#{eventId} as event_id,#{eventStatus} as event_status,#{objectId} as object_id,
+	#{objectType} as object_type,#{eventEndTime,jdbcType=TIMESTAMP} as event_end_time,#{eventContent} as content from dual) s
+    on (t.event_start_time = s.event_end_time and t.object_id = s.object_id and t.object_type = s.object_type and t.event_status = s.event_status)
+    when matched then update set t.content = s.content 
+    when not matched then insert(event_recid,event_start_time,event_name,event_id,event_status,object_id,object_type,
+    content) values (s.event_recid,to_date(to_char(s.event_end_time,'yyyy-mm-dd hh24:mi:ss'),'yyyy-mm-dd hh24:mi:ss'),
+    s.event_name,s.event_id,s.event_status,s.object_id,s.object_type,s.content)
+  </insert>  
+  
+  <select id="queryMeterMinusPF" resultType="com.linyang.energy.model.EventBean">
+  	select a.meter_id as objectId, a.freeze_time as eventStartTime, a.freeze_time as eventEndTime,
+	'1' as objectType, 
+  '电表名: '|| b.meter_name||';  电表ID: '||a.meter_id ||';  事件： 功率因数越限;  越限门限: '
+  ||d.threshold_value||';  实际功率因数值:'||(a.pf/100) as eventContent
+   from t_cur_pf a, t_meter b,  t_ledger_threshold_relation d
+  where a.pf &lt;  0 and a.meter_id=#{meterId}
+  and a.freeze_time between #{beginTime} and #{endTime}
+  and a.meter_id = b.meter_id
+  and b.ledger_id = d.ledger_id
+  and d.threshold_id=1  
+  </select>  
+  
+   <select id="queryLedgerPF" resultType="com.linyang.energy.model.EventBean">
+  	select t.ledger_id as objectId, t.freeze_time as eventStartTime, t.pf as eventContent 
+  	from t_cur_ledger_pf t 
+   where t.ledger_id = #{ledgerId}  
+   and t.freeze_time between #{beginTime} and #{endTime} 
+   order by t.freeze_time asc
+  </select> 
+  
+  <select id="getPreLedgerPF" resultType="com.linyang.energy.model.EventBean">
+  	select p.ledger_id as objectId, p.freeze_time as eventStartTime, p.pf as eventContent from
+	(
+	select t.*
+	from t_cur_ledger_pf t where 
+	t.ledger_id=#{ledgerId}
+	and t.freeze_time between 
+	(#{beginTime}-1/24)
+	and #{beginTime}
+	order by t.freeze_time desc
+	) p
+	where rownum=1
+  </select> 
+  
+  <select id="ifLedgerEvent" resultType="com.linyang.energy.model.EventBean">
+  	select t.event_recid as eventRecId, t.event_start_time as eventStartTime, 
+	t.event_name as eventName,t.event_id as eventId, 
+	t.event_status as eventStatus, t.object_id as objectId, 
+	t.object_type as objectType, t.event_end_time as eventEndTime, 
+	t.content as eventContent from t_event t 
+	where t.object_type=1    
+	and t.event_id=1000  
+	and #{beginTime}
+	between t.event_start_time and t.event_end_time
+	and t.object_id=#{ledgerId}
+  </select>
+  
+  
+  <select id="queryMeterPF" resultType="com.linyang.energy.model.EventBean">
+  	select t.meter_id as objectId, t.freeze_time as eventStartTime, (t.pf/100) as eventContent 
+    from t_cur_pf t 
+   where t.meter_id = #{meterId}
+   and t.freeze_time between #{beginTime} and #{endTime} 
+   order by t.freeze_time asc
+  </select> 
+  
+  <!-- 查询反向电流 -->
+  <select id="queryMeterReverseI" resultType="HashMap">
+  	select t.meter_id as objectId, t.freeze_time as eventStartTime, t.ia as ia, t.ib as ib, t.ic as ic
+    from T_CUR_I t 
+   where t.meter_id = #{meterId}
+   and t.freeze_time between #{beginTime} and #{endTime} 
+   and (t.ia &lt; 0 or t.ib &lt; 0 or t.ic &lt; 0)
+   order by t.freeze_time asc
+  </select> 
+  
+  <!-- 查询反向无功 -->
+  <select id="queryMeterReverseRP" resultType="com.linyang.energy.model.EventBean">
+  	select t.meter_id as objectId, t.freeze_time as eventStartTime, t.RP as eventContent 
+    from T_CUR_RP t 
+   where t.meter_id = #{meterId}
+   and t.freeze_time between #{beginTime} and #{endTime} 
+   and t.rp &lt; 0 
+   order by t.freeze_time asc
+  </select> 
+  
+  <select id="getPreMeterPF" resultType="com.linyang.energy.model.EventBean">
+  	select p.meter_id as objectId, p.freeze_time as eventStartTime, (p.pf/100) as eventContent from
+  (
+  select t.*
+  from t_cur_pf t where 
+  t.meter_id=#{meterId}
+  and t.freeze_time between 
+  (#{beginTime}-1/24)
+  and #{beginTime}
+  order by t.freeze_time desc
+  ) p
+  where rownum=1
+  </select> 
+  
+  
+   <select id="ifMeterEvent" resultType="com.linyang.energy.model.EventBean">
+  	select t.event_recid as eventRecId, t.event_start_time as eventStartTime, 
+	t.event_name as eventName,t.event_id as eventId, 
+	t.event_status as eventStatus, t.object_id as objectId, 
+	t.object_type as objectType, t.event_end_time as eventEndTime, 
+	t.content as eventContent from t_event t 
+	where t.object_type=2    
+	and t.event_id=1000  
+	and #{beginTime}
+	between t.event_start_time and t.event_end_time
+	and t.object_id=#{meterId}
+  </select>
+  
+   <select id="getMeterEvent" resultType="com.linyang.energy.model.EventBean">
+  	select t.event_recid as eventRecId, t.event_start_time as eventStartTime, 
+	t.event_name as eventName,t.event_id as eventId, 
+	t.event_status as eventStatus, t.object_id as objectId, 
+	t.object_type as objectType, t.event_end_time as eventEndTime, 
+	t.content as eventContent from t_event t 
+	where t.object_type=2    
+	and t.event_id=#{eventId}  
+	and t.event_start_time = #{beginTime}
+	and t.object_id=#{meterId}
+  </select>
+  
+  
+   <select id="queryMeterPFByIdAndTime" resultType="com.linyang.energy.model.EventBean">
+  	select t.meter_id as objectId, t.freeze_time as eventStartTime, (t.pf/100) as eventContent 
+    from t_cur_pf t 
+    where t.meter_id = #{meterId}
+    and t.freeze_time = #{beginTime}
+  </select>
+  
+   <select id="queryLedgerPFByIdAndTime" resultType="com.linyang.energy.model.EventBean">
+  	select t.ledger_id as objectId, t.freeze_time as eventStartTime, t.pf as eventContent 
+  	from t_cur_ledger_pf t 
+   	where t.ledger_id = #{ledgerId}  
+   	and t.freeze_time = #{beginTime}
+  </select>
+  
+  <delete id="delEventRecord">
+	delete from T_EVENT t where t.OBJECT_TYPE = #{objType} and OBJECT_ID = #{objID} and 
+	 t.EVENT_START_TIME = #{beginTime} and t.event_status=1
+  </delete>
+  
+  <!-- 查询事件规约配置 -->
+    <select id="queryEventSpecInfo" resultType="EventSpecCfgBean">
+    	select a.seq_no as seqNo,a.name as name
+		from t_alarm_spec_relation a,t_meter m,T_TERMINAL t
+		where m.terminal_id=t.terminal_id and a.spec_id=t.spec_id and m.meter_id=#{meterId} and a.event_id=#{eventId}
+		order by a.seq_no
+    </select>
+
+    <!-- 事件详情 -->
+    <select id="eventDetail" parameterType="HashMap" resultType="com.linyang.energy.model.EventBean">
+        select t.event_recid as eventRecId,t.event_start_time as eventStartTime,t.event_name as eventName,t.event_id as eventId,
+               t.event_status as eventStatus,t.object_id as objectId,t.object_type as objectType,
+               t.EVENT_END_TIME as eventEndTime,t.CONTENT as eventContent
+               from t_event t
+               where t.EVENT_ID = #{eventId} and t.OBJECT_TYPE=#{objectType} and t.OBJECT_ID=#{objectId}
+               and to_char(t.EVENT_START_TIME,'yyyy-MM-dd HH24:MI')=#{eventStartTime}
+    </select>
+    
+    <!-- 查询最近发生的事件 -->
+    <select id="queryRecentEventInfo" resultType="com.linyang.energy.model.EventBean">
+    	select t.event_recid as eventRecId,t.event_start_time as eventStartTime,t.event_name as eventName,t.object_id as objectId,
+        t.object_type as objectType,t.event_status as eventStatus,t.event_id as eventId
+  		from t_event t where t.event_start_time >= #{startTime} or t.EVENT_END_TIME >= #{startTime} order by t.event_recid
+    </select>
+
+    <!-- 得到ct、pt -->
+    <select id="getCtptByMeter" resultType="HashMap">
+        select m.ct as CT, m.pt as PT
+           from t_meter a, t_mped_info m
+           where a.mped_id=m.mped_id
+           and a.meter_id=#{pointId}
+    </select>
+
+    <!-- 得到用户 订购的事件的eventId的List -->
+    <select id="getEventBookListByUser" resultType="Long">
+        select BOOK_ID as EVENT_ID
+        from T_BOOK_INFO
+        where BOOK_TYPE=1 and ACCOUNT_ID=#{accountId}
+    </select>
+
+    <!-- 添加告警事件 -->
+    <insert id="addEvent" parameterType="com.linyang.energy.model.EventBean">
+    	insert into T_EVENT(event_recid,event_start_time,event_name,
+    	event_id,event_status,object_id,object_type,
+   		content
+   		<if test="eventEndTime != null">
+			,EVENT_END_TIME
+		</if>
+   		) values(#{eventRecId},#{eventStartTime,jdbcType=TIMESTAMP},#{eventName},
+    	#{eventId},#{eventStatus},#{objectId},#{objectType},#{eventContent}
+		<if test="eventEndTime != null">
+			,#{eventEndTime,jdbcType=TIMESTAMP}
+		</if>
+		)
+    </insert>
+
+    <select id="getEventTypeByID" resultType="HashMap">
+        select EVENT_ID, EVENT_NAME, WORK_TIME_TYPE
+        from t_event_type
+        where EVENT_ID = #{eventId}
+    </select>
+
+
+    <select id="getSettingEmoIdsByEvent" resultType="HashMap">
+        select object_id, alarm_value, ledger_id as parent_id
+        from t_event_setting_rec
+        where event_id  = #{id} and object_type = #{objectType}
+    </select>
+
+    <select id="getExistEventNum" parameterType="com.linyang.energy.model.EventBean" resultType="Integer">
+        select count(1)
+        from t_event
+        where OBJECT_TYPE = #{objectType} and OBJECT_ID = #{objectId}
+          and EVENT_ID = #{eventId} and EVENT_START_TIME = #{eventStartTime,jdbcType=TIMESTAMP}
+    </select>
+
+    <select id="getRecIdsByEvent" parameterType="com.linyang.energy.model.EventBean" resultType="Long">
+        select event_recid
+        from t_event
+        where OBJECT_TYPE = #{objectType} and OBJECT_ID = #{objectId}
+          and EVENT_ID = #{eventId} and EVENT_START_TIME = #{eventStartTime,jdbcType=TIMESTAMP}
+    </select>
+
+    <update id="updateEventEndtime">
+        UPDATE t_event SET EVENT_END_TIME=#{dataTime,jdbcType=TIMESTAMP} WHERE EVENT_RECID=#{recid}
+    </update>
+
+    <update id="updatePolluteEventEndtime">
+        UPDATE t_event SET EVENT_END_TIME = #{endTime,jdbcType=TIMESTAMP}
+        WHERE EVENT_START_TIME=#{startTime} and EVENT_ID = #{eventId} and OBJECT_ID = #{objectId} and OBJECT_TYPE = #{objectType}
+    </update>
+
+    <select id="judgeHoliday" resultType="Integer">
+        select count(1)
+        from t_ledger_custom_holiday
+        where ledger_id = #{ledgerId}
+        and #{beginTime} between from_date and end_date
+    </select>
+
+    <select id="judgeRestDay" resultType="Integer">
+        select
+        <if test="weekNumber==1">
+            sunday
+        </if>
+        <if test="weekNumber==2">
+            monday
+        </if>
+        <if test="weekNumber==3">
+            tuesday
+        </if>
+        <if test="weekNumber==4">
+            wednesday
+        </if>
+        <if test="weekNumber==5">
+            thursday
+        </if>
+        <if test="weekNumber==6">
+            friday
+        </if>
+        <if test="weekNumber==7">
+            saturday
+        </if>
+        from t_ledger_rest_day
+        where ledger_id = #{ledgerId}
+    </select>
+
+    <select id="getTimeRangeByTime" resultType="HashMap">
+        select to_char(rest_begin,'HH24:MI') as rest_begin, to_char(rest_end,'HH24:MI') as rest_end
+        from t_ledger_workday_rest
+        where ledger_id = #{ledgerId}
+        and to_char(#{date},'HH24:MI') >= to_char(rest_begin,'HH24:MI')
+        and to_char(rest_end,'HH24:MI') >= to_char(#{date},'HH24:MI')
+    </select>
+
+    <select id="getBookedUserByLedgerEvent" parameterType="Long" resultType="Long">
+        SELECT distinct a.ACCOUNT_ID
+        FROM T_ACCOUNT a inner join T_BOOK_INFO bi on a.ACCOUNT_ID = bi.ACCOUNT_ID
+        WHERE a.ACCOUNT_STATUS = 1 and a.LEDGER_ID = #{ledgerId}
+        and bi.BOOK_TYPE = 1 and bi.BOOK_ID = #{eventId}
+    </select>
+
+    <select id="getLedgerEventCount" resultType="HashMap">
+       select t1.ledger_id, t1.event_id, t1.event_name, t2.count
+       from
+       (
+         select a.ledger_id,b.event_id,b.event_name
+         from (select distinct ledger_id from t_event_setting_rec) a, t_event_type b
+         order by a.ledger_id,b.event_id
+       ) t1
+       left join
+       (
+         select a1.ledger_id, a1.event_id, count(1) as count
+         from t_event_setting_rec a1 inner join t_event b1 on a1.event_id=b1.event_id and a1.object_type=b1.object_type and a1.object_id=b1.object_id
+         where b1.EVENT_START_TIME between #{beginTime} and #{endTime}
+         group by a1.ledger_id, a1.event_id
+       ) t2
+       on t1.ledger_id=t2.ledger_id and t1.event_id=t2.event_id
+       order by t1.ledger_id, t1.event_id
+    </select>
+
+    <select id="getAllEventIdNum" resultType="Integer">
+        select count(distinct t.EVENT_ID) from t_event_type t
+    </select>
+
+    <select id="includeDefaultHoliday" resultType="Integer">
+        select nvl(sum(t.INCLUDE_DEFAULT_HOLIDAY),0) from t_ledger_rest_day t where t.ledger_id=#{ledgerId}
+    </select>
+
+    <select id="getPolluteResolveList" resultMap="eventPolluteMap">
+        select er.POLLUT_LEDGER_ID as POLLUT_LEDGER_ID, wu.LEDGER_NAME as POLLUT_LEDGER_NAME, er.GOV_LEDGER_ID as GOV_LEDGER_ID, zh.LEDGER_NAME as GOV_LEDGER_NAME,
+                er.POLLUT_THRESHOLD as POLLUT_THRESHOLD, er.GOV_THRESHOLD as GOV_THRESHOLD,
+                er.LEDGER_ID as LEDGER_ID, p.LEDGER_NAME as LEDGER_NAME
+        from T_LEDGER_ENV_RELATION er inner join t_ledger wu on er.POLLUT_LEDGER_ID = wu.LEDGER_ID
+        inner join t_ledger zh on er.GOV_LEDGER_ID = zh.LEDGER_ID
+        inner join t_ledger p on er.LEDGER_ID = p.LEDGER_ID
+        where er.POLLUT_THRESHOLD is not null and er.GOV_THRESHOLD is not null
+        order by er.LEDGER_ID
+    </select>
+
+    <select id="getOneTimeLedgerPower" resultType="Double">
+        select sum(p.ap * m.add_attr * m.pct/100)
+        from T_LEDGER_METER m inner join T_CUR_AP p on m.METER_ID=p.METER_ID
+        where m.LEDGER_ID=#{ledgerId} and p.FREEZE_TIME=#{time}
+    </select>
+
+    <select id="getComputeMeters" resultType="HashMap">
+        select METER_ID, ADD_ATTR, PCT from T_LEDGER_METER where LEDGER_ID=#{ledgerId}
+    </select>
+
+    <select id="getTimeLast" resultType="Date">
+        select max(freeze_time) from T_CUR_AP where METER_ID=#{meterId} and FREEZE_TIME &lt;= #{time,jdbcType=DATE} and AP is not null
+    </select>
+
+    <select id="getTimeLastPower" resultType="Double">
+        select AP from T_CUR_AP where METER_ID=#{meterId} and FREEZE_TIME = #{time,jdbcType=DATE}
+    </select>
+
+    <!-- 得到某个能管对象下，某个时段内的所有事件数 -->
+    <select id="getLedgerEventNum" resultType="Long">
+        select count(1) from
+        (
+        select t.*
+        from t_event t
+        where t.EVENT_ID>=1100 and t.event_start_time >= #{beginTime,jdbcType=TIME}
+        and t.OBJECT_TYPE=1 and t.OBJECT_ID in (SELECT t1.ledger_id from t_ledger t1,t_ledger t2
+                                                 where t1.ledger_lft>=t2.ledger_lft and t1.ledger_rgt&lt;=t2.ledger_rgt and t2.ledger_id=#{ledgerId})
+        union
+        select t.*
+        from t_event t inner join t_meter m on t.OBJECT_ID=m.meter_id
+        where t.EVENT_ID>=1100 and t.event_start_time >= #{beginTime,jdbcType=TIME}
+        and t.OBJECT_TYPE=2 and m.LEDGER_ID in (SELECT t1.ledger_id from t_ledger t1,t_ledger t2
+                                                   where t1.ledger_lft>=t2.ledger_lft and t1.ledger_rgt&lt;=t2.ledger_rgt and t2.ledger_id=#{ledgerId})
+        ) temp
+    </select>
+
+
+	<!-- 查询停上电事件相关的采集点id -->
+	<select id="getEmo4pull" resultType="HashMap">
+		SELECT T1.LEDGER_ID,T1.LEDGER_NAME,T2.METER_ID FROM T_LEDGER T1, (
+				SELECT LEDGER_ID,L1.METER_ID FROM T_METER L1 ,(
+					SELECT METER_ID FROM T_LINELOSS_METER_INFO START WITH METER_ID=#{meterId}
+						CONNECT BY  METER_ID = PAREMENT_METER_ID
+				) L2  WHERE L1.METER_ID = L2.METER_ID
+			) T2 WHERE T1.LEDGER_ID = T2.LEDGER_ID
+	</select>
+
+	<!-- 查询停上电事件数据 -->
+	<select id="getPullData" resultType="HashMap">
+	SELECT T1.METER_ID,T1.METER_NAME,T2.MPED_ID,T2.TERMINAL_ID,T2.MPED_NAME,T3.TERMINAL_NAME,
+	T4.CREATE_TIME , T4.ENDTIME,T4.ALARM_STATUS
+	FROM T_METER T1
+	JOIN T_MPED_INFO T2 ON T1.MPED_ID = T2.MPED_ID
+	JOIN COLL_PLATFORM.T_TERMINAL T3 ON T2.TERMINAL_ID = T3.TERMINAL_ID
+	JOIN (
+	SELECT TO_DATE(substr(RECORD_CONTENT,21,19),'yyyy-MM-dd HH24:mi:ss') ENDTIME,DEVICE_ID,CREATE_TIME,EVENT_ID,ALARM_STATUS
+	FROM COLL_PLATFORM.T_ALARM_INFO WHERE ALARM_STATUS = 0
+	)  T4 ON T3.TERMINAL_ID = T4.DEVICE_ID
+	WHERE T4.EVENT_ID = 14
+	AND T4.ENDTIME BETWEEN #{startDate} AND #{endDate}
+	</select>
+
+
+</mapper>

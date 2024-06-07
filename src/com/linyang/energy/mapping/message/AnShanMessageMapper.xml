@@ -1,0 +1,227 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+
+<mapper namespace="com.linyang.energy.mapping.message.AnShanMessageMapper">
+
+    <!-- 查询上月生成报告的条数(用户判断上月是否生成了报告) -->
+    <select id="serviceReportIsCreate" resultType="Integer">
+        select count(*) from t_service_report_as where report_module = #{reportModule}
+    </select>
+
+    <!-- 保存报告 -->
+    <insert id="insertReportInfo">
+		insert into t_service_report_as (report_id,ledger_id,report_time,report_module,report_content,create_time,status)
+		values (#{reportId},#{ledgerId},#{reportTime,jdbcType=TIMESTAMP},#{reportModule},#{content},#{date,jdbcType=TIMESTAMP},#{status})
+	</insert>
+
+    <select id="searchSerivceReportPageList" parameterType="HashMap" resultType="com.linyang.energy.model.ServiceReportBean">
+        select t1.report_id as reportId, t2.ledger_id as ledgerId,t2.ledger_name as ledgerName, t2.ledger_type as ledgerType, t1.report_time as reportTime,t1.report_content as reportContent,
+        ADD_MONTHS(t1.create_time,-1) as createTime,t1.status as status
+        from t_service_report_as t1 left join t_ledger t2 on t1.ledger_id = t2.ledger_id
+        where t1.create_time between #{beginDate,jdbcType=TIME} and #{endDate,jdbcType=TIME}
+        and t1.REPORT_MODULE != 1
+        <if test="status != 0">
+            and t1.status = #{status}
+        </if>
+        <if test="ledgerType != 0">
+            and t2.ledger_type = #{ledgerType}
+        </if>
+        <if test="selectLedgerId != 0">
+            and t2.ledger_id = #{selectLedgerId}
+        </if>
+        <if test="userLedgerId == 0">
+            and t2.LEDGER_ID in (SELECT gl.ledger_id from t_group_account ga inner join t_group_ledger gl on ga.GROUP_ID = gl.GROUP_ID where ga.ACCOUNT_ID = #{userAccountId})
+        </if>
+        <if test="userLedgerId != 0">
+            and t2.LEDGER_ID in (SELECT t1.ledger_id from t_ledger t1,t_ledger t2 where t1.ledger_lft>=t2.ledger_lft and t1.ledger_rgt&lt;=t2.ledger_rgt and t2.ledger_id=#{userLedgerId})
+        </if>
+    </select>
+
+    <!-- 根据ID得到服务报 -->
+    <select id="queryReportInfoById" resultType="com.linyang.energy.model.ServiceReportBean">
+		select t1.report_id as reportId, t2.ledger_id as ledgerId,t2.ledger_name as ledgerName, t2.ledger_type as ledgerType, t1.report_time as reportTime,t1.report_content as reportContent,
+			t1.create_time as createTime,t1.status as status, t1.sp_advise as spAdvise, t1.sp_name as spName, t1.sp_phone as spPhone
+			from t_service_report_as t1 left join t_ledger t2 on t1.ledger_id = t2.ledger_id
+		where t1.report_id = #{reportId}
+	</select>
+
+    <!-- 查询测量点时间段内的负载率曲线 -->
+    <select id="queryLFbyMeterId" resultType="HashMap">
+        WITH DATE_VIEW AS (
+        SELECT #{beginTime,jdbcType=TIME} + (ROWNUM - 1) AS DATA_DATE
+        FROM DUAL CONNECT BY ROWNUM &lt;= (floor(#{endTime,jdbcType=TIME} - #{beginTime,jdbcType=TIME}) + 1)
+        ),
+        DATA_VIEW AS (
+        SELECT FREEZE_TIME,LOAD_MAX,LOAD_MAX_TIME,LOAD_MIN,LOAD_MIN_TIME FROM T_DAY_LF_OPT WHERE METER_ID = #{meterId}
+        AND FREEZE_TIME BETWEEN #{beginTime,jdbcType=TIME} AND #{endTime,jdbcType=TIME}
+        )
+        SELECT T3.METER_NAME "meterName",T1.DATA_DATE "freezeTime",T2.LOAD_MAX "loadMax",T2.LOAD_MAX_TIME "loadMaxTime",
+        T2.LOAD_MIN "loadMin",T2.LOAD_MIN_TIME "loadMinTime" FROM DATE_VIEW T1
+        LEFT JOIN DATA_VIEW T2 ON T1.DATA_DATE = T2.FREEZE_TIME
+        JOIN T_METER T3 ON T3.METER_ID = #{meterId}
+    </select>
+
+    <!-- 查询能管对象下所有测量点 -->
+    <select id="queryLedgerMeter" resultType="HashMap">
+        SELECT T1.METER_ID , T1.METER_NAME,T2.LEDGER_NAME  FROM T_METER T1,T_LEDGER T2 ,T_LEDGER_METER T3
+		WHERE T1.METER_ID = T3.METER_ID AND T2.LEDGER_ID = T3.LEDGER_ID AND T2.LEDGER_ID IN (
+		SELECT A.LEDGER_ID FROM T_LEDGER A  WHERE A.ANALY_TYPE = 106  AND EQPTYPE_ID = 1
+		START WITH A.LEDGER_ID = #{ledgerId}
+		CONNECT BY PRIOR A.LEDGER_ID = A.PARENT_LEDGER_ID
+		) ORDER BY T1.METER_NAME
+    </select>
+
+    <!-- 得到最小负载率单元 -->
+    <select id="getMinLoadByLedgerId" resultType="HashMap">
+        select min(t.LOAD_MIN) as val, t.meter_id, t1.meter_name
+        from t_day_lf_opt t
+        left join t_meter t1
+		    on t.meter_id = t1.meter_id
+        where t.FREEZE_TIME between #{beginTime,jdbcType=TIME} and #{endTime,jdbcType=TIME}
+        and t1.ledger_id = #{ledgerId}
+        group by t.meter_id, t1.meter_name
+				order by val
+    </select>
+
+    <!-- 查询日谐波柱状图数据 -->
+    <select id="getDayHarChartDatas" parameterType="HashMap"
+            resultType="HashMap">
+        <!-- 日谐波电流柱状图 -->
+        <if test="curveType == 1">
+            SELECT T1.HAR_NUM "num",T1.HAR_IA_MAX "a_max",T1.HAR_IA_MAXTIME "a_time",T1.HAR_IB_MAX "b_max",T1.HAR_IB_MAXTIME "b_time",
+            T1.HAR_IC_MAX "c_max",T1.HAR_IC_MAXTIME "c_time",T1.FREEZE_TIME "dataTime",T2.METER_NAME "meterName"
+            FROM T_DAY_HAR_I T1
+            JOIN T_METER T2 ON T1.METER_ID = T2.METER_ID
+            WHERE (MOD(T1.HAR_NUM,2)=1 or T1.HAR_NUM = 18) AND T1.METER_ID = #{meterId} and
+            T1.FREEZE_TIME between #{beginTime,jdbcType=TIME} AND #{endTime,jdbcType=TIME}
+            UNION ALL
+            SELECT 0 "num",T1.DIS_IA_MAX "a_max",T1.DIS_IA_MAXTIME "a_time",T1.DIS_IB_MAX "b_max",T1.DIS_IB_MAXTIME "b_time",
+            T1.DIS_IC_MAX "c_max",T1.DIS_IC_MAXTIME "c_time",T1.FREEZE_TIME "dataTime",T2.METER_NAME "meterName"
+            FROM T_DAY_DIS_I T1
+            JOIN T_METER T2 ON T1.METER_ID = T2.METER_ID
+            WHERE T1.METER_ID =#{meterId}
+            and T1.FREEZE_TIME BETWEEN #{beginTime,jdbcType=TIME} AND #{endTime,jdbcType=TIME}
+        </if>
+        <!-- 日谐波电压柱状图 -->
+        <if test="curveType == 2">
+            SELECT T1.HAR_NUM "num",T1.HAR_VA_MAX "a_max",T1.HAR_VA_MAXTIME "a_time",T1.HAR_VB_MAX "b_max",T1.HAR_VB_MAXTIME "b_time",T1.HAR_VC_MAX "c_max",T1.HAR_VC_MAXTIME "c_time",
+            T1.FREEZE_TIME "dataTime",T2.METER_NAME "meterName"
+            FROM T_DAY_HAR_V T1
+            JOIN T_METER T2 ON T1.METER_ID = T2.METER_ID
+            WHERE (MOD(T1.HAR_NUM,2)=1 or T1.HAR_NUM = 18) AND T1.METER_ID = #{meterId} and T1.FREEZE_TIME
+            BETWEEN #{beginTime,jdbcType=TIME} AND  #{endTime,jdbcType=TIME}
+            UNION ALL
+            SELECT 0 "num",T1.DIS_VA_MAX "a_max",T1.DIS_VA_MAXTIME "a_time",T1.DIS_VB_MAX "b_max",T1.DIS_VB_MAXTIME "b_time",T1.DIS_VC_MAX "c_max",T1.DIS_VC_MAXTIME "c_time",
+            T1.FREEZE_TIME "dataTime",T2.METER_NAME "meterName"
+            FROM T_DAY_DIS_V T1
+            JOIN T_METER T2 ON T1.METER_ID = T2.METER_ID
+            WHERE T1.METER_ID = #{meterId}
+            and T1.FREEZE_TIME BETWEEN #{beginTime,jdbcType=TIME} AND  #{endTime,jdbcType=TIME}
+        </if>
+    </select>
+
+    <!-- 负载率曲线 -->
+    <select id="getLoadData" resultType="HashMap">
+          <!-- select t1.freezetime,t1.loadmax,t1.loadmin,t1.meter_name "meterName",t2.threshold_value from (
+				select to_char(p.freeze_time,'yyyy-mm-dd') as freezetime, round(100 * max(p.apparent_p/m.volume), 2) as loadmax,
+            round(100 * min(p.apparent_p/m.volume), 2) as loadmin,m.meter_name,m.meter_id
+            from t_cur_apparent_p p inner join t_meter m on p.meter_id=m.meter_id
+            where p.meter_id= #{meterId}
+            and p.freeze_time between #{beginTime,jdbcType=TIME} AND  #{endTime,jdbcType=TIME}
+            group by to_char(p.freeze_time,'yyyy-mm-dd'),m.meter_name,m.meter_id
+            order by to_char(p.freeze_time,'yyyy-mm-dd')
+			) t1 join t_meter_threshold_relation t2 on t1.meter_id = t2.meter_id
+			where t2.threshold_id = 4 -->
+        select to_char(t1.freeze_time,'yyyy-mm-dd') as freezeTime,t1.load_max as loadMax,t1.load_min as loadMin ,t2.meter_name as "meterName" ,t3.threshold_value
+        from t_day_lf_opt t1 join t_meter t2 on t1.meter_id = t2.meter_id
+        left join t_meter_threshold_relation t3 on t3.METER_ID = t1.meter_id
+        where t1.meter_id=#{meterId}
+        and t1.freeze_time BETWEEN #{beginTime,jdbcType=TIME} AND  #{endTime,jdbcType=TIME}
+        and t3.threshold_id = 4
+        order by t1.freeze_time
+    </select>
+
+    <!-- 负载率时间曲线 -->
+    <select id="getLoadTimeData" resultType="HashMap">
+        select temp1.freezeTime, temp1.loadMaxTime, temp2.loadMinTime,temp3.meter_name "meterName"
+            from
+            (
+            SELECT to_char(a.freeze_time,'yyyy-MM-dd') as freezeTime, to_char(a.freeze_time,'hh24:mi') as loadMaxTime,meter_id
+            FROM (SELECT ROW_NUMBER() OVER(PARTITION BY to_char(freeze_time,'yyyy-MM-dd') ORDER BY apparent_p DESC) rn, t_cur_apparent_p.*
+                   FROM t_cur_apparent_p
+                   where meter_id=#{meterId}
+                   and freeze_time BETWEEN #{beginTime,jdbcType=TIME} AND  #{endTime,jdbcType=TIME}
+                  ) a
+            where a.rn=1
+            ) temp1
+            inner join
+            (
+            SELECT to_char(a.freeze_time,'yyyy-MM-dd') as freezeTime, to_char(a.freeze_time,'hh24:mi') as loadMinTime,meter_id
+            FROM (SELECT ROW_NUMBER() OVER(PARTITION BY to_char(freeze_time,'yyyy-MM-dd') ORDER BY apparent_p) rn, t_cur_apparent_p.*
+                   FROM t_cur_apparent_p
+                   where meter_id=#{meterId}
+                   and freeze_time BETWEEN #{beginTime,jdbcType=TIME} AND  #{endTime,jdbcType=TIME}
+                   ) a
+            where a.rn=1
+            ) temp2 on temp1.freezeTime = temp2.freezeTime
+            inner join t_meter temp3 on temp1.meter_id = temp3.meter_id
+            order by temp1.freezeTime
+    </select>
+
+    <select id="queryPowerDatas" resultType="HashMap">
+                <!-- SELECT T2.LEDGER_ID, A.FREEZE_TIME,  SUM(A.AP* t2.add_attr * t2.pct /100) D, SUM(A.AP_A* t2.add_attr * t2.pct /100) A, SUM(A.AP_B* t2.add_attr * t2.pct /100) B, SUM(A.AP_C* t2.add_attr * t2.pct /100) C,
+    			SUM(greatest(nvl(A.AP,0),nvl(A.AP_A,0),nvl(A.AP_B,0),nvl(A.AP_C,0))) DM
+				FROM   T_CUR_AP A LEFT JOIN  T_LEDGER_METER T2
+		                   ON A.METER_ID = T2.METER_ID
+				WHERE  A.FREEZE_TIME BETWEEN #{beginTime,jdbcType=TIME} AND  #{endTime,jdbcType=TIME}
+				AND    a.freeze_time = trunc(a.freeze_time,'hh24')
+				AND  T2.LEDGER_ID  = #{ledgerId}
+				GROUP BY T2.LEDGER_ID, A.FREEZE_TIME
+				ORDER BY A.FREEZE_TIME -->
+        select freeze_time,avg(d) d,avg(a) a,avg(b) b,avg(c) c,avg(dm) dm from (
+        select t2.ledger_id, to_char(a.freeze_time,'hh24') freeze_time,  sum(a.ap* t2.add_attr * t2.pct /100) d, sum(a.ap_a* t2.add_attr * t2.pct /100) a, sum(a.ap_b* t2.add_attr * t2.pct /100) b, sum(a.ap_c* t2.add_attr * t2.pct /100) c,
+        sum(greatest(nvl(a.ap,0),nvl(a.ap_a,0),nvl(a.ap_b,0),nvl(a.ap_c,0))) dm
+        from   t_cur_ap a left join  t_ledger_meter t2
+        on a.meter_id = t2.meter_id
+        where  a.freeze_time between #{beginTime,jdbcType=TIME} AND  #{endTime,jdbcType=TIME}
+        and    a.freeze_time = trunc(a.freeze_time,'hh24')
+        and  t2.ledger_id  = #{ledgerId}
+        group by t2.ledger_id, a.freeze_time
+        )group by freeze_time order by freeze_time
+    </select>
+
+    <select id="queryPowerLineDatas" resultType="HashMap">
+        SELECT FREEZE_TIME,AVG(D) D,AVG(A) A,AVG(B) B,AVG(C) C,AVG(DM) DM FROM (
+					SELECT T2.LEDGER_ID, TO_CHAR(A.FREEZE_TIME,'hh24:mi') FREEZE_TIME, SUM(A.AP* t2.add_attr * t2.pct /100) D,
+					SUM(A.AP_A* t2.add_attr * t2.pct /100) A, SUM(A.AP_B* t2.add_attr * t2.pct /100) B, SUM(A.AP_C* t2.add_attr * t2.pct /100) C,
+					SUM(greatest(nvl(A.AP,0),nvl(A.AP_A,0),nvl(A.AP_B,0),nvl(A.AP_C,0))) DM
+					FROM   T_CUR_AP A LEFT JOIN  T_LEDGER_METER T2
+												 ON A.METER_ID = T2.METER_ID
+					WHERE  A.FREEZE_TIME between #{beginTime,jdbcType=TIME} AND  #{endTime,jdbcType=TIME}
+					AND  T2.LEDGER_ID  = #{ledgerId}
+					GROUP BY T2.LEDGER_ID, A.FREEZE_TIME
+				) GROUP BY FREEZE_TIME ORDER BY FREEZE_TIME
+    </select>
+
+    <!-- 查询APP电耗数据 -->
+    <select id="queryEnergyData4Parent" resultType="HashMap">
+        SELECT T3.LEDGER_NAME,T1.METER_NAME,T2.DATA,T2.FEEDATA,T1.METER_ID FROM T_METER T1 JOIN
+        (
+        SELECT METER_ID,AVG(EC_PW) DATA,AVG(EC_FEES) FEEDATA FROM T_EE_DATA_DAY WHERE LEDGER_ID IN (
+        SELECT A.LEDGER_ID FROM T_LEDGER A WHERE A.ANALY_TYPE = 102
+        START WITH A.LEDGER_ID = #{ledgerId}
+        CONNECT BY PRIOR A.LEDGER_ID = A.PARENT_LEDGER_ID
+        )
+        AND DATA_DATE BETWEEN #{beginTime}
+        AND #{endTime}
+        AND EC_PW IS NOT NULL
+        GROUP BY METER_ID
+        ) T2
+        ON T1.METER_ID = T2.METER_ID
+        JOIN T_LEDGER T3 ON T3.LEDGER_ID = T1.LEDGER_ID
+        ORDER BY T1.METER_NAME
+    </select>
+
+
+
+</mapper>

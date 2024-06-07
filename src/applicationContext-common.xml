@@ -1,0 +1,257 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Copyright 2010 The myBatis Team Licensed under the Apache License, Version 
+	2.0 (the "License"); you may not use this file except in compliance with 
+	the License. You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0 
+	Unless required by applicable law or agreed to in writing, software distributed 
+	under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES 
+	OR CONDITIONS OF ANY KIND, either express or implied. See the License for 
+	the specific language governing permissions and limitations under the License. -->
+
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:aop="http://www.springframework.org/schema/aop"
+	xmlns:tx="http://www.springframework.org/schema/tx" xmlns:jdbc="http://www.springframework.org/schema/jdbc"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xsi:schemaLocation="
+     http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-3.1.xsd
+     http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.1.xsd
+     http://www.springframework.org/schema/jdbc http://www.springframework.org/schema/jdbc/spring-jdbc-3.1.xsd
+     http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-3.1.xsd
+     http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-3.1.xsd">
+
+	<!-- 此文件是公用的，一般情况下不建议修改里面的内容， 如果需要用到spring bean的注入请写到applicationContext-beans.xml中 -->
+
+	<bean id="placeHolder"
+		class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
+		<property name="locations" value="classpath:web.properties" />
+	</bean>
+
+	<!-- 定义数据源的Bean ，数据库的sessionFactory -->
+	<bean id="dataSourceSpied" class="com.alibaba.druid.pool.DruidDataSource"
+		init-method="init" destroy-method="close">
+		<!-- 基本属性 url、user、password -->
+		<property name="url" value="${db.url}" />
+		<property name="username" value="${db.username}" />
+		<property name="password" value="${db.pwdCode}" />
+		<!-- 初始化连接大小 -->
+		<property name="initialSize" value="10" />
+		<!-- 连接池最大使用连接数量 -->
+		<property name="maxActive" value="20" />
+		<!-- 连接池最大空闲 -->
+		<property name="maxIdle" value="10" />
+		<!-- 连接池最小空闲 -->
+		<property name="minIdle" value="10" />
+		<!-- 获取连接最大等待时间 -->
+		<property name="maxWait" value="60000" />
+
+		<!-- 配置间隔多久才进行一次检测，检测需要关闭的空闲连接，单位是毫秒 -->
+		<property name="timeBetweenEvictionRunsMillis" value="600000" />
+		<!-- 配置一个连接在池中最小生存的时间，单位是毫秒 -->
+		<property name="minEvictableIdleTimeMillis" value="300000" />
+		<property name="validationQuery" value="${db.validationQuery}" />
+		<property name="testWhileIdle" value="true" />
+		<property name="testOnBorrow" value="true" />
+		<property name="testOnReturn" value="true" />
+		<!-- 打开removeAbandoned功能 -->
+		<property name="removeAbandoned" value="true" />
+		<property name="removeAbandonedTimeout" value="18000" /> <!-- 1800秒，也就是30分钟 -->
+		<property name="logAbandoned" value="true" /> <!-- 关闭abanded连接时输出错误日志 -->
+		<!-- 打开PSCache，并且指定每个连接上PSCache的大小,mysql 不使用 -->
+		<property name="poolPreparedStatements" value="true" />
+		<!-- 配置监控统计拦截的filters -->
+		<property name="filters" value="stat" />
+		<!-- 慢查询sql打印 -->
+		<property name="connectionProperties" value="druid.stat.slowSqlMillis=1000" />
+	</bean>
+
+	<!-- 数据源代理，mybatis打印sql参数以及执行时间 -->
+	<bean id="dataSource" class="net.sf.log4jdbc.Log4jdbcProxyDataSource">
+		<constructor-arg ref="dataSourceSpied" />
+		<property name="logFormatter">
+			<bean class="net.sf.log4jdbc.tools.Log4JdbcCustomFormatter">
+				<property name="loggingType" value="MULTI_LINE" />
+				<property name="sqlPrefix" value="SQL:::" />
+			</bean>
+		</property>
+	</bean>
+
+	<!-- transaction manager, use JtaTransactionManager for global tx -->
+	<bean id="transactionManager"
+		class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+		<property name="dataSource" ref="dataSource" />
+	</bean>
+
+	<!-- enable autowire -->
+	<context:annotation-config />
+
+	<!-- enable transaction demarcation with annotations -->
+	<tx:annotation-driven />
+
+	<!-- mybatis分页插件 -->
+	<bean id="paginationInterceptor" class="com.linyang.common.web.page.PaginationInterceptor">
+		<!-- 数据库方言，目前仅支持oracle和mysql -->
+		<property name="dialect" value="ORACLE" />
+		<property name="pageSqlId" value=".*Page.*" />
+	</bean>
+
+	<!-- define the SqlSessionFactory -->
+	<bean id="sqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean">
+		<property name="dataSource" ref="dataSource" />
+		<!-- mybatis分页插件 -->
+		<property name="plugins">
+			<ref bean="paginationInterceptor" />
+		</property>
+		<property name="typeAliasesPackage" value="com.linyang.energy.model" />
+	</bean>
+
+	<!-- scan for mappers and let them be autowired -->
+	<bean class="org.mybatis.spring.mapper.MapperScannerConfigurer">
+		<property name="basePackage" value="com.linyang.energy.mapping.**" />
+	</bean>
+
+	<!-- 配置微信小程序配置层自动扫描包 2018-05-13 -->
+	<context:component-scan base-package="com.linyang.energy.wxconfig"/>
+
+	<!-- enable component scanning (beware that this does not enable mapper 
+		scanning!) -->
+	<context:component-scan base-package="com.linyang.energy.service" />
+
+	<!-- enable Aspectj -->
+	<aop:aspectj-autoproxy />
+
+
+	<!-- 那些类那些方法使用事务 -->
+	<aop:config>
+		<aop:pointcut id="allManagerMethod"
+			expression="execution(* com.linyang.energy.service.*.*(..))" />
+		<aop:advisor pointcut-ref="allManagerMethod" advice-ref="txAdvice" />
+	</aop:config>
+
+
+	<!-- 事务的传播特性 -->
+	<tx:advice id="txAdvice" transaction-manager="transactionManager">
+		<tx:attributes>
+			<tx:method name="add*" propagation="REQUIRED" />
+			<tx:method name="append*" propagation="REQUIRED" />
+			<tx:method name="insert*" propagation="REQUIRED" />
+			<tx:method name="save*" propagation="REQUIRED" />
+			<tx:method name="del*" propagation="REQUIRED" />
+			<tx:method name="remove*" propagation="REQUIRED" />
+			<tx:method name="modify*" propagation="REQUIRED" />
+			<tx:method name="edit*" propagation="REQUIRED" />
+			<tx:method name="update*" propagation="REQUIRED" />
+			<tx:method name="submit*" propagation="REQUIRED" />
+			<tx:method name="deploy*" propagation="REQUIRED" />
+			<tx:method name="repair" propagation="REQUIRED" />
+
+			<tx:method name="*" propagation="REQUIRED" read-only="true" />
+		</tx:attributes>
+	</tx:advice>
+
+	<bean id="staticData" class="com.linyang.energy.staticdata.StaticData"
+		factory-method="getInstance">
+		<property name="staticDataServiceImpl" ref="staticDataServiceImpl" />
+	</bean>
+	<!-- 注入SpringContextHolder -->
+	<bean id="springContextHolder" class="com.linyang.common.web.common.SpringContextHolder">
+	</bean>
+
+	<bean id="createCalculatedPointJob" class="com.linyang.energy.job.CreateCalculatedPointJob" />
+
+	<bean id="syncPointsJob" class="com.linyang.energy.job.SyncPointsJob"
+		init-method="init">
+		<property name="createCalculatedPointJob" ref="createCalculatedPointJob" />
+		<property name="intervalHour" value="24" />
+		<property name="startMinute" value="50" />
+	</bean>
+
+	<!-- 用户提醒de定时任务 -->
+	<bean id="userRemindJob" class="com.linyang.energy.job.UserRemindJob"
+		init-method="init"></bean>
+
+	<!-- 计算用户等级de定时任务 -->
+	<bean id="calAccountLevelJob" class="com.linyang.energy.job.CalAccountLevelJob"
+		init-method="init" />
+
+	<!-- 推送屏蔽消息de定时任务 -->
+	<bean id="pushBlockJob" class="com.linyang.energy.job.PushBlockJob"
+		init-method="init" />
+
+	<!-- 节假日de定时任务 -->
+	<bean id="updateHolidayJob" class="com.linyang.energy.job.UpdateHolidayJob"
+		init-method="init" />
+
+	<!-- 缓存首页数据 -->
+	<!-- <bean id="homePageCacheJob" class="com.linyang.energy.job.HomePageCacheJob" 
+		init-method="init" /> -->
+
+	<!-- 保存天气信息 -->
+	<!-- <bean id="weatherJob" class="com.linyang.energy.job.WeatherJob" init-method="init" 
+		/> -->
+
+
+	<!-- 事件计算并推送de定时任务 -->
+	<bean id="calPFEventJob" class="com.linyang.energy.job.CalPFEventJob"
+		init-method="init">
+		<property name="beginMinute" value="15" />
+	</bean>
+
+	<!-- 事件计算并推送de定时任务(新增一个专门对功率因数和电流的分支) -->
+	<bean id="CalPFEEventJobBranch" class="com.linyang.energy.job.CalPFEEventJobBranch"
+		  init-method="init">
+		<property name="beginMinute" value="30" />
+	</bean>
+
+	<!-- 事件计算并推送de定时任务(日任务) -->
+	<bean id="CalEventDayJob" class="com.linyang.energy.job.CalEventDayJob"
+		  init-method="init">
+		<property name="beginHour" value="7" />
+		<property name="beginMinute" value="40" />
+	</bean>
+
+
+
+	<!-- 事件统计推送de定时任务 -->
+	<!--<bean id="pushEventJob" class="com.linyang.energy.job.PushEventJob" 
+		init-method="init"> -->
+	<!--</bean> -->
+
+	<!-- 自动生成服务报告 -->
+	<bean id="PushServiceReportJob" class="com.linyang.energy.job.PushServiceReportJob"
+		  init-method="init">
+		<property name="beginDay" value="30" />
+		<property name="beginHour" value="10" />
+		<property name="beginMinute" value="34" />
+	</bean>
+
+	<!-- 手机APP头部缓存数据 -->
+	<bean id="createAppDataCacheJob" class="com.linyang.energy.job.AppDataCacheJob"
+		init-method="init" />
+
+	<!-- 预测模型 -->
+	<bean id="calPredictModelJob" class="com.linyang.energy.job.CalPredictModelJob"
+		init-method="init" />
+
+	<!-- 小易建议评分项定时任务 -->
+	<bean id="userBodyCheckJob" class="com.linyang.energy.job.UserBodyCheckJob"
+		init-method="init" />
+
+	<!-- 更新用户活跃度定时任务 -->
+	<bean id="updateActiveStatusJob" class="com.linyang.energy.job.updateActiveStatusJob"
+		init-method="init" />
+
+
+	<!-- 停上电事件推送任务 -->
+	<bean id="pullEventJob" class="com.linyang.energy.job.PullEventJob"
+		  init-method="init">
+		<!-- interval->>执行间隔时间,最小单位1分钟,请写入正确的整数分钟数 -->
+		<property name="interval" value="5" />
+	</bean>
+
+	<!-- 自动生成服务报告(鞍山) -->
+	<bean id="PushServiceReportJob4AS" class="com.linyang.energy.job.PushServiceReportJob4AS"
+		  init-method="init">
+		<property name="beginDay" value="1" />
+		<property name="beginHour" value="10" />
+		<property name="beginMinute" value="45" />
+	</bean>
+</beans>

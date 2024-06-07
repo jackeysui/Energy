@@ -1,0 +1,363 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//ibatis.apache.org//DTD Mapper 3.0//EN" "http://ibatis.apache.org/dtd/ibatis-3-mapper.dtd">
+
+<mapper namespace="com.linyang.energy.mapping.demanddeclare.DemandDeclareMapper">
+
+    <!-- 分页获取申报记录列表 -->
+    <select id="getDecalrePageData" resultType="HashMap"
+            parameterType="HashMap">
+		SELECT LEDGER_ID AS recId, BEGIN_TIME AS beginTime,
+		DECLARE_TYPE AS declareType, DECLARE_VALUE AS declareValue,
+		DECLARE_TIME AS declareTime FROM T_LEDGER_DECLARE
+		WHERE LEDGER_ID =
+		#{ledgerId}
+		ORDER BY BEGIN_TIME DESC
+	</select>
+
+    <insert id="insert" parameterType="com.linyang.energy.model.DemandRecBean">
+		INSERT INTO T_LEDGER_DECLARE (
+		LEDGER_ID,
+		BEGIN_TIME,
+		DECLARE_TYPE,
+		DECLARE_VALUE,
+		DECLARE_TIME
+		) VALUES (
+		#{ledgerId},
+		#{beginTime},
+		#{declareType},
+		#{declareValue},
+		#{declareTime}
+		)
+	</insert>
+
+    <select id="getBeanById" parameterType="java.lang.Long"
+            resultType="com.linyang.energy.model.DemandRecBean">
+		SELECT TLD.LEDGER_ID AS recId, TLD.BEGIN_TIME AS beginTime,
+		TLD.DECLARE_TYPE AS declareType, TLD.DECLARE_VALUE AS declareValue,
+		TLD.DECLARE_TIME AS declareTime
+		FROM T_LEDGER_DECLARE TLD WHERE
+		TLD.LEDGER_ID = #{recId}
+	</select>
+
+    <update id="update" parameterType="com.linyang.energy.model.DemandRecBean">
+		UPDATE T_LEDGER_DECLARE SET
+		DECLARE_VALUE = #{declareValue,jdbcType=DECIMAL} WHERE
+		LEDGER_ID =
+		#{recId,jdbcType=DECIMAL}
+	</update>
+
+    <delete id="deleteBoByDeclareTime" parameterType="java.lang.Long">
+		DELETE
+		FROM
+		T_LEDGER_DECLARE WHERE DECLARE_TIME =#{declareTime}
+	</delete>
+
+    <delete id="deleteBoByTimeAndMeterId" parameterType="java.lang.Long">
+		DELETE FROM
+		T_LEDGER_DECLARE WHERE LEDGER_ID = #{meterId} AND
+		BEGIN_TIME =
+		#{beginTime}
+	</delete>
+
+    <!-- 根据申报月份和专变ID判断是否重复 -->
+    <select id="getBeanByTimeAndMeterId" parameterType="com.linyang.energy.model.DemandRecBean"
+            resultType="java.lang.Integer">
+		SELECT COUNT(LEDGER_ID) FROM T_LEDGER_DECLARE WHERE
+		LEDGER_ID = #{meterId} AND BEGIN_TIME = #{beginTime}
+	</select>
+
+    <select id="getDeclareValue" resultType="HashMap">
+
+		SELECT DECLARE_VALUE,DECLARE_TYPE from (
+		SELECT DECLARE_VALUE,DECLARE_TYPE FROM T_LEDGER_DECLARE WHERE LEDGER_ID =
+		#{meterId} AND BEGIN_TIME = #{beginTime}
+		ORDER BY DECLARE_TIME DESC
+		) WHERE ROWNUM = 1
+	</select>
+
+    <select id="getEmoDecalreData" resultType="HashMap">
+        WITH A AS( SELECT DISTINCT tm.METER_ID ,VOLUME ,METER_NAME FROM
+        T_METER
+        tm WHERE tm.LEDGER_ID IN ( select l1.ledger_id from t_ledger
+        l1,t_ledger
+        l2 where l1.ledger_lft>=l2.ledger_lft and l1.ledger_rgt
+        &lt;=l2.ledger_rgt
+        and l2.ledger_id = #{ledgerId} ) AND tm.METER_STATUS
+        = 1 AND
+        tm.VOLUME_TYPE
+        = 1 AND tm.VOLUME > 0 ) SELECT #{ledgerId}
+        METERID,SUM(VOLUME) VOLUME,0
+        LOSS_MODULUS,tl.LEDGER_NAME
+        METERNAME,MAXFAD1 FROM( SELECT A.METER_ID ,A.VOLUME,A.METER_NAME,
+        C.MAXFAD
+        MAXFAD1 FROM A LEFT JOIN ( SELECT max(sumAp)MAXFAD FROM(SELECT
+        FREEZE_TIME
+        AS FREEZE_TIME, sum(tc.AP) AS sumAp FROM T_CUR_AP tc JOIN A
+        ON
+        tc.METER_ID
+        = A.METER_ID WHERE FREEZE_TIME > ADD_MONTHS(
+        #{beginTime,jdbcType=TIME},-1)
+        AND FREEZE_TIME &lt;
+        #{beginTime,jdbcType=TIME} GROUP BY FREEZE_TIME)tcs
+        ) C on 1=1 ) tem
+        JOIN T_LEDGER tl ON tl.LEDGER_ID = #{ledgerId} GROUP
+        BY
+        tl.LEDGER_NAME,MAXFAD1
+        <!--WITH A AS(SELECT DISTINCT tm.METER_ID ,VOLUME ,METER_NAME FROM T_METER
+            tm WHERE tm.LEDGER_ID IN ( select l1.ledger_id from t_ledger l1,t_ledger
+            l2 where l1.ledger_lft>=l2.ledger_lft and l1.ledger_rgt &lt;=l2.ledger_rgt
+            and l2.ledger_id = #{ledgerId} ) AND tm.METER_STATUS = 1 AND tm.VOLUME_TYPE
+            = 1 AND tm.VOLUME > 0) SELECT #{ledgerId} METERID,SUM(VOLUME) VOLUME,0 LOSS_MODULUS,tl.LEDGER_NAME
+            METERNAME,MAXFAD0,MAXFAD1,MAXFAD2 FROM(SELECT A.METER_ID ,A.VOLUME,A.METER_NAME,
+            B.MAXFAD MAXFAD0, C.MAXFAD MAXFAD1,D.MAXFAD MAXFAD2 FROM A LEFT JOIN (SELECT
+            max(sumAp)MAXFAD FROM(SELECT FREEZE_TIME AS FREEZE_TIME, sum(tc.AP) AS sumAp
+            FROM T_CUR_AP tc JOIN A ON tc.METER_ID = A.METER_ID WHERE FREEZE_TIME > #{beginTime,jdbcType=TIME}
+            AND FREEZE_TIME &lt; ADD_MONTHS(#{beginTime,jdbcType=TIME},1) GROUP BY FREEZE_TIME)tcs)
+            B on 1=1 LEFT JOIN (SELECT max(sumAp)MAXFAD FROM(SELECT FREEZE_TIME AS FREEZE_TIME,
+            sum(tc.AP) AS sumAp FROM T_CUR_AP tc JOIN A ON tc.METER_ID = A.METER_ID WHERE
+            FREEZE_TIME > ADD_MONTHS( #{beginTime,jdbcType=TIME},-1) AND FREEZE_TIME
+            &lt; #{beginTime,jdbcType=TIME} GROUP BY FREEZE_TIME)tcs) C on 1=1 LEFT JOIN
+            (SELECT max(sumAp)MAXFAD FROM(SELECT FREEZE_TIME AS FREEZE_TIME, sum(tc.AP)
+            AS sumAp FROM T_CUR_AP tc JOIN A ON tc.METER_ID = A.METER_ID WHERE FREEZE_TIME
+            > ADD_MONTHS( #{beginTime,jdbcType=TIME},-12) AND FREEZE_TIME &lt; #{beginTime,jdbcType=TIME}
+            GROUP BY FREEZE_TIME)tcs) D on 1=1 ) tem JOIN T_LEDGER tl ON tl.LEDGER_ID
+            = #{ledgerId} GROUP BY tl.LEDGER_NAME,MAXFAD0,MAXFAD1,MAXFAD2 UNION ALL SELECT
+            * FROM( SELECT A.METER_ID METERID,A.VOLUME VOLUME,A.LOSS_MODULUS LOSS_MODULUS,A.METER_NAME
+            METERNAME, B.MAXFAD MAXFAD0, C.MAXFAD MAXFAD1,D.MAXFAD MAXFAD2 FROM (SELECT
+            DISTINCT tm.METER_ID ,VOLUME ,LOSS_MODULUS,METER_NAME FROM T_METER tm WHERE
+            tm.LEDGER_ID IN ( select l1.ledger_id from t_ledger l1,t_ledger l2 where
+            l1.ledger_lft>=l2.ledger_lft and l1.ledger_rgt &lt;=l2.ledger_rgt and l2.ledger_id
+            = #{ledgerId} ) AND tm.METER_STATUS = 1 AND tm.VOLUME_TYPE = 1 AND tm.VOLUME
+            > 0) A LEFT JOIN (SELECT max(MAX_FAD)MAXFAD ,METER_ID FROM T_DAY_D_TOTAL
+            WHERE FREEZE_TIME > #{beginTime,jdbcType=TIME} AND FREEZE_TIME &lt; ADD_MONTHS(#{beginTime,jdbcType=TIME},1)
+            GROUP BY METER_ID) B ON A.METER_ID = B.METER_ID LEFT JOIN (SELECT max(MAX_FAD)MAXFAD
+            ,METER_ID FROM T_DAY_D_TOTAL WHERE FREEZE_TIME > ADD_MONTHS( #{beginTime,jdbcType=TIME},-1)
+            AND FREEZE_TIME &lt; #{beginTime,jdbcType=TIME} GROUP BY METER_ID) C ON A.METER_ID
+            = C.METER_ID LEFT JOIN (SELECT max(MAX_FAD)MAXFAD ,METER_ID FROM T_DAY_D_TOTAL
+            WHERE FREEZE_TIME > ADD_MONTHS( #{beginTime,jdbcType=TIME},-12) AND FREEZE_TIME
+            &lt; #{beginTime,jdbcType=TIME} GROUP BY METER_ID) D ON A.METER_ID = D.METER_ID
+            ORDER BY A.METER_NAME) -->
+    </select>
+
+
+    <select id="getEmoDecalrePageData" resultType="HashMap">
+		SELECT
+		recId,
+		beginTime,
+		declareType,
+		declareValue,
+		LEDGER_NAME,
+		DECLARE_TIME,
+		SC
+		FROM
+		(SELECT
+		TLD.LEDGER_ID AS recId,
+		TLD.BEGIN_TIME AS beginTime,
+		TLD.DECLARE_TYPE AS declareType,
+		TLD.DECLARE_VALUE AS declareValue,
+		TL.LEDGER_NAME,
+		TLD.DECLARE_TIME,
+		ROW_NUMBER () OVER (
+		PARTITION BY
+		BEGIN_TIME
+		ORDER BY
+		DECLARE_TIME DESC
+		) AS SC
+		FROM
+		T_LEDGER_DECLARE TLD
+		JOIN T_LEDGER TL ON TL.LEDGER_ID = TLD.LEDGER_ID
+		WHERE
+		TLD.ledger_id =
+		#{meterId})
+		WHERE SC = 1
+		ORDER BY
+		beginTime DESC
+	</select>
+
+
+    <select id="getEmoDecalreByIdAndBeginTime" parameterType="HashMap"
+            resultType="HashMap">
+        SELECT
+        recId,
+        beginTime,
+        declareType,
+        declareValue,
+        LEDGER_NAME,
+        DECLARE_TIME,
+        SC
+        FROM(
+        SELECT
+        TLD.LEDGER_ID AS recId,
+        TLD.BEGIN_TIME AS
+        beginTime,
+        TLD.DECLARE_TYPE AS declareType,
+        TLD.DECLARE_VALUE AS
+        declareValue,
+        TL.LEDGER_NAME,
+        TLD.DECLARE_TIME,
+        ROW_NUMBER () OVER (
+        PARTITION BY
+        BEGIN_TIME
+        ORDER BY
+        DECLARE_TIME DESC
+        ) AS SC
+        FROM
+        T_LEDGER_DECLARE TLD
+        JOIN T_LEDGER TL ON TL.LEDGER_ID = TLD.LEDGER_ID
+        WHERE
+        TLD.ledger_id = #{meterId}
+        <if test="flag==0">
+            AND TLD.BEGIN_TIME = #{beginTime}
+        </if>
+        <if test="flag==1"><!-- 0为本月,1为本月之前的 -->
+            AND TLD.BEGIN_TIME &lt; #{beginTime}
+        </if>
+        ORDER BY BEGIN_TIME desc)
+        WHERE SC = 1
+        AND ROWNUM = 1
+    </select>
+
+
+    <select id="getEveryLsatDeclare" parameterType="HashMap"
+			resultType="HashMap">
+
+SELECT
+	recId,
+	beginTime TIME,
+	declareType,
+	declareValue,
+	LEDGER_NAME NAME,
+	DECLARE_TIME,
+	SC
+FROM
+	(
+		SELECT
+			TLD.LEDGER_ID AS recId,
+			TLD.BEGIN_TIME AS beginTime,
+			TLD.DECLARE_TYPE AS declareType,
+			TLD.DECLARE_VALUE AS declareValue,
+			TL.LEDGER_NAME,
+			TLD.DECLARE_TIME,
+			ROW_NUMBER () OVER (
+				PARTITION BY BEGIN_TIME
+				ORDER BY
+					DECLARE_TIME DESC
+			) AS SC
+		FROM
+			T_LEDGER_DECLARE TLD
+		JOIN T_LEDGER TL ON TL.LEDGER_ID = TLD.LEDGER_ID
+		WHERE
+			TLD.ledger_id = #{pointId}
+		AND TLD.BEGIN_TIME BETWEEN #{beginTime}
+		AND #{endTime}
+		ORDER BY
+			BEGIN_TIME DESC
+	)
+WHERE
+	SC = 1
+
+
+
+
+
+	</select>
+
+
+    <select id="getEmoDecalreType" resultType="int">
+		SELECT DECLARE_TYPE
+		FROM T_LEDGER_DECLARE WHERE BEGIN_TIME = #{date}
+		AND
+		LEDGER_ID =
+		#{ledgerId}
+	</select>
+
+
+    <select id="getPointNum" resultType="Integer">
+        <!-- SELECT count(*) FROM t_ledger l INNER JOIN t_meter M ON l.ledger_id
+            = M .ledger_id WHERE meter_status = 1 AND l.ledger_id IN ( SELECT t1.ledger_id
+            FROM t_ledger t1, t_ledger t2 WHERE t1.ledger_lft >= t2.ledger_lft AND t1.ledger_rgt
+            &lt;= t2.ledger_rgt AND t2.ledger_id = #{ledgerId} ) -->
+        SELECT
+        COUNT(1)
+        FROM
+        T_LEDGER_RELATION T
+        LEFT JOIN t_ledger l ON T
+        .RELATION_ID = l.LEDGER_ID
+        LEFT JOIN t_meter M ON M .METER_ID = T
+        .RELATION_ID
+        WHERE
+        T .ledger_id = #{ledgerId}
+    </select>
+
+    <select id="getMeterIdByLedgerId" resultType="Long">
+		select METER_ID
+		from T_LEDGER_METER
+		where LEDGER_ID = #{ledgerId}
+	</select>
+
+    <!-- 单采集点15分钟曲线获取最大需量 -->
+    <select id="getmaxFaqValue" resultType="Integer">
+		SELECT
+		MAX (MAX_FAD)
+		FROM
+		T_DAY_D_TOTAL
+		WHERE
+		METER_ID = #{meterId}
+		AND FREEZE_TIME BETWEEN
+		ADD_MONTHS (
+		LAST_DAY (ADD_MONTHS(SYSDATE ,- 1)) + 1 ,- 1
+		)
+		AND LAST_DAY
+		(ADD_MONTHS(SYSDATE
+		,- 1))
+		GROUP BY
+		METER_ID
+	</select>
+
+    <!-- 此sql为定时任务专用 -->
+    <select id="getAllLedgerId" resultType="List">
+		SELECT
+		*
+		FROM
+		t_ledger node,
+		t_ledger PARENT
+		WHERE
+		node.ledger_lft BETWEEN PARENT .ledger_lft
+		AND
+		PARENT.ledger_rgt
+		AND PARENT .ledger_id = 1
+		AND node.ANALY_TYPE = 102
+	</select>
+
+
+    <select id="getLsatDeclare" resultType="HashMap">
+        SELECT
+        biginTime,
+        MAXFAD
+        FROM
+        (
+        SELECT
+        begin_time biginTime,
+        declare_value MAXFAD
+        FROM
+        T_LEDGER_DECLARE
+        WHERE
+        LEDGER_ID = #{ledgerId}
+        AND
+        declare_type = 2
+        <if test="flag==0">
+            AND begin_time = #{beginTime,jdbcType=TIME}
+        </if>
+        <if test="flag==1">
+            AND begin_time &lt; #{beginTime,jdbcType=TIME}
+        </if>
+        ORDER BY
+        begin_time DESC
+        )
+        WHERE
+        ROWNUM = 1
+
+    </select>
+
+
+</mapper>

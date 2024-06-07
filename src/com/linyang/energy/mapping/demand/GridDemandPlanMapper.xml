@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.linyang.energy.mapping.demand.GridDemandPlanMapper" >
+    <!-- 获取所有方案列表 -->
+	<select id="getGridDemandPlanListPageData" parameterType="HashMap" resultType="com.linyang.energy.model.GridDemandPlanBean">
+		select t.plan_id planId,t.plan_name planName,t.plan_status planStatus,
+		to_char(t.start_date, 'yyyy-mm-dd') startDate,to_char(t.end_date, 'yyyy-mm-dd') endDate,
+		to_char(t.respond_start_time, 'hh24:mi:ss') startTime,to_char(t.respond_end_time, 'hh24:mi:ss') endTime,
+		t.pitch_peak pitchPeak,t.remarks remarks,T2.ledgerPitchPeak
+		from T_POWERGRID_DEMAND_PLAN t 
+		LEFT JOIN (SELECT T1.PLAN_ID,SUM(T1.LEDGER_PITCH_PEAK) ledgerPitchPeak  FROM  T_PLAN_LEDGER_CONFIG T1
+		GROUP BY T1.PLAN_ID) T2 ON T2.PLAN_ID=T.PLAN_ID
+		where 1=1
+		<if test="planName != ''">
+            and t.plan_name like CONCAT(CONCAT('%', #{planName}), '%')
+        </if>
+         <if test="beginDate != ''">
+          	<![CDATA[ AND t.start_date >= to_date(#{beginDate},'yyyy-mm-dd') ]]> 
+        </if>
+         <if test="endDate != ''">
+            <![CDATA[ AND t.end_date <= to_date(#{endDate},'yyyy-mm-dd') ]]> 
+        </if>
+		order by t.start_date desc,t.respond_start_time desc
+	</select>
+
+    <!-- 根据ledgerId得到响应方案列表 -->
+    <select id="getPlanLedgerConfig" parameterType="long" resultType="com.linyang.energy.model.GridDemandPlanBean">
+		 select t.plan_id planId,t.plan_name planName,t.plan_status planStatus,
+		to_char(t.start_date, 'yyyy-mm-dd') startDate,to_char(t.end_date, 'yyyy-mm-dd') endDate,
+		to_char(t.respond_start_time, 'hh24:mi:ss') startTime,to_char(t.respond_end_time, 'hh24:mi:ss') endTime,
+		t.pitch_peak pitchPeak,t.remarks remarks,t1.ledger_id ledgerId,t1.ledger_pitch_peak ledgerPitchPeak,t1.subduction_remarks subRemarks
+		from T_POWERGRID_DEMAND_PLAN t 
+		left join T_PLAN_LEDGER_CONFIG t1 on t1.plan_id=t.plan_id and t1.ledger_id=#{ledgerId}
+    	where t.plan_id=#{planId}  
+	</select>
+	
+	 <!-- 根据ledgerId得到响应方案列表 -->
+    <select id="getGridDemandPlan" parameterType="long" resultType="com.linyang.energy.model.GridDemandPlanBean">
+		select t.plan_id planId,t.plan_name planName,t.plan_status planStatus,
+		to_char(t.start_date, 'yyyy-mm-dd') startDate,to_char(t.end_date, 'yyyy-mm-dd') endDate,
+		to_char(t.respond_start_time, 'hh24:mi:ss') startTime,to_char(t.respond_end_time, 'hh24:mi:ss') endTime,
+		t.pitch_peak pitchPeak,t.remarks remarks
+		from T_POWERGRID_DEMAND_PLAN t where t.plan_id=#{planId}
+	</select>
+
+    <!-- 检查响应名称是否重复 -->
+    <select id="getDemandNumByName" resultType="java.lang.Integer">
+        select count(1) from T_POWERGRID_DEMAND_PLAN
+        where  PLAN_NAME = #{planName}
+        <if test="planId > 0">
+            and PLAN_ID != #{planId}
+        </if>
+    </select>
+
+    <!-- 插入T_POWERGRID_DEMAND_PLAN -->
+    <insert id="insertGridDemand" parameterType="com.linyang.energy.model.GridDemandPlanBean" >
+        insert into T_POWERGRID_DEMAND_PLAN(plan_id,plan_name,plan_status,start_date,end_date,respond_start_time,respond_end_time,pitch_peak,remarks)
+         values(#{planId},#{planName},#{planStatus},to_date(#{startDate},'yyyy-mm-dd'),to_date(#{endDate},'yyyy-mm-dd'),to_date(#{startTime},'hh24:mi:ss'),to_date(#{endTime},'hh24:mi:ss'),#{pitchPeak},#{remarks})
+    </insert>
+
+    <!-- 插入T_PLAN_LEDGER_CONFIG -->
+    <insert id="insertPlanLedgerConfig" parameterType="com.linyang.energy.model.GridDemandPlanBean" >
+        insert into T_PLAN_LEDGER_CONFIG(PLAN_ID,LEDGER_ID,LEDGER_PITCH_PEAK,SUBDUCTION_REMARKS)
+         values(#{planId},#{ledgerId},#{ledgerPitchPeak},#{subRemarks})
+    </insert>
+
+    <!-- 更新T_POWERGRID_DEMAND_PLAN -->
+    <update id="updateGridDemand">
+        update T_POWERGRID_DEMAND_PLAN set plan_name=#{planName},plan_status=#{planStatus},start_date=to_date(#{startDate},'yyyy-mm-dd'),end_date=to_date(#{endDate},'yyyy-mm-dd'),
+ 		respond_start_time=to_date(#{startTime},'hh24:mi:ss'),respond_end_time=to_date(#{endTime},'hh24:mi:ss'),pitch_peak=#{pitchPeak},remarks=#{remarks}
+ 		where plan_id=#{planId}
+    </update>
+    
+    <!-- 更新T_POWERGRID_DEMAND_PLAN -->
+    <update id="updatePlanStatus">
+        update T_POWERGRID_DEMAND_PLAN set plan_status=#{planStatus} where plan_id=#{planId}
+    </update>
+    
+     <!-- 更新T_PLAN_LEDGER_CONFIG -->
+    <update id="updatePlanLedgerConfig">
+        update T_PLAN_LEDGER_CONFIG set LEDGER_PITCH_PEAK=#{ledgerPitchPeak},SUBDUCTION_REMARKS=#{subRemarks}
+ 		where PLAN_ID=#{planId} and LEDGER_ID=#{ledgerId}
+    </update>
+
+    <!-- 删除T_RESPONSE_PLAN -->
+    <delete id="deleteGridDemand" parameterType="Long">
+        delete from T_POWERGRID_DEMAND_PLAN t where t.PLAN_ID = #{planId}
+    </delete>
+
+    <!-- 删除T_PLAN_LEDGER_CONFIG -->
+    <delete id="deletePlanLedgerConfig" >
+        delete from T_PLAN_LEDGER_CONFIG t where t.PLAN_ID = #{planId} 
+        <if test="ledgerId > 0">
+             and t.LEDGER_ID=#{ledgerId}
+        </if>
+    </delete>
+
+    <!-- 插入T_PLAN_LOAD_CONFIG -->
+    <insert id="insertPlanLoadConfig">
+       insert into T_PLAN_LOAD_CONFIG (PLAN_ID,LEDGER_ID,LOAD_ID,TYPE)
+ 		values(#{planId},#{ledgerId},#{loadId},#{type})
+    </insert>
+    
+     <!-- 删除T_PLAN_LOAD_CONFIG -->
+    <delete id="deletePlanLoadConfig" >
+        delete from T_PLAN_LOAD_CONFIG t where t.PLAN_ID = #{planId} 
+         <if test="ledgerId > 0">
+             and t.LEDGER_ID=#{ledgerId}
+        </if>
+    </delete>
+
+    <!-- 获取能管对象可中断负荷 -->
+    <select id="getPlanLedgerLoad" resultType="HashMap">
+        select t2.ledger_id loadId,t2.ledger_name loadName,t1.type
+     from T_PLAN_LOAD_CONFIG t1,t_ledger t2 where t2.ledger_id=t1.load_id
+    and t1.type=1 and t1.plan_id=#{planId} and t1.ledger_id=#{ledgerId}
+    </select>
+    
+     <!-- 获取采集点可中断负荷 -->
+    <select id="getPlanMeterLoad" resultType="HashMap">
+        select t2.meter_id loadId,t2.meter_name loadName,t1.type
+       from T_PLAN_LOAD_CONFIG t1,t_meter t2 where t2.meter_id=t1.load_id
+      and t1.type=2 and t1.plan_id=#{planId} and t1.ledger_id=#{ledgerId}
+    </select>
+    
+    <!-- 根据ledgerId得到响应方案列表 -->
+    <select id="getPlanLedgerCount" parameterType="long" resultType="int">
+		 select count(1)
+		from T_PLAN_LEDGER_CONFIG t1 
+    	where t1.plan_id=#{planId}  
+	</select>
+	
+	<!-- 插入T_POWERGRID_DEMAND_PLAN -->
+    <insert id="saveLedgerPeakloadConfig" parameterType="com.linyang.energy.model.EntPeakAbility" >
+       merge into T_LEDGER_PEAKLOAD_CONFIG t using (select #{ledgerId,jdbcType=NUMERIC} as ledgerId,#{ledgerName,jdbcType=VARCHAR} as ledgerName,
+  #{monUpper,jdbcType=NUMERIC} as monUpper,#{monLower,jdbcType=NUMERIC} as monLower,#{tuesUpper,jdbcType=NUMERIC} as tuesUpper,#{tuesLower,jdbcType=NUMERIC} as tuesLower,
+  #{wedUpper,jdbcType=NUMERIC} as wedUpper,#{wedLower,jdbcType=NUMERIC} as wedLower,#{thurUpper,jdbcType=NUMERIC} as thurUpper, #{thurLower,jdbcType=NUMERIC} as thurLower,
+  #{friUpper,jdbcType=NUMERIC} as friUpper,#{friLower,jdbcType=NUMERIC} as friLower, #{satUpper,jdbcType=NUMERIC} as satUpper,#{satLower,jdbcType=NUMERIC} as satLower,
+  #{sunUpper,jdbcType=NUMERIC} as sunUpper, #{sunLower,jdbcType=NUMERIC} as sunLower,#{remarks,jdbcType=VARCHAR} as remarks from dual) s
+    on ( s.ledgerId=t.ledger_id )
+    when matched then update set t.mon_up = s.monUpper,t.mon_down=s.monLower,t.tue_up=s.tuesUpper,t.tue_down=s.tuesLower,
+    t.wed_up=s.wedUpper,t.wed_down=s.wedLower,t.thur_up=s.thurUpper,t.thur_down=s.thurLower,t.fri_up=s.friUpper,t.fri_down=s.friLower,
+    t.sat_up=s.satUpper,t.sat_down=s.satLower,t.sun_up=s.sunUpper,t.sun_down=s.sunLower,t.remarks=s.remarks
+    when not matched then insert(ledger_id,ledger_name,mon_up,mon_down,tue_up,tue_down,wed_up,wed_down,thur_up,thur_down,fri_up,fri_down,
+    sat_up,sat_down,sun_up,sun_down,remarks)
+     values
+      (s.ledgerId,s.ledgerName,s.monUpper,s.monLower,s.tuesUpper,s.tuesLower,s.wedUpper,s.wedLower,s.thurUpper,s.thurLower,
+      s.friUpper,s.friLower,s.satUpper,s.satLower,s.sunUpper,s.sunLower,s.remarks)
+    </insert>
+    
+     <!-- 获取所有方案列表 -->
+	<select id="getLedgerPeakConfigPageData" parameterType="HashMap" resultType="com.linyang.energy.model.EntPeakAbility">
+        WITH LEDGER_VIEW AS (
+        SELECT T1.LEDGER_ID,T1.LEDGER_NAME FROM T_LEDGER T1,T_LEDGER T2
+        WHERE T1.LEDGER_LFT >= T2.LEDGER_LFT AND T1.LEDGER_RGT &lt;= T2.LEDGER_RGT
+        AND T2.LEDGER_ID = #{ledgerId} AND T1.ANALY_TYPE = 102
+        )
+        SELECT T.LEDGER_ID AS LEDGERID,T.LEDGER_NAME AS LEDGERNAME,
+        T.MON_UP AS MONUPPER,T.MON_DOWN AS MONLOWER,T.TUE_UP AS TUESUPPER,T.TUE_DOWN AS TUESLOWER,
+        T.WED_UP AS WEDUPPER,T.WED_DOWN AS WEDLOWER,T.THUR_UP AS THURUPPER,T.THUR_DOWN AS THURLOWER,
+        T.FRI_UP AS FRIUPPER,T.FRI_DOWN AS FRILOWER, T.SAT_UP AS SATUPPER,T.SAT_DOWN AS SATLOWER,
+        T.SUN_UP AS SUNUPPER, T.SUN_DOWN AS SUNLOWER,T.REMARKS AS REMARKS
+        FROM T_LEDGER_PEAKLOAD_CONFIG T
+        WHERE T.LEDGER_ID IN (
+        SELECT LEDGER_ID FROM LEDGER_VIEW
+        ) ORDER BY T.LEDGER_NAME
+	</select>
+	
+	 <!-- 根据ledgerId -->
+    <select id="getLedgerPeakConfig" parameterType="long" resultType="com.linyang.energy.model.EntPeakAbility">
+		select t.ledger_id as ledgerId,t.ledger_name as ledgerName,
+	  t.mon_up as monUpper,t.mon_down as monLower,t.tue_up as tuesUpper,t.tue_down as tuesLower,
+	  t.wed_up as wedUpper,t.wed_down as wedLower,t.thur_up as thurUpper,t.thur_down as thurLower,
+	 t.fri_up as friUpper,t.fri_down as friLower, t.sat_up as satUpper,t.sat_down as satLower,
+	  t.sun_up as sunUpper, t.sun_down as sunLower,t.remarks as remarks 
+	  from T_LEDGER_PEAKLOAD_CONFIG t where t.ledger_id=#{ledgerId}
+	</select>
+	
+	<!-- 删除T_LEDGER_PEAKLOAD_CONFIG -->
+    <delete id="deleteLedgerPeakConfig" >
+        delete from T_LEDGER_PEAKLOAD_CONFIG t where t.ledger_id = #{ledgerId} 
+    </delete>
+
+    <select id="getLedgerList" resultType="com.linyang.energy.model.LedgerBean">
+        SELECT T1.LEDGER_ID LEDGERID,T1.LEDGER_NAME LEDGERNAME FROM T_LEDGER T1,T_LEDGER T2
+        WHERE T1.LEDGER_LFT>=T2.LEDGER_LFT AND T1.LEDGER_RGT &lt;= T2.LEDGER_RGT
+        AND T2.LEDGER_ID=#{ledgerId} AND T1.ANALY_TYPE = 102
+    </select>
+</mapper>

@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.linyang.energy.mapping.authmanager.DictTypeDetailBeanMapper" >
+  <resultMap id="BaseResultMap" type="com.linyang.energy.model.DictTypeDetailBean" >
+    <id column="DETAIL_ID" property="detailId" jdbcType="DECIMAL" />
+    <result column="DETAIL_NAME" property="detailName" jdbcType="VARCHAR" />
+    <result column="STATUS" property="status" jdbcType="DECIMAL" />
+    <result column="TYPE_REMARK" property="typeRemark" jdbcType="VARCHAR" />
+    <result column="SERIAL_NUMBER" property="serialNumber" jdbcType="DECIMAL" />
+    <result column="CATE_ID" property="cateId" jdbcType="DECIMAL" />
+  </resultMap>
+  <sql id="Base_Column_List" >
+    DETAIL_ID, DETAIL_NAME, STATUS, TYPE_REMARK, SERIAL_NUMBER, CATE_ID
+  </sql>
+   <!-- 获取大类下面的直接小类 -->
+  <select id="selectByPrimaryKey" resultMap="BaseResultMap" parameterType="java.lang.Long" >
+    select 
+    <include refid="Base_Column_List" />
+    from T_DICT_TYPE_DETAIL
+    where CATE_ID = #{cateId,jdbcType=DECIMAL}
+    order by serial_number
+  </select>
+  <delete id="deleteByPrimaryKey" parameterType="java.lang.Long" >
+    delete from T_DICT_TYPE_DETAIL
+    where DETAIL_ID = #{detailId,jdbcType=DECIMAL}
+  </delete>
+  <insert id="insert" parameterType="com.linyang.energy.model.DictTypeDetailBean" >
+    insert into T_DICT_TYPE_DETAIL (DETAIL_ID, DETAIL_NAME, STATUS, 
+      TYPE_REMARK, SERIAL_NUMBER, CATE_ID
+      )
+    values (#{detailId,jdbcType=DECIMAL}, #{detailName,jdbcType=VARCHAR}, #{status,jdbcType=DECIMAL}, 
+      #{typeRemark,jdbcType=VARCHAR}, #{serialNumber,jdbcType=DECIMAL}, #{cateId,jdbcType=DECIMAL}
+      )
+  </insert>
+  <insert id="insertSelective" parameterType="com.linyang.energy.model.DictTypeDetailBean" >
+    insert into T_DICT_TYPE_DETAIL
+    <trim prefix="(" suffix=")" suffixOverrides="," >
+      <if test="detailId != null" >
+        DETAIL_ID,
+      </if>
+      <if test="detailName != null" >
+        DETAIL_NAME,
+      </if>
+      <if test="status != null" >
+        STATUS,
+      </if>
+      <if test="typeRemark != null" >
+        TYPE_REMARK,
+      </if>
+      <if test="serialNumber != null" >
+        SERIAL_NUMBER,
+      </if>
+      <if test="cateId != null" >
+        CATE_ID,
+      </if>
+    </trim>
+    <trim prefix="values (" suffix=")" suffixOverrides="," >
+      <if test="detailId != null" >
+        #{detailId,jdbcType=DECIMAL},
+      </if>
+      <if test="detailName != null" >
+        #{detailName,jdbcType=VARCHAR},
+      </if>
+      <if test="status != null" >
+        #{status,jdbcType=DECIMAL},
+      </if>
+      <if test="typeRemark != null" >
+        #{typeRemark,jdbcType=VARCHAR},
+      </if>
+      <if test="serialNumber != null" >
+        #{serialNumber,jdbcType=DECIMAL},
+      </if>
+      <if test="cateId != null" >
+        #{cateId,jdbcType=DECIMAL},
+      </if>
+    </trim>
+  </insert>
+  <update id="updateByPrimaryKeySelective" parameterType="com.linyang.energy.model.DictTypeDetailBean" >
+    update T_DICT_TYPE_DETAIL
+    <set >
+      <if test="detailName != null" >
+        DETAIL_NAME = #{detailName,jdbcType=VARCHAR},
+      </if>
+      <if test="status != null" >
+        STATUS = #{status,jdbcType=DECIMAL},
+      </if>
+      <if test="attribute != null" >
+        TYPE_REMARK = #{typeRemark,jdbcType=VARCHAR},
+      </if>
+      <if test="serialNumber != null" >
+        SERIAL_NUMBER = #{serialNumber,jdbcType=DECIMAL},
+      </if>
+      <if test="cateId != null" >
+        CATE_ID = #{cateId,jdbcType=DECIMAL},
+      </if>
+    </set>
+    where DETAIL_ID = #{detailId,jdbcType=DECIMAL}
+  </update>
+  <update id="updateByPrimaryKey" parameterType="com.linyang.energy.model.DictTypeDetailBean" >
+    update T_DICT_TYPE_DETAIL
+    set DETAIL_NAME = #{detailName,jdbcType=VARCHAR},
+      STATUS = #{status,jdbcType=DECIMAL},
+      TYPE_REMARK = #{typeRemark,jdbcType=VARCHAR},
+      SERIAL_NUMBER = #{serialNumber,jdbcType=DECIMAL},
+      CATE_ID = #{cateId,jdbcType=DECIMAL}
+    where DETAIL_ID = #{detailId,jdbcType=DECIMAL}
+  </update>
+   <!-- 获取数据字典父类 下面子父类的个数-->
+  <select id = "getCountParentTreeById" resultType="int">
+     	SELECT COUNT(*) CNT FROM T_DICT_CATEGORY WHERE CATE_PARENT_ID=#{parentId}
+  </select>
+  <!-- 获取数据字典父类 下面子类的个数-->
+  <select id = "getCountChildTreeById" resultType="int">
+     	SELECT COUNT(*) CNT FROM T_DICT_TYPE_DETAIL WHERE CATE_ID=#{parentId}
+  </select>
+  <!-- 获取数据字典父类 -->
+  <select id = "getParentTree" resultType="com.linyang.energy.dto.CatergoryTreeBean">
+     SELECT A.CATE_ID AS id,A.CATE_PARENT_ID AS pId,A.CATE_NAME AS name,1 AS treeNodeType FROM T_DICT_CATEGORY A where A.CATE_PARENT_ID = 0
+     
+  </select>
+	 <!-- 判断名称是否重复 -->
+	<select id="checkName" parameterType="java.lang.String" resultType="int">
+		SELECT    COUNT(*) FROM T_DICT_TYPE_DETAIL T WHERE T.DETAIL_NAME=#{name}
+		<if test="operType == 0">
+			AND T.DETAIL_NAME != #{name}
+		</if>
+	</select>
+  <!-- 获取数据字典的子类 -->
+  <select id="getChildTree" resultType="com.linyang.energy.dto.CatergoryTreeBean">
+		    SELECT B.CATE_ID        AS id,
+			       B.CATE_PARENT_ID AS pId,
+			       B.CATE_NAME      AS name,
+			       1                AS treeNodeType
+			  FROM T_DICT_CATEGORY B
+			 WHERE 
+			    B.CATE_PARENT_ID =#{parentId}
+			union all
+			SELECT B.DETAIL_ID   AS id,
+			       B.CATE_ID     AS pId,
+			       B.DETAIL_NAME AS name,
+			       2             AS treeNodeType
+			  FROM  T_DICT_TYPE_DETAIL B
+			 WHERE 
+			     B.CATE_ID = #{parentId}
+  </select>
+</mapper>

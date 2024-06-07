@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8" ?> 
+<!DOCTYPE mapper PUBLIC "-//ibatis.apache.org//DTD Mapper 3.0//EN" "http://ibatis.apache.org/dtd/ibatis-3-mapper.dtd">
+
+<mapper namespace="com.linyang.energy.mapping.reportanalysis.ReportDownloadMapper">
+
+	<select id="queryReportPageList" resultType="HashMap">
+		SELECT T1.LEDGER_ID "ledgerId",T3.LEDGER_NAME "ledgerName",T1.YM "reportDate",T1.REPORT_PATH "reportPath" FROM T_REPORT_FILE_PATH T1
+		JOIN (
+		SELECT T1.LEDGER_ID AS ID, T1.LEDGER_NAME AS NAME, 1 AS TYPE FROM T_LEDGER T1,T_LEDGER T2
+		WHERE T1.LEDGER_LFT>=T2.LEDGER_LFT AND T1.LEDGER_RGT &lt;=T2.LEDGER_RGT AND T2.LEDGER_ID=#{ledgerId}
+		AND T1.ANALY_TYPE = 102
+		) T2 ON T1.LEDGER_ID = T2.ID
+		JOIN T_LEDGER T3 ON T1.LEDGER_ID = T3.LEDGER_ID
+		WHERE TO_DATE(T1.YM,'YYYY-MM') = TO_DATE(#{reportDate},'YYYY-MM')
+	</select>
+
+
+	<select id="queryLedgerByRegion" resultType="HashMap">
+        select t1.ledger_id as id, t1.ledger_name as name, 1 as type from t_ledger t1,t_ledger t2
+        where t1.ledger_lft>=t2.ledger_lft and t1.ledger_rgt &lt;=t2.ledger_rgt and t2.ledger_id=#{ledgerId}
+        and t1.analy_type = 102
+    </select>
+
+
+
+    <select id="queryReport" resultType="HashMap">
+		SELECT T1.LEDGER_ID "ledgerId",T3.LEDGER_NAME "ledgerName",T1.YM "reportDate",T1.REPORT_PATH "reportPath" FROM T_REPORT_FILE_PATH T1
+		JOIN T_LEDGER T3 ON T1.LEDGER_ID = T3.LEDGER_ID
+		WHERE TO_DATE(T1.YM,'YYYY-MM') = TO_DATE(#{reportDate},'YYYY-MM')
+		AND T1.LEDGER_ID = #{ledgerId}
+	</select>
+
+
+
+
+
+
+
+
+</mapper>

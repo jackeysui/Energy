@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8" ?> 
+<!DOCTYPE mapper PUBLIC "-//ibatis.apache.org//DTD Mapper 3.0//EN" "http://ibatis.apache.org/dtd/ibatis-3-mapper.dtd">
+
+<mapper namespace="com.linyang.energy.mapping.energysavinganalysis.DayMDMapper">
+	<!-- 
+	<select id="queryDayMDData" parameterType="HashMap" resultType="com.linyang.energy.model.CurveBean">
+		<if test="treeType == 1">
+            WITH TCS AS(SELECT TRUNC(FREEZE_TIME) AS FREEZE_TIME,SUM(TC.AP * T.ADD_ATTR * T.PCT / 100) AS SUMAP
+            FROM T_CUR_AP TC , T_LEDGER_METER T , T_METER TM
+            WHERE T.METER_ID = TM.METER_ID AND TC.METER_ID = TM.METER_ID AND T.LEDGER_ID = #{meterId,jdbcType=DECIMAL} AND TC.FREEZE_TIME BETWEEN #{beginTime,jdbcType=TIMESTAMP} AND #{endTime,jdbcType=TIMESTAMP}
+            GROUP BY FREEZE_TIME)
+
+            SELECT #{meterId,jdbcType=DECIMAL} AS meterId,TCSMAX.TRUNCTIME AS freezeTime,TCSMAX.MAX AS max,TCS.FREEZE_TIME AS maxTime FROM (SELECT TCS.FREEZE_TIME TRUNCTIME, MAX(TCS.SUMAP) MAX
+            FROM TCS GROUP BY TCS.FREEZE_TIME) TCSMAX
+            JOIN TCS ON TCSMAX.MAX = TCS.SUMAP AND TCSMAX.TRUNCTIME = TCS.FREEZE_TIME
+            ORDER BY METERID,FREEZETIME,MAXTIME
+		</if>
+		<if test="treeType == 2">
+			SELECT METER_ID AS meterId, FREEZE_TIME AS freezeTime, MAX_FAD AS max, MAX_FAD_TIME AS maxTime 
+			FROM T_DAY_D_TOTAL WHERE METER_ID = #{meterId,jdbcType=DECIMAL} AND FREEZE_TIME BETWEEN #{beginTime,jdbcType=TIMESTAMP} AND  #{endTime,jdbcType=TIMESTAMP}
+		</if>
+	</select> -->
+	<!--  -->
+	<select id="queryDayMDData" parameterType="HashMap" resultType="com.linyang.energy.model.CurveBean">
+		<if test="treeType == 1">
+            WITH TCS AS(SELECT TRUNC(FREEZE_TIME) AS TRUNC_FREEZE_TIME,FREEZE_TIME,
+			SUM(TC.AP * T.ADD_ATTR * T.PCT / 100) AS SUMAP
+            FROM T_CUR_AP TC , T_LEDGER_METER T , T_METER TM
+            WHERE T.METER_ID = TM.METER_ID AND TC.METER_ID = TM.METER_ID AND TM.VOLUME_TYPE=1
+			AND T.LEDGER_ID = #{meterId,jdbcType=DECIMAL} 
+			AND TC.FREEZE_TIME BETWEEN #{beginTime,jdbcType=TIMESTAMP} AND #{endTime,jdbcType=TIMESTAMP}
+            GROUP BY FREEZE_TIME)
+            
+            SELECT #{meterId,jdbcType=DECIMAL} AS METERID,TCS.FREEZE_TIME MAXTIME,TCSMAX.MAX,TCS.TRUNC_FREEZE_TIME FREEZETIME FROM 
+			(SELECT TCS.TRUNC_FREEZE_TIME,MAX(TCS.SUMAP) MAX FROM TCS GROUP BY TCS.TRUNC_FREEZE_TIME) TCSMAX
+			JOIN TCS ON TCSMAX.MAX = TCS.SUMAP AND TCSMAX.TRUNC_FREEZE_TIME=TCS.TRUNC_FREEZE_TIME
+			ORDER BY METERID,FREEZETIME,MAXTIME
+		</if>
+		<if test="treeType == 2">
+			SELECT METER_ID AS meterId, FREEZE_TIME AS freezeTime, MAX_FAD AS max, MAX_FAD_TIME AS maxTime 
+			FROM T_DAY_D_TOTAL WHERE METER_ID = #{meterId,jdbcType=DECIMAL} AND FREEZE_TIME BETWEEN #{beginTime,jdbcType=TIMESTAMP} AND  #{endTime,jdbcType=TIMESTAMP}
+		</if>
+	</select>
+	
+	<select id="getDemandThres" resultType="java.lang.Double">
+		<if test="treeType == 1">
+			SELECT T1.DEMAND_THRES FROM T_RATE T1
+				LEFT JOIN T_LEDGER T2 
+				ON T1.RATE_ID = T2.RATE_ID
+				WHERE T2.LEDGER_ID = #{meterId}
+		</if>
+		<if test="treeType == 2">
+			SELECT T1.DEMAND_THRES FROM T_RATE T1
+				LEFT JOIN T_LEDGER T2 
+				ON T1.RATE_ID = T2.RATE_ID
+				LEFT JOIN T_METER T3
+				ON T2.LEDGER_ID = T3.LEDGER_ID
+				WHERE T3.METER_ID = #{meterId}
+		</if>
+	</select>
+	
+	<select id="getLedgerVolumeByLedgerId" resultType="java.lang.Long">
+		select sum(tm.volume) volume from t_meter tm
+	    WHERE tm.LEDGER_ID IN (
+			    select l1.ledger_id from t_ledger l1,t_ledger l2
+			        where l1.ledger_lft>=l2.ledger_lft and l1.ledger_rgt &lt;=l2.ledger_rgt
+			        and l2.ledger_id = #{ledgerId}
+			  )AND tm.METER_STATUS = 1 AND tm.VOLUME_TYPE = 1 AND tm.VOLUME > 0
+	</select>
+</mapper>

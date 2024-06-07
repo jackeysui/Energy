@@ -1,0 +1,444 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.linyang.energy.mapping.authmanager.GroupBeanMapper">
+	<resultMap id="GroupResultMap" type="com.linyang.energy.model.GroupBean">
+		<id column="GROUP_ID" property="groupId" jdbcType="DECIMAL" />
+		<result column="GROUP_NAME" property="groupName" jdbcType="VARCHAR" />
+		<result column="PUBLIC_TYPE" property="publicType" jdbcType="DECIMAL" />
+		<result column="GROUP_TYPE" property="groupType" jdbcType="DECIMAL" />
+		<result column="GROUP_REMARK" property="groupRemark" jdbcType="VARCHAR" />
+		<result column="CREATE_ACCOUNT" property="accountId" jdbcType="VARCHAR" />
+	</resultMap>
+	<sql id="Group_Column_List">
+		GROUP_ID, GROUP_NAME, PUBLIC_TYPE, GROUP_TYPE, GROUP_REMARK, CREATE_ACCOUNT
+	</sql>
+	
+	<select id="getGroupById" resultMap="GroupResultMap"
+		parameterType="java.lang.Long">
+		select
+		<include refid="Group_Column_List" />
+		from t_group 
+    	 where GROUP_ID = #{groupId,jdbcType=DECIMAL}
+	</select>
+    
+    <select id="getGroupsByParam" resultMap="GroupResultMap" parameterType="HashMap">
+		select
+		<include refid="Group_Column_List" />
+		from t_group where 1 = 1
+    	<if test="accountId != null">
+   			and CREATE_ACCOUNT = #{accountId,jdbcType=DECIMAL}
+     	</if>
+		<if test="groupType != null">
+			and GROUP_TYPE = #{groupType,jdbcType=DECIMAL}	
+     	</if>
+     	<if test="groupName != null">
+			and GROUP_NAME = #{groupName}
+     	</if>
+	</select>
+
+	<select id="getGroupByPublicType" resultMap="GroupResultMap"
+		parameterType="java.lang.Integer">
+		select
+		<include refid="Group_Column_List" />
+		from t_group 
+    	 where PUBLIC_TYPE = #{publicType,jdbcType=DECIMAL}
+	</select>
+
+	<select id="getGroupByGroupType" resultMap="GroupResultMap"
+		parameterType="java.lang.Integer">
+		select
+		<include refid="Group_Column_List" />
+		from t_group 
+    	 where GROUP_TYPE = #{groupType,jdbcType=DECIMAL}
+	</select>
+
+	<insert id="addGroup" parameterType="com.linyang.energy.model.GroupBean">
+		insert into T_GROUP
+		(
+		<include refid="Group_Column_List" />
+		)
+		values
+		(
+		#{groupId,jdbcType=DECIMAL},
+		#{groupName,jdbcType=VARCHAR},
+		#{publicType,jdbcType=DECIMAL},
+		#{groupType,jdbcType=DECIMAL},
+		#{groupRemark,jdbcType=VARCHAR},
+		#{accountId,jdbcType=DECIMAL}
+		
+		)
+  </insert>
+
+	<update id="updateGroup" parameterType="com.linyang.energy.model.GroupBean">
+		update T_GROUP
+		<set>
+			<if test="groupName != null">
+				GROUP_NAME = #{groupName,jdbcType=VARCHAR},
+      </if>
+			<if test="publicType != null">
+				PUBLIC_TYPE = #{publicType,jdbcType=DECIMAL},
+      </if>
+			<if test="groupType != null">
+				GROUP_TYPE = #{groupType,jdbcType=DECIMAL},
+      </if>
+			<if test="groupRemark != null">
+				GROUP_REMARK = #{groupRemark,jdbcType=VARCHAR},
+      </if>
+     		 <if test="accountId != null">
+				CREATE_ACCOUNT = #{accountId,jdbcType=VARCHAR},
+      </if>
+		</set>
+		where GROUP_ID = #{groupId,jdbcType=DECIMAL}
+	</update>
+
+	<delete id="deleteGroup" parameterType="java.lang.Long">
+		delete from T_GROUP
+		where GROUP_ID = #{groupId,jdbcType=DECIMAL}
+  </delete>
+
+	<select id="getUserGroupByPublicType" resultMap="GroupResultMap">
+		select
+		<include refid="Group_Column_List" />
+		from t_group
+    	 where 1=1 
+ 		<if test="accountId != null">
+   			and CREATE_ACCOUNT = #{accountId,jdbcType=DECIMAL}
+     	</if>
+		<if test="publicType != null">
+			and PUBLIC_TYPE = #{publicType,jdbcType=DECIMAL}	
+     	</if>
+	</select>
+	
+	<select id="getUserGroupByType" resultMap="GroupResultMap"
+		parameterType="java.lang.Long">
+		select
+		<include refid="Group_Column_List" />
+		from t_group where 1=1
+ 		<if test="accountId != null">
+   			and CREATE_ACCOUNT = #{accountId,jdbcType=DECIMAL}
+     	</if>
+     	<if test="publicType != null">
+			and PUBLIC_TYPE = #{publicType,jdbcType=DECIMAL}	
+     	</if>
+		<if test="groupType != null">
+			and GROUP_TYPE = #{groupType,jdbcType=DECIMAL}	
+     	</if>
+	</select>
+	
+	<select id="getGroupPageList" resultMap="GroupResultMap"
+		parameterType="java.lang.Long">
+		select tg.GROUP_ID groupId, tg.GROUP_NAME groupName, tg.PUBLIC_TYPE publicType, tg.GROUP_TYPE groupType, tg.GROUP_REMARK groupRemark, tg.CREATE_ACCOUNT accountId, ta.LOGIN_NAME accountName
+		from t_group tg JOIN T_ACCOUNT ta ON tg.CREATE_ACCOUNT = ta.ACCOUNT_ID where 1=1
+        <if test="accountId != null and accountId != 1">
+            and ta.account_id = #{accountId}
+        </if>
+		<if test="groupType != null">
+			and GROUP_TYPE = #{groupType,jdbcType=DECIMAL}	
+     	</if>
+     	<if test="groupName != null and groupName != ''">
+			and GROUP_NAME LIKE '%' || #{groupName} || '%'
+     	</if>
+        ORDER BY ta.ACCOUNT_ID,tg.GROUP_ID desc
+	</select>
+	
+	<select id="getUserGroupRealtionByType" resultMap="GroupResultMap"
+		parameterType="java.lang.Long">
+		select T.GROUP_ID, T.GROUP_NAME, T.PUBLIC_TYPE, T.GROUP_TYPE, T.GROUP_REMARK, T.CREATE_ACCOUNT
+		from t_group T,t_group_account A where T.group_id = A.group_id(+)
+ 		<if test="accountId != null">
+   			and A.ACCOUNT_ID = #{accountId,jdbcType=DECIMAL}
+     	</if>
+     	<if test="publicType != null">
+			and T.PUBLIC_TYPE = #{publicType,jdbcType=DECIMAL}	
+     	</if>
+		<if test="groupType != null">
+			and T.GROUP_TYPE = #{groupType,jdbcType=DECIMAL}	
+     	</if>
+	</select>
+	
+	<insert id="addAccountGroupRelation">
+		insert into T_GROUP_ACCOUNT
+		(ACCOUNT_ID,
+		GROUP_ID
+		)
+		values
+		(
+		#{accountId,jdbcType=DECIMAL},
+		#{groupId,jdbcType=DECIMAL}
+		)
+  </insert>
+  
+  
+  <resultMap id="LedgerResultMap" type="com.linyang.energy.model.LedgerBean" >
+		<id column="LEDGER_ID"            property="ledgerId"        jdbcType="DECIMAL" />
+		<result column="LEDGER_NAME"      property="ledgerName"      jdbcType="VARCHAR" />
+		<result column="NUMBER_OF_PEOPLE" property="numberOfPeople"  jdbcType="DECIMAL" />
+		<result column="USE_AREA"         property="useArea"         jdbcType="DECIMAL" />
+		<result column="DEPTH"            property="depth"           jdbcType="DECIMAL" />
+		<result column="LEDGER_LFT"       property="ledgerLft"       jdbcType="DECIMAL" />
+		<result column="LEDGER_RGT"       property="ledgerRgt"       jdbcType="DECIMAL" />
+		<result column="PARENT_LEDGER_ID" property="parentLedgerId"  jdbcType="DECIMAL" />
+		<result column="COLLMETER_NUMBER" property="collmeterNumber" jdbcType="DECIMAL" />
+		<result column="RATE_ID"          property="rateId"          jdbcType="DECIMAL" />
+		<result column="LEDGER_REMARK"    property="ledgerRemark"    jdbcType="VARCHAR" />
+		<result column="THRESHOLD_ID"     property="thresholdId"     jdbcType="DECIMAL" />
+		<result column="THRESHOLD_NAME"   property="thresholdName"   jdbcType="VARCHAR" />
+		<result column="THRESHOLD_VALUE"  property="thresholdValue"  jdbcType="VARCHAR" />
+		<result column="X"                property="x"               jdbcType="DOUBLE" />
+		<result column="Y"                property="y"               jdbcType="DOUBLE" />
+		<result column="PIC_ID"           property="picId"           jdbcType="DECIMAL" />
+		<result column="ANALY_TYPE"       property="analyType"       jdbcType="INTEGER" />
+		<result column="INHERIT"          property="inherit"         jdbcType="INTEGER" />
+		
+		<result column="USER_NO"          property="userNo"          jdbcType="VARCHAR" />
+		<result column="INDUSTRY_TYPE"    property="industryType"    jdbcType="DECIMAL" />
+		<result column="REGION"           property="region"          jdbcType="VARCHAR" />
+		<result column="CONTACTS"         property="contacts"        jdbcType="VARCHAR" />
+		<result column="CONTACT_INFO"     property="contactInfo"     jdbcType="VARCHAR" />
+		<result column="ADDRESS"          property="address"         jdbcType="VARCHAR" />
+		
+	</resultMap>
+	
+	<sql id="Ledger_Column_List" >
+		A.LEDGER_ID, A.LEDGER_NAME,A.NUMBER_OF_PEOPLE,A.USE_AREA,A.DEPTH,A.LEDGER_LFT,A.LEDGER_RGT,A.PARENT_LEDGER_ID, 
+A.COLLMETER_NUMBER, A.RATE_ID,A.LEDGER_REMARK,A.X,A.Y,A.PIC_ID,A.ANALY_TYPE,A.INHERIT,A.USER_NO,A.REGION,A.CONTACTS,A.CONTACT_INFO,A.ADDRESS,A.INDUSTRY_TYPE 
+	</sql>
+  
+  <select id="getGroupLedger" resultType="com.linyang.energy.model.LedgerBean">
+		SELECT distinct v1.node_ledger as ledgerId, v1.node_name as ledgerName, p.rate_id as rateId
+  FROM v_ledger_tree v1, t_group_ledger t, t_ledger p
+ WHERE exists (select 1
+          from v_group_ledger v2
+         where v2.account_id = #{accountId,jdbcType=DECIMAL}
+           and v1.parent_ledger = v2.ledger_id)
+   and t.group_id = #{groupId,jdbcType=DECIMAL}
+   and t.ledger_id = v1.node_ledger
+   and v1.node_ledger = p.ledger_id
+   order by v1.node_ledger
+	</select>
+	
+	<delete id="deleteGroupLedgerRelation" parameterType="java.lang.Long">
+		delete from T_GROUP_LEDGER
+		where GROUP_ID = #{groupId,jdbcType=DECIMAL}
+    </delete>
+  
+  <delete id="deleteAccountGroupRelation" parameterType="java.lang.Long">
+		delete from T_GROUP_ACCOUNT
+		where GROUP_ID = #{groupId,jdbcType=DECIMAL}
+  </delete>
+  
+  <select id="getGroupLedger2" resultType="com.linyang.energy.model.LedgerBean">
+select distinct b.ledger_id as ledgerId, b.ledger_name as ledgerName , b.rate_id as rateId from t_group_ledger a,T_LEDGER b where a.ledger_id = b.ledger_id 
+and b.ledger_lft between #{lft,jdbcType=DECIMAL} and #{rgt,jdbcType=DECIMAL}
+and a.group_id=#{groupId,jdbcType=DECIMAL}
+order by b.ledger_id
+	</select>
+
+<select id="getSuperGroupLedger" resultType="com.linyang.energy.model.LedgerBean">
+	select distinct t.ledger_id as ledgerId, t.ledger_name as ledgerName, t.rate_id as rateId
+  from t_ledger t, t_group_ledger p
+ where t.ledger_id = p.ledger_id
+   and p.group_id = #{groupId,jdbcType=DECIMAL}
+   order by t.ledger_id
+</select>
+	
+	
+	<delete id="deleteLedgerFromGroup">
+		delete from T_GROUP_LEDGER
+		where GROUP_ID = #{groupId,jdbcType=DECIMAL} and LEDGER_ID=#{ledgerId,jdbcType=DECIMAL} 
+    </delete>
+  
+  <delete id="deleteAccountGroupRelationById" parameterType="java.lang.Long">
+		delete from T_GROUP_ACCOUNT
+		where 1=1 
+		<if test="accountId != null or groupId != null">
+			and 1!=-1
+		</if>
+		<if test="accountId != null">
+			and ACCOUNT_ID = #{accountId,jdbcType=DECIMAL}
+		</if>
+		<if test="groupId != null">
+			and GROUP_ID = #{groupId,jdbcType=DECIMAL}
+		</if>
+		 
+  </delete>
+  
+  
+  <insert id="addGroupLedgerRelation">
+		insert into T_GROUP_LEDGER
+		(LEDGER_ID,
+		GROUP_ID
+		)
+		values
+		(
+		#{ledgerId,jdbcType=DECIMAL},
+		#{groupId,jdbcType=DECIMAL}
+		)
+  </insert>
+  
+  <insert id="addGroupMpedRelation">
+		insert into T_GROUP_METER
+		(METER_ID,
+		GROUP_ID
+		)
+		values
+		(
+		#{meterId,jdbcType=DECIMAL},
+		#{groupId,jdbcType=DECIMAL}
+		)
+  </insert>
+  
+  <select id="getGroupMeter" resultType="com.linyang.energy.model.MeterBean">
+		  select distinct a.meter_id     as meterId,
+                a.meter_name   as meterName,
+                a.type_id      as type,
+                a.asset_number as assetNumber,
+                a.meter_type   as meterType,
+                k.rate_id      as rateId
+  from t_meter a, t_group_meter b, v_ledger_tree v1, v_group_ledger v2, t_ledger k
+ where a.meter_id = b.meter_id
+   and a.ledger_id = k.ledger_id
+   and b.group_id = #{groupId,jdbcType=DECIMAL}
+   and a.ledger_id = v1.node_ledger
+   and v1.parent_ledger = v2.ledger_id
+   and v2.account_id = #{accountId,jdbcType=DECIMAL}
+  </select>
+  
+  <select id="deleteMeterFromGroup" resultType="Integer">
+		 delete from T_GROUP_METER
+		where GROUP_ID = #{groupId,jdbcType=DECIMAL} and METER_ID=#{meterId,jdbcType=DECIMAL} 
+  </select>
+  
+  <delete id="deleteMeterGroupRelation">
+  	delete from T_GROUP_METER where GROUP_ID = #{groupId,jdbcType=DECIMAL}
+  </delete>
+  
+   <select id="getGroupMeter2" resultType="com.linyang.energy.model.MeterBean">
+		select distinct a.meter_id as meterId, b.meter_name as meterName , b.type_id as type, 
+    b.asset_number as assetNumber, b.meter_type as meterType,
+    k.rate_id as rateId
+    from t_group_meter a, t_meter b, t_ledger k
+    where a.group_id = #{groupId,jdbcType=DECIMAL}
+    and b.ledger_id in 
+    (
+     select v.node_ledger from v_ledger_tree v, t_account t 
+     where v.parent_ledger= t.ledger_id and t.account_id=#{accountId,jdbcType=DECIMAL}
+    )
+    and a.meter_id = b.meter_id
+    and b.ledger_id = k.ledger_id
+    order by a.meter_id 
+  </select>
+  
+  <select id="getSuperGroupMeter" resultType="com.linyang.energy.model.MeterBean">
+		select distinct t.meter_id as meterId, t.meter_name as meterName , t.type_id as type, k.rate_id as rateId,
+    t.asset_number as assetNumber, t.meter_type as meterType
+      from t_meter t, t_group_meter p, t_ledger k
+     where t.meter_id = p.meter_id
+     and t.ledger_id = k.ledger_id
+  		and p.group_id = #{groupId,jdbcType=DECIMAL}
+  		order by t.meter_id
+  </select>
+  
+  <select id="checkGroupName" resultType="java.lang.String">
+		select t.group_name from T_GROUP t where t.group_name=#{groupName,jdbcType=VARCHAR} and rownum=1
+  </select>
+  
+  <select id="getAllOtherTeam" resultMap="GroupResultMap"
+		parameterType="java.lang.Long">
+		select t.group_id    as groupId,
+       t.group_name  as groupName,
+       t.public_type as publicType,
+       t.group_type  as groupType,
+       t.group_remark as groupRemark,
+       t.create_account as accountId,
+       p.login_name as accountName
+  from t_group t, t_account p
+ where t.create_account != #{accountId,jdbcType=DECIMAL}
+   and t.create_account = p.account_id
+ order by t.create_account
+	</select>
+    
+    <select id="getGroupTree" resultType="com.linyang.energy.dto.LedgerTreeBean">
+		select t.group_id as id,0 as pId,t.group_name as name,100 treeNodeType,0 meterType,0 isCompany from t_group t
+        join t_account p on t.create_account = p.account_id
+        where 1 = 1
+        <if test="accountId == 1">
+            and (t.public_type = 1 or t.public_type = 0
+            and p.account_id = #{accountId})
+        </if>
+        <if test="accountId != 1">
+            and p.account_id = #{accountId}
+        </if>
+        <if test="groupType == 1">
+            and t.group_type = #{groupType}
+            union all
+            SELECT * FROM (SELECT DISTINCT l.LEDGER_ID id,gl.group_id pId,l.LEDGER_NAME  name,1 treeNodeType,0 meterType,case when l.ANALY_TYPE = 102 then 1 else 0 end isCompany FROM T_LEDGER l,t_group_ledger gl
+            where l.LEDGER_ID = gl.LEDGER_ID and gl.group_id in (
+            select t.group_id from t_group t join t_account p on t.create_account = p.account_id
+            where t.group_type = #{groupType}
+            <if test="accountId == 1">
+                and (t.public_type = 1 or t.public_type = 0
+                and p.account_id = #{accountId})
+            </if>
+            <if test="accountId != 1">
+                and p.account_id = #{accountId}
+                and l.LEDGER_ID in (SELECT t1.ledger_id from t_ledger t1,t_ledger t2
+                          join t_account a1 on a1.ledger_id = t2.ledger_id
+                          where t1.ledger_lft>=t2.ledger_lft and t1.ledger_rgt&lt;=t2.ledger_rgt and a1.account_id=#{accountId})
+            </if>)  and l.ANALY_TYPE = 102
+            order by nlssort(name, 'NLS_SORT=SCHINESE_PINYIN_M'))
+        </if>
+        <if test="groupType == 2">
+            and t.group_type = #{groupType}
+            union all
+            select * from (select distinct m.meter_id as id,gm.group_id as pId,m.meter_name as name,2 treeNodeType,m.meter_type meterType,0 isCompany from t_meter m,t_group_meter gm
+            where m.meter_id = gm.meter_id and gm.group_id in (
+            select t.group_id from t_group t join t_account p on t.create_account = p.account_id
+            where t.group_type = #{groupType}
+            <if test="accountId == 1">
+                and (t.public_type = 1 or t.public_type = 0
+                and p.account_id = #{accountId})
+            </if>
+            <if test="accountId != 1">
+                and p.account_id = #{accountId}
+            </if>)  and m.meter_status = 1
+            order by m.meter_type,nlssort(name, 'NLS_SORT=SCHINESE_PINYIN_M'))
+        </if>
+	</select>
+    
+	<select id="getCompanyTree" resultType="com.linyang.energy.dto.LedgerTreeBean">
+        <!--SELECT distinct LEDGER_ID id,PARENT_LEDGER_ID  pId,LEDGER_NAME  name,1  treeNodeType, case when ANALY_TYPE = 102 then 1 else 0 end isCompany  FROM T_LEDGER
+        where LEDGER_ID in (select A.LEDGER_ID from ( SELECT LEDGER_ID, PARENT_LEDGER_ID, ANALY_TYPE FROM T_LEDGER
+        start with 
+        <if test="ledgerId == 0">PARENT_LEDGER_ID = 0</if>
+        <if test="ledgerId != 0">LEDGER_ID=#{ledgerId}</if>
+        connect by PARENT_LEDGER_ID = prior LEDGER_ID ) A where A.ANALY_TYPE = 102)
+        <if test="ledgerName != null and ledgerName != ''">
+            and LEDGER_NAME like '%' || #{ledgerName} || '%'
+        </if>
+        ORDER BY nlssort(LEDGER_NAME, 'NLS_SORT=SCHINESE_PINYIN_M')-->
+        
+		SELECT distinct LEDGER_ID id,PARENT_LEDGER_ID  pId,LEDGER_NAME  name,1  treeNodeType, case when ANALY_TYPE = 102 then 1 else 0 end isCompany  FROM 
+        <if test="ledgerId == 0">T_LEDGER</if>
+        <if test="ledgerId != 0">(select * from T_LEDGER start with LEDGER_ID=#{ledgerId} connect by PARENT_LEDGER_ID = prior LEDGER_ID )</if>
+        start with LEDGER_ID in (select A.LEDGER_ID from (SELECT LEDGER_ID, PARENT_LEDGER_ID, ANALY_TYPE, LEDGER_NAME FROM T_LEDGER
+        start with 
+        <if test="ledgerId == 0">PARENT_LEDGER_ID = 0</if>
+        <if test="ledgerId != 0">LEDGER_ID=#{ledgerId}</if>
+        connect by PARENT_LEDGER_ID = prior LEDGER_ID ) A where A.ANALY_TYPE = 102
+        <if test="ledgerName != null and ledgerName != ''">
+            and A.LEDGER_NAME like '%' || #{ledgerName} || '%'
+        </if>)
+        connect by prior PARENT_LEDGER_ID = LEDGER_ID
+        ORDER BY nlssort(LEDGER_NAME, 'NLS_SORT=SCHINESE_PINYIN_M')
+	</select>
+    
+    <select id="getDcpTree" resultType="com.linyang.energy.dto.LedgerTreeBean">
+		select * from (select m.meter_id as id,0 as pId,m.meter_name as name,2 treeNodeType,m.meter_type meterType from t_meter m
+        where m.meter_id = #{meterId} union
+        select m.meter_id as id,l.parement_meter_id as pId,m.meter_name as name,2 treeNodeType,m.meter_type meterType from t_meter m,
+        (select meter_id,parement_meter_id from (select * from t_lineloss_meter_info start with parement_meter_id = #{meterId} connect by prior meter_id = parement_meter_id)) l
+        where l.meter_id=m.meter_id and m.meter_status = 1)
+        order by meterType,nlssort(name, 'NLS_SORT=SCHINESE_PINYIN_M')
+	</select>
+</mapper>

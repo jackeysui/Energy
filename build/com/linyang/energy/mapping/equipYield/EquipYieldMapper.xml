@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.linyang.energy.mapping.equipYield.EquipYieldMapper">
+
+    <!-- 查询页面表格头部数据 -->
+    <select id="queryTableHead" resultType="HashMap">
+        SELECT TO_DATE(#{beginDate},'YYYY-MM-DD') + (ROWNUM - 1) as FREEZE_TIME
+        FROM DUAL CONNECT BY ROWNUM &lt;= (floor(TO_DATE(#{endDate},'YYYY-MM-DD') - TO_DATE(#{beginDate},'YYYY-MM-DD')) + 1)
+    </select>
+
+
+    <!-- 查询页面表格body数据 -->
+    <select id="queryEquipList" resultType="HashMap">
+        SELECT * FROM (
+        SELECT T2.METER_ID "meterId",T2.METER_NAME "meterName",T1.DATA_DATE "dataDate",T1.YIELD_96 "yield96",T1.YIELD_97 "yield97",
+        T1.YIELD_98 "yield98",T1.YIELD_OTHER "yieldOther",T1.YIELD_TOTAL "yieldTotal"
+        FROM T_DAY_EQUIP_YIELD T1
+        JOIN T_METER T2 ON T1.METER_ID = T2.METER_ID
+        WHERE T1.METER_ID = #{meterId} AND T1.LEDGER_ID = #{ledgerId}
+        ) T1
+        RIGHT JOIN (
+        SELECT TO_DATE(#{beginDate},'YYYY-MM-DD') + (ROWNUM - 1) as "freezeTime"
+        FROM DUAL CONNECT BY ROWNUM &lt;= (floor(TO_DATE(#{endDate},'YYYY-MM-DD') - TO_DATE(#{beginDate},'YYYY-MM-DD')) + 1)
+        ) T3 ON T1."dataDate" = T3."freezeTime"
+        ORDER BY T3."freezeTime"
+    </select>
+
+    <select id="getMeterIdsByLedgerId" resultType="Long">
+        SELECT T1.METER_ID FROM T_METER T1,T_LEDGER T2 ,T_LEDGER_METER T3
+            WHERE T1.METER_ID = T3.METER_ID AND T2.LEDGER_ID = T3.LEDGER_ID AND T2.LEDGER_ID IN (
+            SELECT A.LEDGER_ID FROM T_LEDGER A  WHERE A.ANALY_TYPE = 106  AND EQPTYPE_ID = 1
+            START WITH A.LEDGER_ID = #{ledgerId}
+            CONNECT BY PRIOR A.LEDGER_ID = A.PARENT_LEDGER_ID
+		)
+    </select>
+
+
+    <select id="queryMeterDataByLedgerId" resultType="HashMap">
+        SELECT T1.METER_ID "meterId",T1.METER_NAME "meterName" FROM T_METER T1,T_LEDGER T2 ,T_LEDGER_METER T3
+            WHERE T1.METER_ID = T3.METER_ID AND T2.LEDGER_ID = T3.LEDGER_ID AND T2.LEDGER_ID IN (
+            SELECT A.LEDGER_ID FROM T_LEDGER A  WHERE A.ANALY_TYPE = 106  AND EQPTYPE_ID = 1
+            START WITH A.LEDGER_ID = #{ledgerId}
+            CONNECT BY PRIOR A.LEDGER_ID = A.PARENT_LEDGER_ID
+        )
+    </select>
+
+
+    <select id="queryMeterDataByMeterName" resultType="HashMap">
+        SELECT METER_ID "meterId",LEDGER_ID "ledgerId" FROM T_METER WHERE METER_NAME = #{meterName} AND METER_STATUS = 1
+    </select>
+
+
+
+</mapper>

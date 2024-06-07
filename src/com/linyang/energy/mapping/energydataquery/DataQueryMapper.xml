@@ -1,0 +1,569 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//ibatis.apache.org//DTD Mapper 3.0//EN" "http://ibatis.apache.org/dtd/ibatis-3-mapper.dtd">
+
+<mapper namespace="com.linyang.energy.mapping.energydataquery.DataQueryMapper">
+	
+    <!-- 查询热工图表 -->
+    <select id="getThermalConsumptionDatas" parameterType="HashMap" resultType="HashMap">
+    	SELECT #{timeField},#{valueField} FROM #{tableName} WHERE #{timeField} BETWEEN #{beginTime} AND  #{endTime} AND METER_ID=#{meterId}
+    </select>
+    
+    <select id="getEleValue" parameterType="HashMap" resultType="HashMap">
+    	<!-- 分户 -->
+    	<if test="type == 1">
+    		<if test="dataType == 0">
+    			SELECT Q ELE_VALUE,STAT_DATE TIME_FIELD FROM 
+	    		<!-- 日 -->
+	    		<if test="timeType == 1">
+	    			  T_DAY_LEDGER_STAT
+	    		</if>
+	    		<if test="timeType == 4">
+	    			  T_DAY_LEDGER_STAT
+	    		</if>
+	    		<!-- 月 -->
+	    		<if test="timeType == 2">
+	    			T_MON_LEDGER_STAT
+	    		</if>
+	    		<!-- 年 -->
+	    		<if test="timeType == 3">
+	    			T_MON_LEDGER_STAT 
+	    		</if>
+	    		WHERE LEDGER_ID =#{tId,jdbcType=DECIMAL} AND STAT_DATE BETWEEN #{beginTime,jdbcType=TIME} AND  #{endTime,jdbcType=TIME}
+    		</if>
+	    	<if test="dataType == 1">
+	    		SELECT T3.FREEZE_TIME TIME_FIELD,
+	    		<if test="timeType == 1 or timeType == 4">
+                    nvl(T3.DAY_FAQ,0)
+	    		</if> 
+	    		<if test="timeType == 2 or timeType == 3">
+   			  		T3.MON_FAQ
+	    		</if>
+	    		ELE_VALUE ,T2.SECTOR_ID SECTOR_ID,T2.SECTOR_NAME 
+ 				FROM T_RATE T1, T_RATE_SECTOR T2, 
+	    		<!-- 日 -->
+	    		<if test="timeType == 1">
+    				T_DAY_LEDGER_Q_RATE T3
+	    		</if>
+	    		<if test="timeType == 4">
+    				T_DAY_LEDGER_Q_RATE T3
+	    		</if>
+	    		<!-- 月 -->
+	    		<if test="timeType == 2">
+	    			T_MON_LEDGER_Q_RATE T3
+	    		</if>
+	    		<!-- 年 -->
+	    		<if test="timeType == 3">
+	    			T_MON_LEDGER_Q_RATE T3 
+	    		</if>
+	    		   WHERE T1.RATE_ID = T2.RATE_ID AND T2.SECTOR_ID = T3.RATE_NUMBER AND T3.LEDGER_ID = #{tId,jdbcType=DECIMAL} AND T1.RATE_ID = #{rateId,jdbcType=DECIMAL}
+	    		   AND T3.FREEZE_TIME BETWEEN #{beginTime,jdbcType=TIME} AND  #{endTime,jdbcType=TIME}  ORDER BY T2.SECTOR_ID ASC
+	    	</if>
+            <if test="dataType == 2">
+    			SELECT WATER_FLOW ELE_VALUE,STAT_DATE TIME_FIELD FROM 
+	    		<!-- 日 -->
+	    		<if test="timeType == 1">
+	    			  T_DAY_LEDGER_STAT
+	    		</if>
+	    		<if test="timeType == 4">
+	    			  T_DAY_LEDGER_STAT
+	    		</if>
+	    		<!-- 月 -->
+	    		<if test="timeType == 2">
+	    			T_MON_LEDGER_STAT
+	    		</if>
+	    		<!-- 年 -->
+	    		<if test="timeType == 3">
+	    			T_MON_LEDGER_STAT 
+	    		</if>
+	    		WHERE LEDGER_ID =#{tId,jdbcType=DECIMAL} AND STAT_DATE BETWEEN #{beginTime,jdbcType=TIME} AND  #{endTime,jdbcType=TIME}
+    		</if>
+            <if test="dataType == 3">
+    			SELECT GAS_FLOW ELE_VALUE,STAT_DATE TIME_FIELD FROM 
+	    		<!-- 日 -->
+	    		<if test="timeType == 1">
+	    			  T_DAY_LEDGER_STAT
+	    		</if>
+	    		<if test="timeType == 4">
+	    			  T_DAY_LEDGER_STAT
+	    		</if>
+	    		<!-- 月 -->
+	    		<if test="timeType == 2">
+	    			T_MON_LEDGER_STAT
+	    		</if>
+	    		<!-- 年 -->
+	    		<if test="timeType == 3">
+	    			T_MON_LEDGER_STAT 
+	    		</if>
+	    		WHERE LEDGER_ID =#{tId,jdbcType=DECIMAL} AND STAT_DATE BETWEEN #{beginTime,jdbcType=TIME} AND  #{endTime,jdbcType=TIME}
+    		</if>
+            <if test="dataType == 4">
+    			SELECT TEMPER ELE_VALUE,STAT_DATE TIME_FIELD FROM 
+	    		<!-- 日 -->
+	    		<if test="timeType == 1">
+	    			  T_DAY_LEDGER_STAT
+	    		</if>
+	    		<if test="timeType == 4">
+	    			  T_DAY_LEDGER_STAT
+	    		</if>
+	    		<!-- 月 -->
+	    		<if test="timeType == 2">
+	    			T_MON_LEDGER_STAT
+	    		</if>
+	    		<!-- 年 -->
+	    		<if test="timeType == 3">
+	    			T_MON_LEDGER_STAT 
+	    		</if>
+	    		WHERE LEDGER_ID =#{tId,jdbcType=DECIMAL} AND STAT_DATE BETWEEN #{beginTime,jdbcType=TIME} AND  #{endTime,jdbcType=TIME}
+    		</if>
+    	</if>
+    	<!-- 计量点 -->
+    	<if test="type == 2">
+    		<if test="dataType == 0">
+                <if test="isVirtual != 1">     <!-- 真实 -->
+                    SELECT FAQ_VALUE ELE_VALUE,FREEZE_TIME TIME_FIELD  FROM
+                    <!-- 日 -->
+                    <if test="timeType == 1">
+                        T_DAY_Q
+                    </if>
+                    <if test="timeType == 4">
+                        T_DAY_Q
+                    </if>
+                    <!-- 月 -->
+                    <if test="timeType == 2">
+                        T_MON_Q
+                    </if>
+                    <!-- 年 -->
+                    <if test="timeType == 3">
+                        T_MON_Q
+                    </if>
+                    WHERE METER_ID =#{tId,jdbcType=DECIMAL} AND FREEZE_TIME BETWEEN #{beginTime,jdbcType=TIME} AND  #{endTime,jdbcType=TIME}
+                    and FAQ_VALUE is not null
+                </if>
+                <if test="isVirtual == 1">     <!-- 虚拟 -->
+                    SELECT sum(q.FAQ_VALUE) as ELE_VALUE, q.FREEZE_TIME as TIME_FIELD
+                    FROM
+                    <!-- 日 -->
+                    <if test="timeType == 1">
+                        T_DAY_Q
+                    </if>
+                    <if test="timeType == 4">
+                        T_DAY_Q
+                    </if>
+                    <!-- 月 -->
+                    <if test="timeType == 2">
+                        T_MON_Q
+                    </if>
+                    <!-- 年 -->
+                    <if test="timeType == 3">
+                        T_MON_Q
+                    </if> q
+                    inner join T_VIRTUAL_METER_RELATION r on q.METER_ID=r.METER_ID
+                    WHERE r.VIRTUAL_ID =#{tId,jdbcType=DECIMAL} AND q.FREEZE_TIME BETWEEN #{beginTime,jdbcType=TIME} AND #{endTime,jdbcType=TIME}
+                    and q.FAQ_VALUE is not null
+                    group by q.FREEZE_TIME
+                </if>
+    		</if>
+    		<if test="dataType == 1">
+                <if test="isVirtual != 1">     <!-- 真实 -->
+                    SELECT FREEZE_TIME TIME_FIELD,
+                    <if test="timeType == 1 or timeType == 4">
+                        T3.DAY_FAQ
+                    </if>
+                    <if test="timeType == 2 or timeType == 3">
+                        T3.MON_FAQ_RATE
+                    </if>
+                    ELE_VALUE ,T2.SECTOR_ID SECTOR_ID,T2.SECTOR_NAME
+                    FROM T_RATE T1, T_RATE_SECTOR T2,
+                    <!-- 日 -->
+                    <if test="timeType == 1">
+                        T_DAY_Q_RATE T3
+                    </if>
+                    <if test="timeType == 4">
+                        T_DAY_Q_RATE T3
+                    </if>
+                    <!-- 月 -->
+                    <if test="timeType == 2">
+                        T_MON_Q_RATE T3
+                    </if>
+                    <!-- 年 -->
+                    <if test="timeType == 3">
+                        T_MON_Q_RATE T3
+                    </if>
+                    WHERE T1.RATE_ID = T2.RATE_ID AND T2.SECTOR_ID = T3.RATE_NUMBER AND T3.METER_ID = #{tId,jdbcType=DECIMAL} AND T1.RATE_ID = #{rateId,jdbcType=DECIMAL}
+                    AND T3.FREEZE_TIME BETWEEN #{beginTime,jdbcType=TIME} AND  #{endTime,jdbcType=TIME}
+                    <if test="timeType == 1 or timeType == 4">
+                        and T3.DAY_FAQ is not null
+                    </if>
+                    <if test="timeType == 2 or timeType == 3">
+                        and T3.MON_FAQ_RATE is not null
+                    </if>
+                    ORDER BY T2.SECTOR_ID ASC
+                </if>
+                <if test="isVirtual == 1">     <!-- 虚拟 -->
+                    SELECT T3.FREEZE_TIME as TIME_FIELD, T2.SECTOR_ID as SECTOR_ID, T2.SECTOR_NAME as SECTOR_NAME,
+                    <if test="timeType == 1 or timeType == 4">
+                        sum(T3.DAY_FAQ)
+                    </if>
+                    <if test="timeType == 2 or timeType == 3">
+                        sum(T3.MON_FAQ_RATE)
+                    </if>
+                    as ELE_VALUE
+                    FROM T_RATE T1, T_RATE_SECTOR T2,
+                    <!-- 日 -->
+                    <if test="timeType == 1">
+                        T_DAY_Q_RATE T3
+                    </if>
+                    <if test="timeType == 4">
+                        T_DAY_Q_RATE T3
+                    </if>
+                    <!-- 月 -->
+                    <if test="timeType == 2">
+                        T_MON_Q_RATE T3
+                    </if>
+                    <!-- 年 -->
+                    <if test="timeType == 3">
+                        T_MON_Q_RATE T3
+                    </if> ,T_VIRTUAL_METER_RELATION R
+                    WHERE T1.RATE_ID = T2.RATE_ID AND T2.SECTOR_ID = T3.RATE_NUMBER and T3.METER_ID=R.METER_ID
+                    AND R.VIRTUAL_ID = #{tId,jdbcType=DECIMAL} AND T1.RATE_ID = #{rateId,jdbcType=DECIMAL}
+                    AND T3.FREEZE_TIME BETWEEN #{beginTime,jdbcType=TIME} AND  #{endTime,jdbcType=TIME}
+                    <if test="timeType == 1 or timeType == 4">
+                        and T3.DAY_FAQ is not null
+                    </if>
+                    <if test="timeType == 2 or timeType == 3">
+                        and T3.MON_FAQ_RATE is not null
+                    </if>
+                    group by T3.FREEZE_TIME, T2.SECTOR_ID, T2.SECTOR_NAME
+                    ORDER BY T2.SECTOR_ID ASC
+                </if>
+    		</if>
+
+            <if test="dataType == 2">
+	    		SELECT WFLOW_VALUE ELE_VALUE,FREEZE_TIME TIME_FIELD  FROM 
+	    		<!-- 日 -->
+	    		<if test="timeType == 1">
+	    			T_DAY_WFLOW_STAT 
+	    		</if>
+	    		<if test="timeType == 4">
+	    			T_DAY_WFLOW_STAT 
+	    		</if>
+	    		<!-- 月 -->
+	    		<if test="timeType == 2">
+	    			T_MON_WFLOW_STAT
+	    		</if>
+	    		<!-- 年 -->
+	    		<if test="timeType == 3">
+	    			T_MON_WFLOW_STAT
+	    		</if>
+	    		WHERE METER_ID =#{tId,jdbcType=DECIMAL} AND FREEZE_TIME BETWEEN #{beginTime,jdbcType=TIME} AND  #{endTime,jdbcType=TIME}
+                and WFLOW_VALUE is not null
+    		</if>
+            <if test="dataType == 3">
+	    		SELECT GFLOW_VALUE ELE_VALUE,FREEZE_TIME TIME_FIELD  FROM 
+	    		<!-- 日 -->
+	    		<if test="timeType == 1">
+	    			T_DAY_GFLOW_STAT 
+	    		</if>
+	    		<if test="timeType == 4">
+	    			T_DAY_GFLOW_STAT 
+	    		</if>
+	    		<!-- 月 -->
+	    		<if test="timeType == 2">
+	    			T_MON_GFLOW_STAT
+	    		</if>
+	    		<!-- 年 -->
+	    		<if test="timeType == 3">
+	    			T_MON_GFLOW_STAT
+	    		</if>
+	    		WHERE METER_ID =#{tId,jdbcType=DECIMAL} AND FREEZE_TIME BETWEEN #{beginTime,jdbcType=TIME} AND  #{endTime,jdbcType=TIME}
+                and GFLOW_VALUE is not null
+    		</if>
+            <if test="dataType == 4">
+	    		SELECT HEAT_VALUE ELE_VALUE,FREEZE_TIME TIME_FIELD  FROM 
+	    		<!-- 日 -->
+	    		<if test="timeType == 1">
+	    			T_DAY_HEAT_STAT 
+	    		</if>
+	    		<if test="timeType == 4">
+	    			T_DAY_HEAT_STAT 
+	    		</if>
+	    		<!-- 月 -->
+	    		<if test="timeType == 2">
+	    			T_MON_HEAT_STAT
+	    		</if>
+	    		<!-- 年 -->
+	    		<if test="timeType == 3">
+	    			T_MON_HEAT_STAT
+	    		</if>
+	    		WHERE METER_ID =#{tId,jdbcType=DECIMAL} AND FREEZE_TIME BETWEEN #{beginTime,jdbcType=TIME} AND  #{endTime,jdbcType=TIME}
+                and HEAT_VALUE is not null
+    		</if>
+    	</if>
+    </select>
+    <!--  
+	 * 查询计量点名字
+	  * @author 周礼
+	  * @param queryMap 查询条件集合：
+	  * 计量点Id：key:"tId"	value:{@code long} 
+	 * @return String
+	 -->
+    <select id="getMeterName" parameterType="HashMap" resultType="String">
+    	SELECT METER_NAME FROM
+    	T_METER
+    	WHERE METER_ID = #{tId}
+    </select>
+
+    <!-- 查询分户实时功率 -->
+    <select id="getLedger96ApData" parameterType="HashMap" resultType="HashMap">
+        select q.ledger_id as ledgerId, to_date(q.freeze_time, 'yyyy-MM-dd HH24:mi') as dataTime,
+        sum(q.AP * q.ADD_ATTR * q.PCT / 100) as data from
+        (select a.ledger_id as ledger_id, to_char(c.freeze_time, 'yyyy-MM-dd HH24:mi') as freeze_time, c.AP as AP, b.ADD_ATTR, b.PCT
+        from t_ledger a, t_ledger_meter b, T_CUR_AP c
+        where a.ledger_id = b.ledger_id
+        and b.meter_id = c.meter_id
+        and c.freeze_time between #{startDate} and #{endDate}
+        and a.ledger_id=#{ledgerId}) q
+        group by q.ledger_id, q.freeze_time
+        order by q.freeze_time asc
+    </select>
+
+    <!-- 查询分户无功功率 -->
+    <select id="getLedger96RpData" parameterType="HashMap" resultType="HashMap">
+        select q.ledger_id as ledgerId, to_date(q.freeze_time, 'yyyy-MM-dd HH24:mi') as dataTime,
+        sum(q.RP * q.ADD_ATTR * q.PCT / 100) as data from
+        (select a.ledger_id as ledger_id, to_char(c.freeze_time, 'yyyy-MM-dd HH24:mi') as freeze_time, c.RP as RP, b.ADD_ATTR, b.PCT
+        from t_ledger a, t_ledger_meter b, T_CUR_RP c
+        where a.ledger_id = b.ledger_id
+        and b.meter_id = c.meter_id
+        and c.freeze_time between #{startDate} and #{endDate}
+        and a.ledger_id=#{ledgerId}) q
+        group by q.ledger_id, q.freeze_time
+        order by q.freeze_time asc
+    </select>
+
+    <!-- 查询分户功率因数 -->
+    <select id="getLedger96PfData" parameterType="HashMap" resultType="HashMap">
+        select t.ledger_id as ledgerId, t.freeze_time as dataTime, t.pf as data
+        from t_cur_ledger_pf t
+        where t.ledger_id = #{ledgerId}
+        and t.freeze_time between #{startDate} and #{endDate}
+        order by t.freeze_time asc
+    </select>
+
+    <select id="getMeterCurApData" parameterType="HashMap" resultType="HashMap">
+        select METER_ID, FREEZE_TIME as DATATIME, AP as DATA
+        from T_CUR_AP
+        where METER_ID=#{meterId}
+        and FREEZE_TIME between #{startDate} and #{endDate}
+        and AP is not null
+        order by freeze_time asc
+    </select>
+
+    <select id="getMeterCurRpData" parameterType="HashMap" resultType="HashMap">
+        select METER_ID, FREEZE_TIME as DATATIME, RP as DATA
+        from T_CUR_RP
+        where METER_ID=#{meterId}
+        and FREEZE_TIME between #{startDate} and #{endDate}
+        and RP is not null
+        order by freeze_time asc
+    </select>
+
+    <select id="getMeterCurPfData" parameterType="HashMap" resultType="HashMap">
+        select t.meter_id as METER_ID, t.freeze_time as DATATIME, (t.pf/100) as DATA
+        from t_cur_pf t
+        where t.meter_id = #{meterId}
+        and t.freeze_time between #{startDate} and #{endDate}
+        and t.pf is not null
+        order by t.freeze_time asc
+    </select>
+
+    <select id="getMeterCurVData" parameterType="HashMap" resultType="HashMap">
+        select t.DATATIME as DATATIME, max(t.DATA) as DATA from
+        (
+              select METER_ID, FREEZE_TIME as DATATIME, #{ratio} * VA as DATA
+              from T_CUR_V
+              where METER_ID=#{meterId}
+              and VA is not null
+              and FREEZE_TIME between #{startDate} and #{endDate}
+              union
+              select METER_ID, FREEZE_TIME as DATATIME, #{ratio} * VB as DATA
+              from T_CUR_V
+              where METER_ID=#{meterId}
+              and VB is not null
+              and FREEZE_TIME between #{startDate} and #{endDate}
+              union
+              select METER_ID, FREEZE_TIME as DATATIME, #{ratio} * VC as DATA
+              from T_CUR_V
+              where METER_ID=#{meterId}
+              and VC is not null
+              and FREEZE_TIME between #{startDate} and #{endDate}
+        ) t
+        group by t.DATATIME
+        order by t.DATATIME asc
+    </select>
+
+    <select id="getMeterCurIData" parameterType="HashMap" resultType="HashMap">
+        select t.DATATIME as DATATIME, max(t.DATA) as DATA from
+        (
+              select METER_ID, FREEZE_TIME as DATATIME, IA as DATA
+              from T_CUR_I
+              where METER_ID=#{meterId}
+              and IA is not null
+              and FREEZE_TIME between #{startDate} and #{endDate}
+              union
+              select METER_ID, FREEZE_TIME as DATATIME, IB as DATA
+              from T_CUR_I
+              where METER_ID=#{meterId}
+              and IB is not null
+              and FREEZE_TIME between #{startDate} and #{endDate}
+              union
+              select METER_ID, FREEZE_TIME as DATATIME, IC as DATA
+              from T_CUR_I
+              where METER_ID=#{meterId}
+              and IC is not null
+              and FREEZE_TIME between #{startDate} and #{endDate}
+        ) t
+        group by t.DATATIME
+        order by t.DATATIME asc
+    </select>
+
+    <select id="getgetMaxDateListCurAp" resultType="Date">
+        select c.freeze_time
+        from t_ledger_meter b, T_CUR_AP c
+        where b.meter_id = c.meter_id
+        and b.ledger_id=#{ledgerId}
+        and c.freeze_time between #{beginTime,jdbcType=TIME} AND #{endTime,jdbcType=TIME}
+        order by c.freeze_time desc
+    </select>
+
+    <select id="getCurPowData"  resultType="Double">
+        select sum(abs(c.AP) * b.ADD_ATTR * b.PCT / 100)
+        from t_ledger a, t_ledger_meter b, T_CUR_AP c
+        where a.ledger_id = b.ledger_id
+        and b.meter_id = c.meter_id
+        and a.ledger_id=#{ledgerId}
+        and c.freeze_time = #{time,jdbcType=TIME}
+    </select>
+
+    <select id="getRegionCurPowData"  resultType="Double">
+        select sum(abs(c.AP) * b.ADD_ATTR * b.PCT / 100)
+        from t_ledger a, t_ledger_meter b, T_CUR_AP c
+        where a.ledger_id = b.ledger_id
+        and b.meter_id = c.meter_id
+        and a.ledger_id in <foreach collection="ledgers" item="ledger" open="(" separator="," close=")"> #{ledger.ledgerId} </foreach>
+        and c.freeze_time = #{time,jdbcType=TIME}
+    </select>
+
+    <select id="getRegionLastMonQData" resultType="Double">
+        select nvl(cast(sum((lf - mf) * p.ct * p.pt* m.add_attr * m.pct / 100) as decimal(38,   2)), 0) as VALUE
+        from (select t.rate_number as rateno,
+        t.meter_id,
+        max(t.day_fae_rate) as lf,
+        min(t.day_fae_rate) as mf
+        from view_day_e_rate t
+        where t.freeze_time between #{beginTime,jdbcType=TIME} - 1 AND #{endTime,jdbcType=TIME}
+        group by t.rate_number, t.meter_id) r
+        inner join t_ledger_meter m on r.meter_id = m.meter_id
+        inner join t_ledger l on m.ledger_id = l.ledger_id
+        inner join  t_meter e on m.meter_id = e.meter_id
+        inner join t_mped_info p on e.mped_id = p.mped_id
+        where m.ledger_id in <foreach collection="ledgers" item="ledger" open="(" separator="," close=")"> #{ledger.ledgerId} </foreach>
+        and e.meter_status=1 and e.METER_TYPE = 1
+    </select>
+
+    <select id="getCurrentTotalQ" resultType="Double">
+        select nvl(sum(b.FAQ_VALUE * a.ADD_ATTR * a.PCT / 100),0)
+        from t_ledger_meter a inner join T_CUR_Q b on a.meter_id = b.meter_id
+        where a.ledger_id=#{ledgerId}
+        and b.freeze_time between #{beginTime,jdbcType=TIME} and #{endTime,jdbcType=TIME}
+    </select>
+
+
+    <select id="getMeterMinCurVData" parameterType="HashMap" resultType="HashMap">
+        <if test="comm == 2">
+            select t.DATATIME as DATATIME, min(t.DATA) as DATA from
+            (
+            select METER_ID, FREEZE_TIME as DATATIME, #{ratio} * VA as DATA
+            from T_CUR_V
+            where METER_ID=#{meterId}
+            and VA is not null
+            and FREEZE_TIME between #{startDate} and #{endDate}
+            union
+            select METER_ID, FREEZE_TIME as DATATIME, #{ratio} * VB as DATA
+            from T_CUR_V
+            where METER_ID=#{meterId}
+            and VB is not null
+            and FREEZE_TIME between #{startDate} and #{endDate}
+            union
+            select METER_ID, FREEZE_TIME as DATATIME, #{ratio} * VC as DATA
+            from T_CUR_V
+            where METER_ID=#{meterId}
+            and VC is not null
+            and FREEZE_TIME between #{startDate} and #{endDate}
+            ) t
+            group by t.DATATIME
+            order by t.DATATIME asc
+        </if>
+        <if test="comm != 2">
+            select t.DATATIME as DATATIME, min(t.DATA) as DATA from
+            (
+            select METER_ID, FREEZE_TIME as DATATIME, #{ratio} * VA as DATA
+            from T_CUR_V
+            where METER_ID=#{meterId}
+            and VA is not null
+            and FREEZE_TIME between #{startDate} and #{endDate}
+            union
+            select METER_ID, FREEZE_TIME as DATATIME, #{ratio} * VC as DATA
+            from T_CUR_V
+            where METER_ID=#{meterId}
+            and VC is not null
+            and FREEZE_TIME between #{startDate} and #{endDate}
+            ) t
+            group by t.DATATIME
+            order by t.DATATIME asc
+        </if>
+
+    </select>
+
+    <!-- 查询曲线水数据 -->
+    <select id="getMeterWaterData" resultType="HashMap">
+        SELECT T1.FLOW_VALUE AS DATA, T1.FREEZE_TIME AS DATATIME from T_CUR_WFLOW T1
+        JOIN T_METER T2 ON T1.METER_ID = T2.METER_ID
+        WHERE T1.METER_ID = #{meterId}
+        AND T1.FREEZE_TIME between #{startDate} and #{endDate}
+        AND T1.FLOW_VALUE IS NOT NULL
+        ORDER BY T1.FREEZE_TIME
+    </select>
+
+
+    <!-- 查询日配额事件数据 -->
+    <select id="getLedgerDayData" resultType="HashMap">
+        SELECT
+        <if test="eventId == 1110">
+            WATER_FLOW
+        </if>
+        <if test="eventId == 1111">
+            GAS_FLOW
+        </if>
+        <if test="eventId == 1112">
+            Q
+        </if>
+        AS DATA,STAT_DATE AS DATATIME FROM T_DAY_LEDGER_STAT
+        WHERE LEDGER_ID = #{ledgerId}
+		AND STAT_DATE = #{dateTime,jdbcType=TIME}
+        <if test="eventId == 1110">
+		  AND WATER_FLOW IS NOT NULL
+        </if>
+        <if test="eventId == 1111">
+          AND GAS_FLOW IS NOT NULL
+        </if>
+        <if test="eventId == 1112">
+          AND Q IS NOT NULL
+        </if>
+    </select>
+
+
+
+
+
+</mapper>

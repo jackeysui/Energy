@@ -1,0 +1,1149 @@
+<?xml version="1.0" encoding="UTF-8" ?> 
+<!DOCTYPE mapper PUBLIC "-//ibatis.apache.org//DTD Mapper 3.0//EN" "http://ibatis.apache.org/dtd/ibatis-3-mapper.dtd">
+
+<mapper namespace="com.linyang.energy.mapping.reportanalysis.ReportAnalysisMapper">
+
+	<!-- 得到分户报表数据 -->
+	<select id="getLedgerReportData" parameterType="HashMap"
+		resultType="HashMap">
+		<!-- 日报-正向有功电量，正向无功点量 -->
+		<!-- 创建临时表防止超出in长度限制 -->
+		with temp as(select '0' id from t_ledger
+		<foreach collection="ledgerIdAry" item="ledgerId">
+			union
+			select #{ledgerId} id from t_ledger
+		</foreach>
+		)
+		<if test="dataType == 1">
+			SELECT q.LEDGER_ID as objectId,
+			t.ledger_name as objectName,
+			to_date(q.freeze_time, 'yyyy-MM-dd HH24') as freezeTime,
+			sum(faq) as A,
+			sum(frq) as B
+			FROM (
+			select substr(to_char(t.freeze_time, 'yyyy-MM-dd HH24:mi:ss'), 0, 13) as freeze_time,
+			T2.LEDGER_ID,
+			t.faq_value * t2.add_attr * t2.pct/100 as faq ,
+			t.frq_value * t2.add_attr * t2.pct/100 as frq
+			from T_CUR_Q t
+			LEFT JOIN T_LEDGER_METER T2 ON T.METER_ID = T2.METER_ID
+			where t.FREEZE_TIME >= #{beginDate,jdbcType=TIME}
+			AND t.FREEZE_TIME &lt; #{endDate,jdbcType=TIME}
+			AND T2.LEDGER_ID in
+			(select id from temp)
+			) q
+			LEFT JOIN t_ledger t on q.LEDGER_ID = t.ledger_id
+			GROUP BY q.LEDGER_ID,q.freeze_time,t.ledger_name
+		</if>
+		<!-- 日报-有功功率 -->
+		<if test="dataType == 2">
+			SELECT T2.LEDGER_ID as objectId,
+			T3.LEDGER_NAME as objectName,
+			A.FREEZE_TIME as freezeTime,
+			SUM(A.AP* t2.add_attr * t2.pct /100) as A
+			FROM T_CUR_AP A
+			LEFT JOIN T_LEDGER_METER T2 ON A.METER_ID = T2.METER_ID
+			LEFT JOIN T_LEDGER T3 ON T3.LEDGER_ID = T2.LEDGER_ID
+			WHERE A.FREEZE_TIME >= #{beginDate,jdbcType=TIME}
+			AND A.FREEZE_TIME &lt;= #{endDate,jdbcType=TIME}
+			<!-- AND substr(to_char(A.FREEZE_TIME,'yyyy-MM-dd HH24:mi:ss'),15,2) = 
+				'00' -->
+			AND T2.LEDGER_ID in
+			(select id from temp)
+			GROUP BY T2.LEDGER_ID,T3.LEDGER_NAME, A.FREEZE_TIME
+		</if>
+		<!-- 日报-无功功率 -->
+		<if test="dataType == 3">
+			SELECT T2.LEDGER_ID as objectId,
+			T3.LEDGER_NAME as objectName,
+			A.FREEZE_TIME as freezeTime,
+			SUM(A.RP* t2.add_attr * t2.pct /100) as A
+			FROM T_CUR_RP A
+			LEFT JOIN T_LEDGER_METER T2 ON A.METER_ID = T2.METER_ID
+			LEFT JOIN T_LEDGER T3 ON T3.LEDGER_ID = T2.LEDGER_ID
+			WHERE A.FREEZE_TIME >= #{beginDate,jdbcType=TIME}
+			AND A.FREEZE_TIME &lt;= #{endDate,jdbcType=TIME}
+			<!-- AND substr(to_char(A.FREEZE_TIME,'yyyy-MM-dd HH24:mi:ss'),15,2) = 
+				'00' -->
+			AND T2.LEDGER_ID in
+			(select id from temp)
+			GROUP BY T2.LEDGER_ID,T3.LEDGER_NAME, A.FREEZE_TIME
+		</if>
+		<!-- 日报-功率因素 -->
+		<if test="dataType == 4">
+			SELECT T2.LEDGER_ID as objectId,
+			T4.LEDGER_NAME as objectName,
+			T.FREEZE_TIME as freezeTime,
+			SUM(T.AP * T2.add_attr * t2.pct /100) A,
+			SUM(T3.RP * T2.add_attr * t2.pct /100) B
+			FROM T_CUR_AP T
+			LEFT JOIN T_LEDGER_METER T2 ON T.METER_ID = T2.METER_ID
+			LEFT JOIN T_CUR_RP T3 ON T.METER_ID = T3.METER_ID AND T.FREEZE_TIME = T3.FREEZE_TIME
+			LEFT JOIN T_LEDGER T4 ON T4.LEDGER_ID = T2.LEDGER_ID
+			WHERE T.FREEZE_TIME >= #{beginDate,jdbcType=TIME}
+			AND T.FREEZE_TIME &lt;= #{endDate,jdbcType=TIME}
+			AND T2.LEDGER_ID in
+			(select id from temp)
+			<!-- AND substr(to_char(T.FREEZE_TIME,'yyyy-MM-dd HH24:mi:ss'),15,2) = 
+				'00' -->
+			GROUP BY T2.LEDGER_ID, T4.LEDGER_NAME, T.FREEZE_TIME
+		</if>
+		<!-- 日报-电流 -->
+		<!-- <if test="dataType == 5"> -->
+		<!-- SELECT T2.LEDGER_ID as objectId, -->
+		<!-- T3.LEDGER_NAME as objectName, -->
+		<!-- T.FREEZE_TIME as freezeTime, -->
+		<!-- SUM(IA) as A, -->
+		<!-- SUM(IB) as B, -->
+		<!-- SUM(IC) as C -->
+		<!-- FROM T_CUR_I T -->
+		<!-- LEFT JOIN T_LEDGER_METER T2 ON T.METER_ID = T2.METER_ID -->
+		<!-- LEFT JOIN T_LEDGER T3 ON T3.LEDGER_ID = T2.LEDGER_ID -->
+		<!-- WHERE T.FREEZE_TIME >= #{beginDate} -->
+		<!-- AND T.FREEZE_TIME &lt;= #{endDate} -->
+		<!-- AND T2.LEDGER_ID in -->
+		<!-- <foreach collection="ledgerIdAry" item="objectId" open="(" separator="," 
+			close=")"> -->
+		<!-- #{objectId} -->
+		<!-- </foreach> -->
+		<!-- AND substr(to_char(T.FREEZE_TIME,'yyyy-MM-dd HH24:mi:ss'),15,2) = 
+			'00' -->
+		<!-- GROUP BY T2.LEDGER_ID, T3.LEDGER_NAME, T.FREEZE_TIME -->
+		<!-- </if> -->
+		<!-- 日报-电压 -->
+		<!-- <if test="dataType == 6"> -->
+		<!-- SELECT T2.LEDGER_ID as objectId, -->
+		<!-- T3.LEDGER_NAME as objectName, -->
+		<!-- T.FREEZE_TIME as freezeTime, -->
+		<!-- MAX(VA) as A, -->
+		<!-- MAX(VB) as B, -->
+		<!-- MAX(VC) as C -->
+		<!-- FROM T_CUR_V T -->
+		<!-- LEFT JOIN T_LEDGER_METER T2 ON T.METER_ID = T2.METER_ID -->
+		<!-- LEFT JOIN T_LEDGER T3 ON T3.LEDGER_ID = T2.LEDGER_ID -->
+		<!-- WHERE T.FREEZE_TIME >= #{beginDate} -->
+		<!-- AND T.FREEZE_TIME &lt;= #{endDate} -->
+		<!-- AND T2.LEDGER_ID in -->
+		<!-- <foreach collection="ledgerIdAry" item="objectId" open="(" separator="," 
+			close=")"> -->
+		<!-- #{objectId} -->
+		<!-- </foreach> -->
+		<!-- AND substr(to_char(T.FREEZE_TIME,'yyyy-MM-dd HH24:mi:ss'),15,2) = 
+			'00' -->
+		<!-- GROUP BY T2.LEDGER_ID, T3.LEDGER_NAME, T.FREEZE_TIME -->
+		<!-- </if> -->
+		<!-- 月报-电量 -->
+		<if test="dataType == 7">
+			SELECT T.LEDGER_ID AS objectId,
+			T3.LEDGER_NAME as objectName,
+			T.STAT_DATE as freezeTime,
+			Q as A,
+			RQ AS B
+			FROM T_DAY_LEDGER_STAT T
+			LEFT JOIN T_LEDGER T3 ON T3.LEDGER_ID = T.LEDGER_ID
+			WHERE T.STAT_DATE >= #{beginDate,jdbcType=TIME}
+			AND T.STAT_DATE &lt;= #{endDate,jdbcType=TIME}
+			AND T.LEDGER_ID in
+			(select id from temp)
+		</if>
+		<!-- 月报-水量 -->
+		<if test="dataType == 8">
+			SELECT T.LEDGER_ID AS objectId,
+			T3.LEDGER_NAME as objectName,
+			T.STAT_DATE as freezeTime,
+			WATER_FLOW as A
+			FROM T_DAY_LEDGER_STAT T
+			LEFT JOIN T_LEDGER T3 ON T3.LEDGER_ID = T.LEDGER_ID
+			WHERE T.STAT_DATE >= #{beginDate,jdbcType=TIME}
+			AND T.STAT_DATE &lt;= #{endDate,jdbcType=TIME}
+			AND T.LEDGER_ID in
+			(select id from temp)
+		</if>
+		<!-- 月报-气量 -->
+		<if test="dataType == 9">
+			SELECT T.LEDGER_ID AS objectId,
+			T3.LEDGER_NAME as objectName,
+			T.STAT_DATE as freezeTime,
+			GAS_FLOW as A
+			FROM T_DAY_LEDGER_STAT T
+			LEFT JOIN T_LEDGER T3 ON T3.LEDGER_ID = T.LEDGER_ID
+			WHERE T.STAT_DATE >= #{beginDate,jdbcType=TIME}
+			AND T.STAT_DATE &lt;= #{endDate,jdbcType=TIME}
+			AND T.LEDGER_ID in
+			(select id from temp)
+		</if>
+		<!-- 月报-热量 -->
+		<if test="dataType == 10">
+			SELECT T.LEDGER_ID AS objectId,
+			T3.LEDGER_NAME as objectName,
+			T.STAT_DATE as freezeTime,
+			TEMPER as A
+			FROM T_DAY_LEDGER_STAT T
+			LEFT JOIN T_LEDGER T3 ON T3.LEDGER_ID = T.LEDGER_ID
+			WHERE T.STAT_DATE >= #{beginDate,jdbcType=TIME}
+			AND T.STAT_DATE &lt;= #{endDate,jdbcType=TIME}
+			AND T.LEDGER_ID in
+			(select id from temp)
+		</if>
+		<!-- 月报- 综合能源 -->
+		<if test="dataType == 11">
+			SELECT T.LEDGER_ID AS objectId,
+			T3.LEDGER_NAME as objectName,
+			T.STAT_DATE as freezeTime,
+			Q as A,
+			RQ AS B,
+			WATER_FLOW as C,
+			GAS_FLOW as D,
+			TEMPER as E
+			FROM T_DAY_LEDGER_STAT T
+			LEFT JOIN T_LEDGER T3 ON T3.LEDGER_ID = T.LEDGER_ID
+			WHERE T.STAT_DATE >= #{beginDate,jdbcType=TIME}
+			AND T.STAT_DATE &lt;= #{endDate,jdbcType=TIME}
+			AND T.LEDGER_ID in
+			(select id from temp)
+			ORDER BY freezeTime,objectName
+		</if>
+		<!-- 年报-电量 -->
+		<if test="dataType == 12">
+			SELECT T.LEDGER_ID AS objectId,
+			T3.LEDGER_NAME as objectName,
+			T.STAT_DATE as freezeTime,
+			Q as A,
+			RQ AS B
+			FROM T_MON_LEDGER_STAT T
+			LEFT JOIN T_LEDGER T3 ON T3.LEDGER_ID = T.LEDGER_ID
+			WHERE T.STAT_DATE >= #{beginDate,jdbcType=TIME}
+			AND T.STAT_DATE &lt;= #{endDate,jdbcType=TIME}
+			AND T.LEDGER_ID in
+			(select id from temp)
+		</if>
+		<!-- 年报-水量 -->
+		<if test="dataType == 13">
+			SELECT T.LEDGER_ID AS objectId,
+			T3.LEDGER_NAME as objectName,
+			T.STAT_DATE as freezeTime,
+			WATER_FLOW as A
+			FROM T_MON_LEDGER_STAT T
+			LEFT JOIN T_LEDGER T3 ON T3.LEDGER_ID = T.LEDGER_ID
+			WHERE T.STAT_DATE >= #{beginDate,jdbcType=TIME}
+			AND T.STAT_DATE &lt;= #{endDate,jdbcType=TIME}
+			AND T.LEDGER_ID in
+			(select id from temp)
+		</if>
+		<!-- 年报-气量 -->
+		<if test="dataType == 14">
+			SELECT T.LEDGER_ID AS objectId,
+			T3.LEDGER_NAME as objectName,
+			T.STAT_DATE as freezeTime,
+			GAS_FLOW as A
+			FROM T_MON_LEDGER_STAT T
+			LEFT JOIN T_LEDGER T3 ON T3.LEDGER_ID = T.LEDGER_ID
+			WHERE T.STAT_DATE >= #{beginDate,jdbcType=TIME}
+			AND T.STAT_DATE &lt;= #{endDate,jdbcType=TIME}
+			AND T.LEDGER_ID in
+			(select id from temp)
+		</if>
+		<!-- 年报-热量 -->
+		<if test="dataType == 15">
+			SELECT T.LEDGER_ID AS objectId,
+			T3.LEDGER_NAME as objectName,
+			T.STAT_DATE as freezeTime,
+			TEMPER as A
+			FROM T_MON_LEDGER_STAT T
+			LEFT JOIN T_LEDGER T3 ON T3.LEDGER_ID = T.LEDGER_ID
+			WHERE T.STAT_DATE >= #{beginDate,jdbcType=TIME}
+			AND T.STAT_DATE &lt;= #{endDate,jdbcType=TIME}
+			AND T.LEDGER_ID in
+			(select id from temp)
+		</if>
+		<!-- 年报-综合能源 -->
+		<if test="dataType == 16">
+			SELECT T.LEDGER_ID AS objectId,
+			T3.LEDGER_NAME as objectName,
+			T.STAT_DATE as freezeTime,
+			Q as A,
+			RQ AS B,
+			WATER_FLOW as C,
+			GAS_FLOW as D,
+			TEMPER as E
+			FROM T_MON_LEDGER_STAT T
+			LEFT JOIN T_LEDGER T3 ON T3.LEDGER_ID = T.LEDGER_ID
+			WHERE T.STAT_DATE >= #{beginDate,jdbcType=TIME}
+			AND T.STAT_DATE &lt;= #{endDate,jdbcType=TIME}
+			AND T.LEDGER_ID in
+			(select id from temp)
+			ORDER BY freezeTime,objectName
+		</if>
+		<if test="dataType != 11 and dataType !=16 ">
+			ORDER BY objectName,freezeTime
+		</if>
+	</select>
+
+	<!-- 得到测量点报表数据 -->
+	<select id="getMeterReportData" parameterType="HashMap"
+		resultType="HashMap">
+		<!-- 日报-正向有功电量，正向无功点量 -->
+		<!-- 创建临时表防止超出in长度限制 -->
+		with temp as(select '0' id from t_meter
+		<foreach collection="meterIdAry" item="meterId">
+			union
+			select #{meterId} id from t_meter
+		</foreach>
+		)
+		<if test="dataType == 1">
+			SELECT q.meter_id as objectId,
+			t.meter_name as objectName,
+			m.AMMETER_ADDRESS as address,
+			to_date(q.freeze_time,'yyyy-MM-dd HH24') as freezeTime ,
+			sum(q.faq_value) as A,
+			sum(q.frq_value) as B
+			FROM (
+			select substr(to_char( t.freeze_time,'yyyy-MM-dd HH24:mi:ss'),0,13) as freeze_time,
+			t.meter_id,
+			t.faq_value,
+			t.frq_value
+			from T_CUR_Q t
+			where t.FREEZE_TIME >= #{beginDate,jdbcType=TIME}
+			AND t.FREEZE_TIME &lt; #{endDate,jdbcType=TIME}
+			AND t.METER_ID in
+			(select id from temp)
+			) q
+			LEFT JOIN t_meter t on q.meter_id = t.meter_id
+			LEFT JOIN t_mped_info m on t.mped_id = m.mped_id
+			GROUP BY
+			q.meter_id,q.freeze_time,t.meter_name,m.AMMETER_ADDRESS
+		</if>
+		<!-- 日报-有功功率 -->
+		<if test="dataType == 2">
+			SELECT T1.METER_ID as objectId,
+			T1.METER_NAME as objectName,
+			m.AMMETER_ADDRESS as address,
+			T.FREEZE_TIME as freezeTime,
+			AP as A
+			FROM T_CUR_AP T
+			LEFT JOIN T_METER T1 on T.meter_id = T1.meter_id
+			LEFT JOIN t_mped_info m on T1.mped_id = m.mped_id
+			WHERE T.FREEZE_TIME >= #{beginDate,jdbcType=TIME}
+			AND T.FREEZE_TIME &lt;= #{endDate,jdbcType=TIME}
+			AND T1.METER_ID in
+			(select id from temp)
+			<!-- AND substr(to_char(T.FREEZE_TIME,'yyyy-MM-dd HH24:mi:ss'),15,2) = 
+				'00' -->
+		</if>
+		<!-- 日报-无功功率 -->
+		<if test="dataType == 3">
+			SELECT T1.METER_ID as objectId,
+			T1.METER_NAME as objectName,
+			m.AMMETER_ADDRESS as address,
+			T.FREEZE_TIME as freezeTime,
+			RP as A
+			FROM T_CUR_RP T
+			LEFT JOIN T_METER T1 on T.meter_id = T1.meter_id
+			LEFT JOIN t_mped_info m on T1.mped_id = m.mped_id
+			WHERE T.FREEZE_TIME >= #{beginDate,jdbcType=TIME}
+			AND T.FREEZE_TIME &lt;= #{endDate,jdbcType=TIME}
+			AND T1.METER_ID in
+			(select id from temp)
+			<!-- AND substr(to_char(T.FREEZE_TIME,'yyyy-MM-dd HH24:mi:ss'),15,2) = 
+				'00' -->
+		</if>
+		<!-- 日报-功率因素 -->
+		<if test="dataType == 4">
+			SELECT tc.METER_ID as objectId,
+			t.meter_name as objectName,
+			m.AMMETER_ADDRESS as address,
+			tc.freeze_time as freezeTime,
+			PF/100 as A
+			FROM T_CUR_PF tc
+			LEFT JOIN t_meter t on tc.meter_id = t.meter_id
+			LEFT JOIN t_mped_info m on t.mped_id = m.mped_id
+			WHERE tc.FREEZE_TIME >= #{beginDate,jdbcType=TIME}
+			AND tc.FREEZE_TIME &lt;= #{endDate,jdbcType=TIME}
+			<!-- AND substr(to_char(tc.FREEZE_TIME,'yyyy-MM-dd HH24:mi:ss'),15,2) 
+				= '00' -->
+			AND tc.METER_ID in
+			(select id from temp)
+		</if>
+		<!-- 日报-电流 -->
+		<if test="dataType == 5">
+			SELECT tc.METER_ID as objectId,
+			t.meter_name as objectName,
+			T2.AMMETER_ADDRESS as address,
+			tc.freeze_time as freezeTime,
+			IA as A,
+			IB as B,
+			IC as C
+			FROM T_CUR_I tc
+			LEFT JOIN t_meter t on tc.meter_id = t.meter_id
+			LEFT JOIN T_MPED_INFO T2 ON T.MPED_ID = T2.MPED_ID
+			WHERE tc.FREEZE_TIME >= #{beginDate,jdbcType=TIME}
+			AND tc.FREEZE_TIME &lt;= #{endDate,jdbcType=TIME}
+			<!-- AND substr(to_char(tc.FREEZE_TIME,'yyyy-MM-dd HH24:mi:ss'),15,2) 
+				= '00' -->
+			AND tc.METER_ID in
+			(select id from temp)
+		</if>
+		<!-- 日报-电压 -->
+		<if test="dataType == 6">
+			SELECT tc.METER_ID as objectId,
+			t.meter_name as objectName,
+			tc.freeze_time as freezeTime,
+			T2.AMMETER_ADDRESS as address,
+			VA as A,
+			VB as B,
+			VC as C,
+			T2.COMM_MODE AS COMMMODE
+			FROM T_CUR_V tc
+			LEFT JOIN t_meter t on tc.meter_id = t.meter_id
+			LEFT JOIN T_MPED_INFO T2 ON T.MPED_ID = T2.MPED_ID
+			WHERE tc.FREEZE_TIME >= #{beginDate,jdbcType=TIME}
+			AND tc.FREEZE_TIME &lt;= #{endDate,jdbcType=TIME}
+			<!-- AND substr(to_char(tc.FREEZE_TIME,'yyyy-MM-dd HH24:mi:ss'),15,2) 
+				= '00' -->
+			AND tc.METER_ID in
+			(select id from temp)
+		</if>
+		<!-- 月报-电量 -->
+		<if test="dataType == 7">
+			SELECT T.METER_ID AS objectId,
+			T3.METER_NAME as objectName,
+			T.FREEZE_TIME as freezeTime,
+			SUM(DAY_FAQ) as A,
+			SUM(DAY_FRQ) AS B,
+			T2.AMMETER_ADDRESS as address,
+			T2.PT AS PT,
+			T2.CT AS CT
+			FROM T_DAY_Q_RATE T
+			LEFT JOIN T_METER T3 ON T3.METER_ID = T.METER_ID
+			LEFT JOIN T_MPED_INFO T2 ON T2.MPED_ID = T3.MPED_ID
+			WHERE T.FREEZE_TIME >=
+			#{beginDate,jdbcType=TIME}
+			AND T.FREEZE_TIME &lt;= #{endDate,jdbcType=TIME}
+			AND T.METER_ID in
+			(select id from temp)
+			GROUP BY T.METER_ID, T3.METER_NAME, T.FREEZE_TIME, T2.PT, T2.CT, T2.AMMETER_ADDRESS
+		</if>
+		<!-- 月报-水量 -->
+		<if test="dataType == 8">
+			SELECT T.METER_ID AS objectId,
+			T3.METER_NAME as objectName,
+			T.FREEZE_TIME as freezeTime,
+			WFLOW_VALUE as A,
+			T2.AMMETER_ADDRESS as address,
+			T2.PT AS PT,
+			T2.CT AS CT
+			FROM T_DAY_WFLOW_STAT T
+			LEFT JOIN T_METER T3 ON T3.METER_ID = T.METER_ID
+			LEFT JOIN T_MPED_INFO T2 ON T2.MPED_ID = T3.MPED_ID
+			WHERE T.FREEZE_TIME >= #{beginDate,jdbcType=TIME}
+			AND T.FREEZE_TIME &lt;= #{endDate,jdbcType=TIME}
+			AND T.METER_ID in
+			(select id from temp)
+		</if>
+		<!-- 月报-气量 -->
+		<if test="dataType == 9">
+			SELECT T.METER_ID AS objectId,
+			T3.METER_NAME as objectName,
+			T.FREEZE_TIME as freezeTime,
+			GFLOW_VALUE as A,
+			T2.AMMETER_ADDRESS as address,
+			T2.PT AS PT,
+			T2.CT AS CT
+			FROM T_DAY_GFLOW_STAT T
+			LEFT JOIN T_METER T3 ON T3.METER_ID = T.METER_ID
+			LEFT JOIN T_MPED_INFO T2 ON T2.MPED_ID = T3.MPED_ID
+			WHERE T.FREEZE_TIME >=
+			#{beginDate,jdbcType=TIME}
+			AND T.FREEZE_TIME &lt;= #{endDate,jdbcType=TIME}
+			AND T.METER_ID in
+			(select id from temp)
+		</if>
+		<!-- 月报-热量 -->
+		<if test="dataType == 10">
+			SELECT T.METER_ID AS objectId,
+			T3.METER_NAME as objectName,
+			T.FREEZE_TIME as freezeTime,
+			HEAT_VALUE as A,
+			T2.AMMETER_ADDRESS as address,
+			T2.PT AS PT,
+			T2.CT AS CT
+			FROM T_DAY_HEAT_STAT T
+			LEFT JOIN T_METER T3 ON T3.METER_ID = T.METER_ID
+			LEFT JOIN T_MPED_INFO T2 ON T2.MPED_ID = T3.MPED_ID
+			WHERE T.FREEZE_TIME >= #{beginDate,jdbcType=TIME}
+			AND T.FREEZE_TIME &lt;= #{endDate,jdbcType=TIME}
+			AND T.METER_ID in
+			(select id from temp)
+		</if>
+		<!-- 年报-电量 -->
+		<if test="dataType == 12">
+			SELECT T.METER_ID AS objectId,
+			T3.METER_NAME as objectName,
+			T.FREEZE_TIME as freezeTime,
+			SUM(MON_FAQ_RATE) as A,
+			SUM(MON_FRQ_RATE) AS B,
+			T2.AMMETER_ADDRESS as address, T2.PT AS PT, T2.CT AS CT
+			FROM T_MON_Q_RATE T
+			LEFT JOIN T_METER T3 ON T3.METER_ID = T.METER_ID
+			LEFT JOIN T_MPED_INFO T2 ON T2.MPED_ID = T3.MPED_ID
+			WHERE T.FREEZE_TIME >= #{beginDate,jdbcType=TIME}
+			AND T.FREEZE_TIME &lt;= #{endDate,jdbcType=TIME}
+			AND T.METER_ID in
+			(select id from temp)
+			GROUP BY T.METER_ID, T3.METER_NAME, T.FREEZE_TIME, T2.PT, T2.CT, T2.AMMETER_ADDRESS
+		</if>
+		<!-- 年报-水量 -->
+		<if test="dataType == 13">
+			SELECT T.METER_ID AS objectId,
+			T3.METER_NAME as objectName,
+			T.FREEZE_TIME as freezeTime,
+			WFLOW_VALUE as A,
+			T2.AMMETER_ADDRESS as address, T2.PT AS PT, T2.CT AS CT
+			FROM T_MON_WFLOW_STAT T
+			LEFT JOIN T_METER T3 ON T3.METER_ID = T.METER_ID
+			LEFT JOIN T_MPED_INFO T2 ON T2.MPED_ID = T3.MPED_ID
+			WHERE T.FREEZE_TIME >= #{beginDate,jdbcType=TIME}
+			AND T.FREEZE_TIME &lt;= #{endDate,jdbcType=TIME}
+			AND T.METER_ID in
+			(select id from temp)
+		</if>
+		<!-- 年报-气量 -->
+		<if test="dataType == 14">
+			SELECT T.METER_ID AS objectId,
+			T3.METER_NAME as objectName,
+			T2.AMMETER_ADDRESS as address,
+			T.FREEZE_TIME as freezeTime,
+			GFLOW_VALUE as A, T2.PT AS PT, T2.CT AS CT
+			FROM T_MON_GFLOW_STAT T
+			LEFT JOIN T_METER T3 ON T3.METER_ID = T.METER_ID
+			LEFT JOIN T_MPED_INFO T2 ON T2.MPED_ID = T3.MPED_ID
+			WHERE T.FREEZE_TIME >= #{beginDate,jdbcType=TIME}
+			AND T.FREEZE_TIME &lt;= #{endDate,jdbcType=TIME}
+			AND T.METER_ID in
+			(select id from temp)
+		</if>
+		<!-- 年报-热量 -->
+		<if test="dataType == 15">
+			SELECT T.METER_ID AS objectId,
+			T3.METER_NAME as objectName,
+			T2.AMMETER_ADDRESS as address,
+			T.FREEZE_TIME as freezeTime,
+			HEAT_VALUE as A,
+			T2.PT AS PT,
+			T2.CT AS CT
+			FROM T_MON_HEAT_STAT T
+			LEFT JOIN T_METER T3 ON T3.METER_ID = T.METER_ID
+			LEFT JOIN T_MPED_INFO T2 ON T2.MPED_ID = T3.MPED_ID
+			WHERE T.FREEZE_TIME >= #{beginDate,jdbcType=TIME}
+			AND T.FREEZE_TIME &lt;= #{endDate,jdbcType=TIME}
+			AND T.METER_ID in
+			(select id from temp)
+		</if>
+		ORDER BY objectName,freezeTime
+	</select>
+
+	<!-- 得到表的读数 -->
+	<select id="getMeterReading" resultType="HashMap">
+		<!-- 电 -->
+		<if test="dataType == 7">
+			SELECT DAY_FAE_TOTAL AS A,
+			DAY_FRE_TOTAL AS B
+			FROM T_DAY_E_TOTAL t2
+			WHERE t2.meter_id = #{objectId}
+			AND t2.freeze_time = #{dateTime,jdbcType=TIME}
+		</if>
+		<!-- 水 -->
+		<if test="dataType == 8">
+			SELECT WFLOW_VALUE AS A
+			FROM T_DAY_WFLOW t2
+			WHERE t2.meter_id = #{objectId}
+			AND t2.freeze_time = #{dateTime,jdbcType=TIME}
+		</if>
+		<!-- 气 -->
+		<if test="dataType == 9">
+			SELECT GFLOW_VALUE AS A
+			FROM T_DAY_GFLOW t2
+			WHERE t2.meter_id = #{objectId}
+			AND t2.freeze_time = #{dateTime,jdbcType=TIME}
+		</if>
+		<!-- 热 -->
+		<if test="dataType == 10">
+			SELECT HEAT_VALUE AS A
+			FROM T_DAY_HEAT t2
+			WHERE t2.meter_id = #{objectId}
+			AND t2.freeze_time = #{dateTime,jdbcType=TIME}
+		</if>
+	</select>
+
+	<select id="countMeterByType" resultType="Integer">
+		select
+		count(t.meter_id) from t_meter t
+		where t.ledger_id in (
+		select l1.ledger_id from t_ledger l1,t_ledger l2
+		where l1.ledger_lft>=l2.ledger_lft and l1.ledger_rgt &lt;=l2.ledger_rgt
+		and l2.ledger_id = #{ledgerId})
+		and t.meter_type = #{meterType}
+	</select>
+
+	<!-- 得到商户月电费报表 -->
+	<select id="getMonthEle" resultType="HashMap" parameterType="HashMap">
+		select T2.LEDGER_ID,
+		T3.LEDGER_NAME,
+		T2.METER_ID,
+		T6.METER_NAME,
+		t.rate_number,
+		T4.RATE_VALUE,
+		T4.SECTOR_NAME,
+		sum(t.day_faq * t2.add_attr * t2.pct / 100) as faq
+		from T_day_Q_rate t
+		LEFT JOIN T_LEDGER_METER T2
+		ON T.METER_ID = T2.METER_ID
+		LEFT JOIN T_LEDGER T3
+		ON T2.LEDGER_ID = T3.LEDGER_ID
+		LEFT JOIN T_RATE_SECTOR T4
+		ON T4.RATE_ID = T3.RATE_ID
+		LEFT JOIN T_METER T6
+		ON T2.METER_ID = T6.METER_ID
+		where t.FREEZE_TIME >= #{beginTime,jdbcType=TIME}
+		AND t.FREEZE_TIME &lt;= #{endTime,jdbcType=TIME}
+		AND T2.LEDGER_ID in
+		<foreach collection="ledgerIdAry" item="objectId" open="("
+			separator="," close=")">
+			#{objectId}
+		</foreach>
+		AND T4.SECTOR_ID = T.RATE_NUMBER
+		group BY T2.LEDGER_ID, T3.LEDGER_NAME, T2.METER_ID, T6.METER_NAME, t.rate_number, T4.RATE_VALUE, T4.SECTOR_NAME
+		order by t2.ledger_id, t2.meter_id
+	</select>
+    
+    <!-- 管理树获取子节点（能管单元） -->
+    <select id="getChildLedger" resultType="String">
+    	<!-- 创建临时表防止超出in长度限制 -->
+		with temp as(select '-1' id from t_ledger
+		<foreach collection="ledgerIdAry" item="ledgerId">
+			 union all
+			 select #{ledgerId} id from t_ledger
+		 </foreach>
+		)
+    	select t1.ledger_id from t_ledger t1, t_ledger t2 
+		where t1.ledger_lft >= t2.ledger_lft
+		and t1.ledger_rgt &lt;= t2.ledger_rgt
+		and t2.ledger_id in 
+		(select id from temp)
+        <if test="noLedgerAry != null and noLedgerAry != ''">
+        	and t1.ledger_id not in
+        	<foreach collection="noLedgerAry" item="noId" open="(" separator="," close=")">
+        		#{noId}       
+        	</foreach>
+        </if>
+    </select>
+    
+    <!-- 管理树获取子节点（计量点） -->
+    <select id="getChildMeter" resultType="String">
+    	<!-- 创建临时表防止超出in长度限制 -->
+		with temp as(select '-1' id from t_ledger
+		<foreach collection="ledgerIdAry" item="ledgerId">
+			 union all
+			 select #{ledgerId} id from t_ledger
+		 </foreach>
+		)
+    	select m.meter_id from t_ledger_show ls inner join t_meter m on ls.meter_id = m.meter_id
+		where ls.ledger_id in 
+		(select id from temp)
+		and m.meter_status = 1
+		and m.is_virtual = 0
+    </select>
+    
+    <!-- 拓扑树企业获取计量点 -->
+    <select id="getEleChildMeterByL" resultType="String">
+   		select t.meter_id from t_lineloss_meter_info l inner join t_meter t
+		on l.meter_id = t.meter_id
+		start with l.parement_meter_id in 
+		(select lm.meter_id from t_ledger_meter lm
+		where lm.ledger_id in
+		<foreach collection="ledgerIdAry" item="objectId" open="(" separator="," close=")">
+        	#{objectId}       
+        </foreach>)
+		connect by prior l.meter_id = l.parement_meter_id
+		and t.meter_status = 1
+		and t.is_virtual = 0
+    </select>
+    
+    <!-- 拓扑树计量点获取子节点（计量点） -->
+    <select id="getEleChildMeterByM" resultType="String">
+    	<!-- 创建临时表防止超出in长度限制 -->
+		with temp as(select '-1' id from t_meter
+		<foreach collection="meterIdAry" item="meterId">
+			 union
+			 select #{meterId} id from t_meter
+		 </foreach>
+		)
+    	select t.meter_id from t_lineloss_meter_info l inner join t_meter t
+		on l.meter_id = t.meter_id
+		start with l.parement_meter_id in 
+		(select id from temp)
+		connect by prior l.meter_id = l.parement_meter_id
+		and t.meter_status = 1
+		and t.is_virtual = 0
+		<if test="noMeterAry != null and noMeterAry != ''">
+        and t.meter_id not in
+        	<foreach collection="noMeterAry" item="noId" open="(" separator="," close=")">
+        		#{noId}       
+        	</foreach>
+        </if>	
+    </select>
+
+
+	<select id="getEleChildMeterNew" resultType="String">
+
+		select lm.meter_id from t_meter lm
+		where lm.ledger_id in
+		<foreach collection="ledgerIdAry" item="objectId" open="(" separator="," close=")">
+			#{objectId}
+		</foreach>
+        and lm.METER_STATUS = 1
+	</select>
+
+    <select id="getFhAnalysisMeters" resultType="Long">
+        <if test="objType == 1">
+            select distinct meter_id
+            from (
+                  <if test=" ledgerList != null ">
+                      select m.meter_id
+                      from t_meter m inner join (SELECT t1.ledger_id from t_ledger t1,t_ledger t2 where t1.ledger_lft >= t2.ledger_lft and t1.ledger_rgt &lt;= t2.ledger_rgt
+                      and t2.ledger_id in ( SELECT s1.ledger_id from t_ledger s1,t_ledger s2 where s1.ledger_lft >= s2.ledger_lft and s1.ledger_rgt &lt;= s2.ledger_rgt
+                      and s2.ledger_id in <foreach collection="ledgerList" item="ledger" open="(" separator="," close=")"> #{ledger} </foreach>
+                      and s1.ANALY_TYPE = 106 )
+                      and t1.ANALY_TYPE = 102
+                      ) l on m.ledger_id = l.ledger_id
+                      where 1=1
+                  </if>
+                  <if test=" ledgerList != null and meterList != null ">
+                      union all
+                  </if>
+                  <if test=" meterList != null ">
+                      select m.meter_id
+                      from t_meter m where m.meter_id in <foreach collection="meterList" item="meter" open="(" separator="," close=")"> #{meter} </foreach>
+                  </if>
+            )
+        </if>
+        <if test="objType == 0">
+            select distinct meter_id
+            from (
+                  <if test=" ledgerList != null ">
+                      select m.meter_id
+                      from t_meter m inner join (SELECT t1.ledger_id from t_ledger t1,t_ledger t2 where t1.ledger_lft>=t2.ledger_lft and t1.ledger_rgt&lt;=t2.ledger_rgt
+                      and t2.ledger_id in <foreach collection="ledgerList" item="ledger" open="(" separator="," close=")"> #{ledger} </foreach>
+                      and t1.ANALY_TYPE = 102
+                      ) l on m.ledger_id = l.ledger_id
+                      where 1=1
+                  </if>
+                  <if test=" ledgerList != null and meterList != null ">
+                      union all
+                  </if>
+                  <if test=" meterList != null ">
+                      select m.meter_id
+                      from t_meter m where m.meter_id in <foreach collection="meterList" item="meter" open="(" separator="," close=")"> #{meter} </foreach>
+                  </if>
+            )
+        </if>
+    </select>
+
+    <select id="getEleAnalysisData" resultType="HashMap">
+        select temp.meter_id, temp.meter_name as "meterName", l.ledger_name as "ledgerName",
+        round(avg(d.F_SIZE), 1) as "fSize", round(sum(d.F_WEIG), 1) as "fWeig", round(sum(d.APQ)/sum(d.F_WEIG), 1) as "elePw"
+        from (
+           select distinct meter_id, meter_name
+           from (
+              <if test=" ledgerList != null ">
+                  select m.meter_id, m.meter_name
+                  from t_meter m inner join (SELECT t1.ledger_id from t_ledger t1,t_ledger t2 where t1.ledger_lft>=t2.ledger_lft and t1.ledger_rgt&lt;=t2.ledger_rgt
+                                               and t2.ledger_id in <foreach collection="ledgerList" item="ledger" open="(" separator="," close=")"> #{ledger} </foreach>
+                                               and t1.ANALY_TYPE = 102
+                                              ) l on m.ledger_id = l.ledger_id
+                  where 1=1
+              </if>
+              <if test=" ledgerList != null and meterList != null ">
+                  union all
+              </if>
+              <if test=" meterList != null ">
+                  select m.meter_id, m.meter_name
+                  from t_meter m where m.meter_id in <foreach collection="meterList" item="meter" open="(" separator="," close=")"> #{meter} </foreach>
+              </if>
+           )
+        ) temp
+        left join T_EE_DATA_DAY d on temp.meter_id = d.METER_ID
+        left join T_LEDGER l on d.LEDGER_ID = l.LEDGER_ID
+        where d.DATA_DATE >= #{beginDate,jdbcType=TIME} AND d.DATA_DATE &lt;= #{endDate,jdbcType=TIME}
+        group by temp.meter_id, temp.meter_name, l.ledger_name
+        order by round(sum(d.APQ)/sum(d.F_WEIG), 1)
+        <if test="orderType == 2">
+            desc
+        </if>
+    </select>
+
+    <select id="energyDetailDataPageList" resultType="HashMap">
+        select temp.meter_id, temp.meter_name as "meterName", l.ledger_name as "ledgerName",
+        d.F_SIZE as "fSize", d.F_WEIG as "fWeig", d.APQ as "apQ", EC_PW as "ecPw", to_char(d.DATA_DATE,'yyyy-MM-dd') as "timeVal"
+        from (
+        select distinct meter_id, meter_name
+        from (
+        <if test=" ledgerList != null ">
+            select m.meter_id, m.meter_name
+            from t_meter m inner join (SELECT t1.ledger_id from t_ledger t1,t_ledger t2 where t1.ledger_lft>=t2.ledger_lft and t1.ledger_rgt&lt;=t2.ledger_rgt
+            and t2.ledger_id in <foreach collection="ledgerList" item="ledger" open="(" separator="," close=")"> #{ledger} </foreach>
+            and t1.ANALY_TYPE = 102
+            ) l on m.ledger_id = l.ledger_id
+            where 1=1
+        </if>
+        <if test=" ledgerList != null and meterList != null ">
+            union all
+        </if>
+        <if test=" meterList != null ">
+            select m.meter_id, m.meter_name
+            from t_meter m where m.meter_id in <foreach collection="meterList" item="meter" open="(" separator="," close=")"> #{meter} </foreach>
+        </if>
+        )
+        ) temp
+        left join T_EE_DATA_DAY d on temp.meter_id = d.METER_ID
+        left join T_LEDGER l on d.LEDGER_ID = l.LEDGER_ID
+        where d.DATA_DATE >= #{beginDate,jdbcType=TIME} AND d.DATA_DATE &lt;= #{endDate,jdbcType=TIME}
+        order by d.METER_ID, d.DATA_DATE
+    </select>
+
+    <select id="energyDetailDataList" resultType="HashMap">
+        select temp.meter_id, temp.meter_name as "meterName", l.ledger_name as "ledgerName",
+        d.F_SIZE as "fSize", d.F_WEIG as "fWeig", d.APQ as "apQ", EC_PW as "ecPw", to_char(d.DATA_DATE,'yyyy-MM-dd') as "timeVal"
+        from (
+        select distinct meter_id, meter_name
+        from (
+        <if test=" ledgerList != null ">
+            select m.meter_id, m.meter_name
+            from t_meter m inner join (SELECT t1.ledger_id from t_ledger t1,t_ledger t2 where t1.ledger_lft>=t2.ledger_lft and t1.ledger_rgt&lt;=t2.ledger_rgt
+            and t2.ledger_id in <foreach collection="ledgerList" item="ledger" open="(" separator="," close=")"> #{ledger} </foreach>
+            and t1.ANALY_TYPE = 102
+            ) l on m.ledger_id = l.ledger_id
+            where 1=1
+        </if>
+        <if test=" ledgerList != null and meterList != null ">
+            union all
+        </if>
+        <if test=" meterList != null ">
+            select m.meter_id, m.meter_name
+            from t_meter m where m.meter_id in <foreach collection="meterList" item="meter" open="(" separator="," close=")"> #{meter} </foreach>
+        </if>
+        )
+        ) temp
+        left join T_EE_DATA_DAY d on temp.meter_id = d.METER_ID
+        left join T_LEDGER l on d.LEDGER_ID = l.LEDGER_ID
+        where d.DATA_DATE >= #{beginDate,jdbcType=TIME} AND d.DATA_DATE &lt;= #{endDate,jdbcType=TIME}
+        order by d.METER_ID, d.DATA_DATE
+    </select>
+
+    <select id="getFhIDataPageList" resultType="HashMap">
+        WITH dd1 AS (
+        select tp1.*
+        from (
+            SELECT rownum as rw, m.meter_id, m.meter_name, l.ledger_name
+            FROM T_LINELOSS_METER_INFO t
+            inner join t_meter m on t.meter_id=m.meter_id
+            inner join t_ledger l on m.ledger_id=l.ledger_id
+            START WITH t.METER_ID in (
+
+            <if test=" ledgerList != null ">
+                select m.meter_id
+                from T_LINELOSS_METER_INFO m inner join t_meter m1 on m.meter_id = m1.meter_id
+                inner join (
+                    SELECT t1.ledger_id from t_ledger t1,t_ledger t2 where t1.ledger_lft>=t2.ledger_lft and t1.ledger_rgt&lt;=t2.ledger_rgt
+                    and t2.ledger_id in <foreach collection="ledgerList" item="ledger" open="(" separator="," close=")"> #{ledger} </foreach>
+                    and t1.ANALY_TYPE = 102
+                ) l on m1.ledger_id = l.ledger_id
+                where m1.METER_TYPE = 1 and m1.IS_VIRTUAL = 0 and m.METER_LEVEL = 1
+            </if>
+            <if test=" ledgerList != null and meterList != null ">
+                union all
+            </if>
+            <if test=" meterList != null ">
+                select m.meter_id
+                from t_meter m where m.meter_id in <foreach collection="meterList" item="meter" open="(" separator="," close=")"> #{meter} </foreach>
+                and m.METER_TYPE = 1 and m.IS_VIRTUAL = 0
+            </if>
+
+            )
+            CONNECT BY PRIOR t.METER_ID = t.PAREMENT_METER_ID
+        ) tp1
+        where 1=1
+        <if test="objType == 1">
+            and tp1.meter_id in (
+                SELECT METER_ID from t_ledger_meter where LEDGER_ID in (SELECT s1.ledger_id from t_ledger s1,t_ledger s2 where s1.ledger_lft >= s2.ledger_lft and s1.ledger_rgt &lt;= s2.ledger_rgt
+                and s2.ledger_id in<foreach collection="ledgerList" item="ledger" open="(" separator="," close=")">#{ledger}</foreach>
+                and s1.ANALY_TYPE = 106)
+            )
+        </if>
+        )
+
+        select temp1.meter_id, temp1.meterName as "meterName", temp1.ledgerName as "ledgerName", temp1.dateVal as "dateVal", temp1.timeVal as "timeVal",
+        temp1.Ia as "Ia", temp1.Ib as "Ib", temp1.Ic as "Ic",
+        round(temp2.Ua/1000, 2) as "Ua", round(temp2.Ub/1000, 2) as "Ub", round(temp2.Uc/1000, 2) as "Uc",
+        temp3.PF as "PF", temp3.PFa as "PFa", temp3.PFb as "PFb", temp3.PFc as "PFc",
+        temp4.P as "P", temp4.Pa as "Pa", temp4.Pb as "Pb", temp4.Pc as "Pc",
+        temp5.Q as "Q", temp5.Qa as "Qa", temp5.Qb as "Qb", temp5.Qc as "Qc"
+        from
+        (
+        select ff1.rw, ff1.meter_id, ff1.meter_name as meterName, ff1.ledger_name as ledgerName, to_char(ff1.freeze_time,'yyyy-MM-dd') as dateVal,
+        to_char(ff1.freeze_time, 'HH24:mi') as timeVal, i.ia as Ia, i.ib as Ib, i.ic as Ic
+        from
+        (select dd1.*, ee1.*
+        from dd1, (
+        <if test="frequence == 3">
+            SELECT #{beginDate,jdbcType=TIME} + (ROWNUM - 1)*15/24/60 as FREEZE_TIME
+            FROM DUAL CONNECT BY ROWNUM &lt;= (floor(#{endDate,jdbcType=TIME} - #{beginDate,jdbcType=TIME}) + 1)*24*60/15
+        </if>
+        <if test="frequence == 2">
+            SELECT #{beginDate,jdbcType=TIME} + (ROWNUM - 1)*30/24/60 as FREEZE_TIME
+            FROM DUAL CONNECT BY ROWNUM &lt;= (floor(#{endDate,jdbcType=TIME} - #{beginDate,jdbcType=TIME}) + 1)*24*60/30
+        </if>
+        <if test="frequence == 1">
+            SELECT #{beginDate,jdbcType=TIME} + (ROWNUM - 1)*60/24/60 as FREEZE_TIME
+            FROM DUAL CONNECT BY ROWNUM &lt;= (floor(#{endDate,jdbcType=TIME} - #{beginDate,jdbcType=TIME}) + 1)*24*60/60
+        </if> ) ee1
+        where 1=1
+        )
+        ff1
+        left join t_cur_i i on ff1.meter_id = i.meter_id and ff1.FREEZE_TIME = i.FREEZE_TIME
+        where ff1.FREEZE_TIME >= #{beginDate,jdbcType=TIME} AND ff1.FREEZE_TIME &lt;= #{endDate,jdbcType=TIME}
+        <if test="frequence == 1">
+            and to_char(ff1.FREEZE_TIME,'mi') = '00'
+        </if>
+        <if test="frequence == 2">
+            and ( to_char(ff1.FREEZE_TIME,'mi') = '00' or to_char(ff1.FREEZE_TIME,'mi') = '30' )
+        </if>
+        <if test="frequence == 3">
+            and ( to_char(ff1.FREEZE_TIME,'mi') = '00' or to_char(ff1.FREEZE_TIME,'mi') = '15' or to_char(ff1.FREEZE_TIME,'mi') = '30' or to_char(ff1.FREEZE_TIME,'mi') = '45' )
+        </if>
+        ) temp1
+        left join
+        (
+        select dd1.rw, dd1.meter_id, dd1.meter_name as meterName, dd1.ledger_name as ledgerName, to_char(t.freeze_time,'yyyy-MM-dd') as dateVal,to_char(t.freeze_time, 'HH24:mi') as timeVal,
+        t.va as Ua, t.vb as Ub, t.vc as Uc
+        from dd1
+        left join t_cur_v t on dd1.meter_id = t.meter_id
+        where t.FREEZE_TIME >= #{beginDate,jdbcType=TIME} AND t.FREEZE_TIME &lt;= #{endDate,jdbcType=TIME}
+        <if test="frequence == 1">
+            and to_char(t.FREEZE_TIME,'mi') = '00'
+        </if>
+        <if test="frequence == 2">
+            and ( to_char(t.FREEZE_TIME,'mi') = '00' or to_char(t.FREEZE_TIME,'mi') = '30' )
+        </if>
+        <if test="frequence == 3">
+            and ( to_char(t.FREEZE_TIME,'mi') = '00' or to_char(t.FREEZE_TIME,'mi') = '15' or to_char(t.FREEZE_TIME,'mi') = '30' or to_char(t.FREEZE_TIME,'mi') = '45' )
+        </if>
+        ) temp2 on temp1.meter_id=temp2.meter_id and temp1.dateVal=temp2.dateVal and temp1.timeVal=temp2.timeVal
+        left join
+        (
+        select dd1.rw, dd1.meter_id, dd1.meter_name as meterName, dd1.ledger_name as ledgerName, to_char(t.freeze_time,'yyyy-MM-dd') as dateVal,to_char(t.freeze_time, 'HH24:mi') as timeVal,
+        t.pf as PF, t.pf_a as PFa, t.pf_b as PFb, t.pf_c as PFc
+        from dd1
+        left join t_cur_pf t on dd1.meter_id = t.meter_id
+        where t.FREEZE_TIME >= #{beginDate,jdbcType=TIME} AND t.FREEZE_TIME &lt;= #{endDate,jdbcType=TIME}
+        <if test="frequence == 1">
+            and to_char(t.FREEZE_TIME,'mi') = '00'
+        </if>
+        <if test="frequence == 2">
+            and ( to_char(t.FREEZE_TIME,'mi') = '00' or to_char(t.FREEZE_TIME,'mi') = '30' )
+        </if>
+        <if test="frequence == 3">
+            and ( to_char(t.FREEZE_TIME,'mi') = '00' or to_char(t.FREEZE_TIME,'mi') = '15' or to_char(t.FREEZE_TIME,'mi') = '30' or to_char(t.FREEZE_TIME,'mi') = '45' )
+        </if>
+        ) temp3 on temp1.meter_id=temp3.meter_id and temp1.dateVal=temp3.dateVal and temp1.timeVal=temp3.timeVal
+        left join
+        (
+        select dd1.rw, dd1.meter_id, dd1.meter_name as meterName, dd1.ledger_name as ledgerName, to_char(t.freeze_time,'yyyy-MM-dd') as dateVal,to_char(t.freeze_time, 'HH24:mi') as timeVal,
+        t.ap as P, t.ap_a as Pa, t.ap_b as Pb, t.ap_c as Pc
+        from dd1
+        left join t_cur_ap t on dd1.meter_id = t.meter_id
+        where t.FREEZE_TIME >= #{beginDate,jdbcType=TIME} AND t.FREEZE_TIME &lt;= #{endDate,jdbcType=TIME}
+        <if test="frequence == 1">
+            and to_char(t.FREEZE_TIME,'mi') = '00'
+        </if>
+        <if test="frequence == 2">
+            and ( to_char(t.FREEZE_TIME,'mi') = '00' or to_char(t.FREEZE_TIME,'mi') = '30' )
+        </if>
+        <if test="frequence == 3">
+            and ( to_char(t.FREEZE_TIME,'mi') = '00' or to_char(t.FREEZE_TIME,'mi') = '15' or to_char(t.FREEZE_TIME,'mi') = '30' or to_char(t.FREEZE_TIME,'mi') = '45' )
+        </if>
+        ) temp4 on temp1.meter_id=temp4.meter_id and temp1.dateVal=temp4.dateVal and temp1.timeVal=temp4.timeVal
+        left join
+        (
+        select dd1.rw, dd1.meter_id, dd1.meter_name as meterName, dd1.ledger_name as ledgerName, to_char(t.freeze_time,'yyyy-MM-dd') as dateVal,to_char(t.freeze_time, 'HH24:mi') as timeVal,
+        t.rp as Q, t.rp_a as Qa, t.rp_b as Qb, t.rp_c as Qc
+        from dd1
+        left join t_cur_rp t on dd1.meter_id = t.meter_id
+        where t.FREEZE_TIME >= #{beginDate,jdbcType=TIME} AND t.FREEZE_TIME &lt;= #{endDate,jdbcType=TIME}
+        <if test="frequence == 1">
+            and to_char(t.FREEZE_TIME,'mi') = '00'
+        </if>
+        <if test="frequence == 2">
+            and ( to_char(t.FREEZE_TIME,'mi') = '00' or to_char(t.FREEZE_TIME,'mi') = '30' )
+        </if>
+        <if test="frequence == 3">
+            and ( to_char(t.FREEZE_TIME,'mi') = '00' or to_char(t.FREEZE_TIME,'mi') = '15' or to_char(t.FREEZE_TIME,'mi') = '30' or to_char(t.FREEZE_TIME,'mi') = '45' )
+        </if>
+        ) temp5 on temp1.meter_id=temp5.meter_id and temp1.dateVal=temp5.dateVal and temp1.timeVal=temp5.timeVal
+        order by temp1.rw, temp1.dateVal, temp1.timeVal
+    </select>
+
+    <select id="getFhIDataList" resultType="HashMap">
+        WITH dd1 AS (
+        select tp1.*
+        from (
+        SELECT rownum as rw, m.meter_id, m.meter_name, l.ledger_name
+        FROM T_LINELOSS_METER_INFO t
+        inner join t_meter m on t.meter_id=m.meter_id
+        inner join t_ledger l on m.ledger_id=l.ledger_id
+        START WITH t.METER_ID in (
+
+        <if test=" ledgerList != null ">
+            select m.meter_id
+            from T_LINELOSS_METER_INFO m inner join t_meter m1 on m.meter_id = m1.meter_id
+            inner join (
+            SELECT t1.ledger_id from t_ledger t1,t_ledger t2 where t1.ledger_lft>=t2.ledger_lft and t1.ledger_rgt&lt;=t2.ledger_rgt
+            and t2.ledger_id in <foreach collection="ledgerList" item="ledger" open="(" separator="," close=")"> #{ledger} </foreach>
+            and t1.ANALY_TYPE = 102
+            ) l on m1.ledger_id = l.ledger_id
+            where m1.METER_TYPE = 1 and m1.IS_VIRTUAL = 0 and m.METER_LEVEL = 1
+        </if>
+        <if test=" ledgerList != null and meterList != null ">
+            union all
+        </if>
+        <if test=" meterList != null ">
+            select m.meter_id
+            from t_meter m where m.meter_id in <foreach collection="meterList" item="meter" open="(" separator="," close=")"> #{meter} </foreach>
+            and m.METER_TYPE = 1 and m.IS_VIRTUAL = 0
+        </if>
+
+        )
+        CONNECT BY PRIOR t.METER_ID = t.PAREMENT_METER_ID
+        ) tp1
+        where 1=1
+        <if test="objType == 1">
+            and tp1.meter_id in (
+            SELECT METER_ID from t_ledger_meter where LEDGER_ID in (SELECT s1.ledger_id from t_ledger s1,t_ledger s2 where s1.ledger_lft >= s2.ledger_lft and s1.ledger_rgt &lt;= s2.ledger_rgt
+            and s2.ledger_id in<foreach collection="ledgerList" item="ledger" open="(" separator="," close=")">#{ledger}</foreach>
+            and s1.ANALY_TYPE = 106)
+            )
+        </if>
+        )
+
+        select temp1.meter_id, temp1.meterName as "meterName", temp1.ledgerName as "ledgerName", temp1.dateVal as "dateVal", temp1.timeVal as "timeVal",
+        temp1.Ia as "Ia", temp1.Ib as "Ib", temp1.Ic as "Ic",
+        round(temp2.Ua/1000, 2) as "Ua", round(temp2.Ub/1000, 2) as "Ub", round(temp2.Uc/1000, 2) as "Uc",
+        temp3.PF as "PF", temp3.PFa as "PFa", temp3.PFb as "PFb", temp3.PFc as "PFc",
+        temp4.P as "P", temp4.Pa as "Pa", temp4.Pb as "Pb", temp4.Pc as "Pc",
+        temp5.Q as "Q", temp5.Qa as "Qa", temp5.Qb as "Qb", temp5.Qc as "Qc"
+        from
+        (
+        select ff1.rw, ff1.meter_id, ff1.meter_name as meterName, ff1.ledger_name as ledgerName, to_char(ff1.freeze_time,'yyyy-MM-dd') as dateVal,
+        to_char(ff1.freeze_time, 'HH24:mi') as timeVal, i.ia as Ia, i.ib as Ib, i.ic as Ic
+        from
+        (select dd1.*, ee1.*
+        from dd1, (
+        <if test="frequence == 3">
+            SELECT #{beginDate,jdbcType=TIME} + (ROWNUM - 1)*15/24/60 as FREEZE_TIME
+            FROM DUAL CONNECT BY ROWNUM &lt;= (floor(#{endDate,jdbcType=TIME} - #{beginDate,jdbcType=TIME}) + 1)*24*60/15
+        </if>
+        <if test="frequence == 2">
+            SELECT #{beginDate,jdbcType=TIME} + (ROWNUM - 1)*30/24/60 as FREEZE_TIME
+            FROM DUAL CONNECT BY ROWNUM &lt;= (floor(#{endDate,jdbcType=TIME} - #{beginDate,jdbcType=TIME}) + 1)*24*60/30
+        </if>
+        <if test="frequence == 1">
+            SELECT #{beginDate,jdbcType=TIME} + (ROWNUM - 1)*60/24/60 as FREEZE_TIME
+            FROM DUAL CONNECT BY ROWNUM &lt;= (floor(#{endDate,jdbcType=TIME} - #{beginDate,jdbcType=TIME}) + 1)*24*60/60
+        </if> ) ee1
+        where 1=1
+        )
+        ff1
+        left join t_cur_i i on ff1.meter_id = i.meter_id and ff1.FREEZE_TIME = i.FREEZE_TIME
+        where ff1.FREEZE_TIME >= #{beginDate,jdbcType=TIME} AND ff1.FREEZE_TIME &lt;= #{endDate,jdbcType=TIME}
+        <if test="frequence == 1">
+            and to_char(ff1.FREEZE_TIME,'mi') = '00'
+        </if>
+        <if test="frequence == 2">
+            and ( to_char(ff1.FREEZE_TIME,'mi') = '00' or to_char(ff1.FREEZE_TIME,'mi') = '30' )
+        </if>
+        <if test="frequence == 3">
+            and ( to_char(ff1.FREEZE_TIME,'mi') = '00' or to_char(ff1.FREEZE_TIME,'mi') = '15' or to_char(ff1.FREEZE_TIME,'mi') = '30' or to_char(ff1.FREEZE_TIME,'mi') = '45' )
+        </if>
+        ) temp1
+        left join
+        (
+        select dd1.rw, dd1.meter_id, dd1.meter_name as meterName, dd1.ledger_name as ledgerName, to_char(t.freeze_time,'yyyy-MM-dd') as dateVal,to_char(t.freeze_time, 'HH24:mi') as timeVal,
+        t.va as Ua, t.vb as Ub, t.vc as Uc
+        from dd1
+        left join t_cur_v t on dd1.meter_id = t.meter_id
+        where t.FREEZE_TIME >= #{beginDate,jdbcType=TIME} AND t.FREEZE_TIME &lt;= #{endDate,jdbcType=TIME}
+        <if test="frequence == 1">
+            and to_char(t.FREEZE_TIME,'mi') = '00'
+        </if>
+        <if test="frequence == 2">
+            and ( to_char(t.FREEZE_TIME,'mi') = '00' or to_char(t.FREEZE_TIME,'mi') = '30' )
+        </if>
+        <if test="frequence == 3">
+            and ( to_char(t.FREEZE_TIME,'mi') = '00' or to_char(t.FREEZE_TIME,'mi') = '15' or to_char(t.FREEZE_TIME,'mi') = '30' or to_char(t.FREEZE_TIME,'mi') = '45' )
+        </if>
+        ) temp2 on temp1.meter_id=temp2.meter_id and temp1.dateVal=temp2.dateVal and temp1.timeVal=temp2.timeVal
+        left join
+        (
+        select dd1.rw, dd1.meter_id, dd1.meter_name as meterName, dd1.ledger_name as ledgerName, to_char(t.freeze_time,'yyyy-MM-dd') as dateVal,to_char(t.freeze_time, 'HH24:mi') as timeVal,
+        t.pf as PF, t.pf_a as PFa, t.pf_b as PFb, t.pf_c as PFc
+        from dd1
+        left join t_cur_pf t on dd1.meter_id = t.meter_id
+        where t.FREEZE_TIME >= #{beginDate,jdbcType=TIME} AND t.FREEZE_TIME &lt;= #{endDate,jdbcType=TIME}
+        <if test="frequence == 1">
+            and to_char(t.FREEZE_TIME,'mi') = '00'
+        </if>
+        <if test="frequence == 2">
+            and ( to_char(t.FREEZE_TIME,'mi') = '00' or to_char(t.FREEZE_TIME,'mi') = '30' )
+        </if>
+        <if test="frequence == 3">
+            and ( to_char(t.FREEZE_TIME,'mi') = '00' or to_char(t.FREEZE_TIME,'mi') = '15' or to_char(t.FREEZE_TIME,'mi') = '30' or to_char(t.FREEZE_TIME,'mi') = '45' )
+        </if>
+        ) temp3 on temp1.meter_id=temp3.meter_id and temp1.dateVal=temp3.dateVal and temp1.timeVal=temp3.timeVal
+        left join
+        (
+        select dd1.rw, dd1.meter_id, dd1.meter_name as meterName, dd1.ledger_name as ledgerName, to_char(t.freeze_time,'yyyy-MM-dd') as dateVal,to_char(t.freeze_time, 'HH24:mi') as timeVal,
+        t.ap as P, t.ap_a as Pa, t.ap_b as Pb, t.ap_c as Pc
+        from dd1
+        left join t_cur_ap t on dd1.meter_id = t.meter_id
+        where t.FREEZE_TIME >= #{beginDate,jdbcType=TIME} AND t.FREEZE_TIME &lt;= #{endDate,jdbcType=TIME}
+        <if test="frequence == 1">
+            and to_char(t.FREEZE_TIME,'mi') = '00'
+        </if>
+        <if test="frequence == 2">
+            and ( to_char(t.FREEZE_TIME,'mi') = '00' or to_char(t.FREEZE_TIME,'mi') = '30' )
+        </if>
+        <if test="frequence == 3">
+            and ( to_char(t.FREEZE_TIME,'mi') = '00' or to_char(t.FREEZE_TIME,'mi') = '15' or to_char(t.FREEZE_TIME,'mi') = '30' or to_char(t.FREEZE_TIME,'mi') = '45' )
+        </if>
+        ) temp4 on temp1.meter_id=temp4.meter_id and temp1.dateVal=temp4.dateVal and temp1.timeVal=temp4.timeVal
+        left join
+        (
+        select dd1.rw, dd1.meter_id, dd1.meter_name as meterName, dd1.ledger_name as ledgerName, to_char(t.freeze_time,'yyyy-MM-dd') as dateVal,to_char(t.freeze_time, 'HH24:mi') as timeVal,
+        t.rp as Q, t.rp_a as Qa, t.rp_b as Qb, t.rp_c as Qc
+        from dd1
+        left join t_cur_rp t on dd1.meter_id = t.meter_id
+        where t.FREEZE_TIME >= #{beginDate,jdbcType=TIME} AND t.FREEZE_TIME &lt;= #{endDate,jdbcType=TIME}
+        <if test="frequence == 1">
+            and to_char(t.FREEZE_TIME,'mi') = '00'
+        </if>
+        <if test="frequence == 2">
+            and ( to_char(t.FREEZE_TIME,'mi') = '00' or to_char(t.FREEZE_TIME,'mi') = '30' )
+        </if>
+        <if test="frequence == 3">
+            and ( to_char(t.FREEZE_TIME,'mi') = '00' or to_char(t.FREEZE_TIME,'mi') = '15' or to_char(t.FREEZE_TIME,'mi') = '30' or to_char(t.FREEZE_TIME,'mi') = '45' )
+        </if>
+        ) temp5 on temp1.meter_id=temp5.meter_id and temp1.dateVal=temp5.dateVal and temp1.timeVal=temp5.timeVal
+        order by temp1.rw, temp1.dateVal, temp1.timeVal
+    </select>
+
+</mapper>

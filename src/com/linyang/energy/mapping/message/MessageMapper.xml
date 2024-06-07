@@ -1,0 +1,489 @@
+<?xml version="1.0" encoding="UTF-8" ?> 
+<!DOCTYPE mapper PUBLIC "-//ibatis.apache.org//DTD Mapper 3.0//EN" "http://ibatis.apache.org/dtd/ibatis-3-mapper.dtd">
+
+<mapper namespace="com.linyang.energy.mapping.message.MessageMapper">
+	
+	<!-- 用户反馈map -->
+	<resultMap id="sugResultMap" type="com.linyang.energy.model.SuggestBean">
+		<id property="sugId"          column="SUG_ID"/>
+		<result property="submitDateStr"  column="SUBMIT_DATE"/>
+		<result property="accountId"       column="ACCOUNT_ID"/>
+		<result property="submitUser"         column="SUBMIT_USER"/>
+		<result property="ledgerId"     column="LEDGER_ID"/>
+		<result property="submitLedger"        column="SUBMIT_LEDGER"/>
+		<result property="submitRole"    column="SUBMIT_ROLE"/>
+		<result property="sugMsg"      column="SUG_MSG"/>
+		<result property="sugReply"      column="SUG_REPLY"/>
+		<result property="contactWay"      column="CONTACT_WAY"/>
+	</resultMap>
+
+	
+	<!-- 获取订阅的用户ID -->
+	<select id="getBookAccountId" resultType="Long">
+		select t.account_id from t_book_info t where t.book_type=#{bookType} and t.book_id=#{bookId}
+	</select>
+
+	<!-- 获取指定分户的订阅的用户ID -->
+	<select id="getBookAccountIdByLedger" resultType="Long">
+		select t.account_id from t_book_info t,t_account a where t.account_id=a.account_id 
+		and t.book_type=#{bookType} and t.book_id=#{bookId}
+		and a.ledger_id in (select p.ledger_id from t_ledger l,t_ledger p where l.ledger_id=#{ledgerId} and p.ledger_lft&lt;=l.ledger_lft and p.ledger_rgt>=l.ledger_rgt)
+	</select>
+	
+	<!-- 获取指定测量点的订阅的用户ID -->
+	<select id="getBookAccountIdByMeter" resultType="Long">
+		select t.account_id from t_book_info t,t_account a where t.account_id=a.account_id 
+		and t.book_type=#{bookType} and t.book_id=#{bookId}
+		and a.ledger_id in (select p.ledger_id from t_meter m,t_ledger l,t_ledger p
+		where m.meter_id=#{meterId} and m.ledger_id=l.ledger_id and p.ledger_lft &lt;=l.ledger_lft and p.ledger_rgt>=l.ledger_rgt)
+	</select>
+	
+	<!-- 获取所属组下面的所有用户ID -->
+	<select id="getAccountIdByGroup" resultType="Long">
+		select a.account_id from t_group_ledger g,t_account a where g.ledger_id=a.ledger_id and g.group_id=#{groupId}
+	</select>
+	
+	<!-- 获取所属分户下面的所有用户ID -->
+	<select id="getAccountIdByLedger" resultType="Long">
+		select a.account_id from t_account a where a.ledger_id=#{ledgerId}
+	</select>
+	
+	<!-- 保存订阅的用户 -->
+	<insert id="insertBookInfo">
+		insert into t_book_info (record_id,account_id,book_id,book_type)
+		values (#{recId},#{accountId},#{bookId},#{bookType})
+	</insert>
+	
+	<!-- 保存订阅的用户（如果存在则不保存） -->
+	<insert id="mergeBookInfo">
+		merge into t_book_info t using (select #{recId} as recId,#{accountId} as accountId,#{bookId} as bookId,#{bookType} as bookType from dual) s
+		on (t.ACCOUNT_ID = s.accountId and t.BOOK_ID = s.bookId and t.BOOK_TYPE = s.bookType)
+		when not matched then insert(record_id,account_id,book_id,book_type) values (s.recId,s.accountId,s.bookId,s.bookType)
+	</insert>
+	
+	<!-- 获取用户订阅的所有信息 -->
+	<select id="getUserBookInfo" resultType="HashMap">
+		select t.account_id as accountId,t.book_id as bookId,t.book_type as bookType from t_book_info t where t.account_id=#{accountId}
+	</select>
+	
+	<!-- 删除用户订阅的所有信息 -->
+	<delete id="deleteUserBookInfo">
+		delete from t_book_info where account_id=#{accountId}
+	</delete>
+	
+	<!-- 删除一条用户订阅的信息 -->
+	<delete id="deleteOneBookInfo">
+		delete from t_book_info where account_id=#{accountId} and book_id=#{bookId} and book_type=#{bookType}
+	</delete>
+	
+	<!-- 保存自定义消息内容 -->
+	<insert id="insertDefinedMsg">
+		insert into t_user_defined_message (message_id,send_time,send_result,message_title,message_content)
+		values (#{msgId},#{sendTime},#{result},#{title},#{content})
+	</insert>
+	
+	<!-- 保存自定义消息发送的用户 -->
+	<insert id="insertDefinedMsgAccount">
+		insert into t_message_account (message_id,account_id) values (#{msgId},#{accountId})
+	</insert>
+	
+	<!-- 保存新闻政策信息 -->
+	<insert id="insertNewsInfo">
+		insert into t_news_policy_info (info_id,info_title,info_type,info_pic,info_content,CREATE_TIME)
+		values (#{infoId},#{title},#{type},#{picUrl},#{conUrl},#{createTime})
+	</insert>
+	
+	<!-- 保存报告 -->
+	<insert id="insertReportInfo">
+		insert into t_service_report (report_id,ledger_id,report_time,report_module,report_content,create_time,status)
+		values (#{reportId},#{ledgerId},#{reportTime,jdbcType=TIMESTAMP},#{reportModule},#{content},#{date,jdbcType=TIMESTAMP},#{status})
+	</insert>
+	
+	<select id="serviceReportIsCreate" resultType="java.lang.Integer">
+		select count(*) from T_SERVICE_REPORT where report_module = #{reportModule}
+	</select>
+	
+	<!-- 更新服务报告 -->
+	<update id="updateServiceReport" parameterType="HashMap">
+		update t_service_report set status = #{status},sp_advise = #{spAdvise,jdbcType=VARCHAR},sp_name = #{spName,jdbcType=VARCHAR},sp_phone = #{spPhone,jdbcType=VARCHAR}
+		where report_id = #{reportId}
+	</update>
+	
+	<!-- 根据ID得到服务报 -->
+	<select id="queryReportInfoById" resultType="com.linyang.energy.model.ServiceReportBean">
+		select t1.report_id as reportId, t2.ledger_id as ledgerId,t2.ledger_name as ledgerName, t2.ledger_type as ledgerType, t1.report_time as reportTime,t1.report_content as reportContent,
+			t1.create_time as createTime,t1.status as status, t1.sp_advise as spAdvise, t1.sp_name as spName, t1.sp_phone as spPhone
+			from t_service_report t1 left join t_ledger t2 on t1.ledger_id = t2.ledger_id
+		where t1.report_id = #{reportId}
+	</select>
+	
+	<!-- 取分户电量 -->
+	<select id="queryLedgerCoul" resultType="HashMap">
+		select sum(t.q) as q,sum(t.rq) as rq from T_DAY_LEDGER_STAT t 
+		where t.ledger_id=#{ledgerId} and t.stat_date between #{beginTime} AND #{endTime}
+	</select>
+	
+	<!-- 取分户名称 -->
+	<select id="getLedgerName" resultType="String">
+		select t.ledger_name from t_ledger t where t.ledger_id=#{ledgerId}
+	</select>
+	
+	<!-- 取表计名称 -->
+	<select id="getMeterName" resultType="String">
+		select t.meter_name from t_meter t where t.meter_id=#{meterId}
+	</select>
+	<!-- 保存用户自动提醒参数配置 -->
+	<insert id="saveAutoReminderSet">
+		INSERT INTO T_SYS_SET(REMIND_CYLE,REMIND_MESSAGE_NUM,REMIND_REPORT_NUM) 
+		VALUES(#{noLogin},#{news},#{unRead})
+	</insert>
+	
+	<delete id="deleteAutoReminderSet">
+		delete from T_SYS_SET
+	</delete>
+	
+	<!-- 得到用户自动提醒参数配置 -->
+	<select id="getAutoReminderSet" resultType="HashMap" >
+		select REMIND_CYLE as noLogin,REMIND_MESSAGE_NUM as news,REMIND_REPORT_NUM as unRead from T_SYS_SET
+	</select>
+	
+	<!-- 推送记录 -->
+	<insert id="insertMsgHis">
+		 insert into t_msg_his(ACCOUNT_ID,MSG_ID,CREATE_TIME,MSG_TYPE)
+		 values(#{accountId},#{msgId},#{createTime},#{msgType})
+	</insert>
+	
+	<!-- 推送记录 -->
+	<select id="getMsgHisList" resultType="com.linyang.energy.model.MsgHisBean">
+		 select t.ACCOUNT_ID as accountId,t.MSG_ID as msgId,t.CREATE_TIME as createTime,t.MSG_TYPE as msgType from t_msg_his t where t.ACCOUNT_ID = #{accountId}
+	</select>
+	
+	<!-- 获取信息列表 -->
+	<select id="getMsgList" resultType="HashMap">
+		<if test="type == 1"> <!-- 自定义消息 -->
+			SELECT MESSAGE_ID,SEND_TIME,SEND_RESULT,MESSAGE_TITLE,MESSAGE_CONTENT FROM T_USER_DEFINED_MESSAGE ORDER BY SEND_TIME DESC
+		</if>
+		<if test="type == 2"> <!-- 新闻/政策 -->
+			SELECT INFO_ID,INFO_TITLE,INFO_TYPE,INFO_PIC,INFO_CONTENT,CREATE_TIME FROM T_NEWS_POLICY_INFO ORDER BY CREATE_TIME DESC
+		</if>
+		<if test="type == 3"> <!-- 服务报告 -->
+			SELECT REPORT_ID,LEDGER_ID,REPORT_TIME,REPORT_MODULE,REPORT_CONTENT,CREATE_TIME FROM T_SERVICE_REPORT ORDER BY CREATE_TIME DESC
+		</if>
+		<if test="type == 4"> <!-- 事件 -->
+			SELECT EVENT_RECID,EVENT_START_TIME,EVENT_NAME,EVENT_ID,EVENT_STATUS,OBJECT_ID,OBJECT_TYPE,EVENT_END_TIME,CONTENT FROM T_EVENT ORDER BY EVENT_START_TIME DESC
+		</if>
+	</select>
+	
+	<!-- 获取信息详细内容 -->
+	<select id="getMsgInfo" resultType="HashMap">
+		<if test="type == 1"> <!-- 自定义消息 -->
+			SELECT MESSAGE_ID,SEND_TIME,SEND_RESULT,MESSAGE_TITLE,MESSAGE_CONTENT FROM T_USER_DEFINED_MESSAGE WHERE MESSAGE_ID = #{msgId}
+		</if>
+		<if test="type == 2"> <!-- 新闻/政策 -->
+			SELECT INFO_ID,INFO_TITLE,INFO_TYPE,INFO_PIC,INFO_CONTENT,CREATE_TIME FROM T_NEWS_POLICY_INFO WHERE INFO_ID = #{msgId}
+		</if>
+		<if test="type == 3"> <!-- 服务报告 -->
+			SELECT REPORT_ID,LEDGER_ID,REPORT_TIME,REPORT_MODULE,REPORT_CONTENT,CREATE_TIME FROM T_SERVICE_REPORT WHERE REPORT_ID = #{msgId}
+		</if>
+		<if test="type == 4"> <!-- 事件 -->
+			SELECT EVENT_RECID,EVENT_START_TIME,EVENT_NAME,EVENT_ID,EVENT_STATUS,OBJECT_ID,OBJECT_TYPE,EVENT_END_TIME,CONTENT FROM T_EVENT WHERE EVENT_RECID = #{msgId}
+		</if>
+	</select>
+	
+	<!-- 删除推送记录deleteMsgHis -->
+	<delete id="deleteMsgHis">
+		delete from t_msg_his where 1=1 and CREATE_TIME &lt;= sysdate
+		<if test="userId != -1">
+			and ACCOUNT_ID = #{userId}
+		</if>
+		<if test="msgId != -1">
+			and MSG_ID = #{msgId}
+		</if>
+	</delete>
+	
+	<!-- 获取用户反馈列表 -->
+	<select id="querySuggestPageList" parameterType="HashMap" resultMap="sugResultMap">
+    	select SUG_ID,to_char(SUBMIT_DATE,'yyyy-mm-dd HH24:mi') as SUBMIT_DATE,
+    ACCOUNT_ID,SUBMIT_USER,LEDGER_ID,SUBMIT_LEDGER,SUG_MSG,CONTACT_WAY,status from T_SUGGEST_RECORD
+    where 1=1
+    ORDER BY NVL2(status,1, 0), SUBMIT_DATE DESC
+	</select>
+	
+	<!-- 获取用户反馈列表(不带分页) -->
+	<select id="querySuggestList" parameterType="HashMap" resultMap="sugResultMap">
+	select SUG_ID,to_char(SUBMIT_DATE,'yyyy-mm-dd HH24:mi') as SUBMIT_DATE,
+    ACCOUNT_ID,SUBMIT_USER,LEDGER_ID,SUBMIT_LEDGER,SUBMIT_ROLE,SUG_MSG,SUG_REPLY,CONTACT_WAY from T_SUGGEST_RECORD
+    where 1=1
+    ORDER BY NVL2(SUG_REPLY, 1, 0), SUBMIT_DATE DESC
+	</select>
+	
+	<!-- 删除或提交回复 -->
+	<update id="updateReply" parameterType="HashMap">
+	update T_SUGGEST_RECORD set SUG_REPLY = #{sugReply,jdbcType=VARCHAR} where SUG_ID = #{sugId,jdbcType=DECIMAL} 
+	</update>
+	
+	<select id="searchSerivceReportPageList" parameterType="HashMap" resultType="com.linyang.energy.model.ServiceReportBean">
+		select t1.report_id as reportId, t2.ledger_id as ledgerId,t2.ledger_name as ledgerName, t2.ledger_type as ledgerType, t1.report_time as reportTime,t1.report_content as reportContent,
+			    ADD_MONTHS(t1.create_time,-1) as createTime,t1.status as status
+        from t_service_report t1 left join t_ledger t2 on t1.ledger_id = t2.ledger_id
+		where t1.create_time between #{beginDate,jdbcType=TIME} and #{endDate,jdbcType=TIME}
+		and t1.REPORT_MODULE != 1
+		<if test="status != 0">
+			and t1.status = #{status}
+		</if>
+		<if test="ledgerType != 0">
+			and t2.ledger_type = #{ledgerType}
+		</if>
+		<if test="selectLedgerId != 0">
+			and t2.ledger_id = #{selectLedgerId}
+		</if>
+
+        <if test="userLedgerId == 0">
+            and t2.LEDGER_ID in (SELECT gl.ledger_id from t_group_account ga inner join t_group_ledger gl on ga.GROUP_ID = gl.GROUP_ID where ga.ACCOUNT_ID = #{userAccountId})
+        </if>
+        <if test="userLedgerId != 0">
+            and t2.LEDGER_ID in (SELECT t1.ledger_id from t_ledger t1,t_ledger t2 where t1.ledger_lft>=t2.ledger_lft and t1.ledger_rgt&lt;=t2.ledger_rgt and t2.ledger_id=#{userLedgerId})
+        </if>
+	</select>
+	
+	
+	<!-- 获取事件参数设置记录 -->
+	<select id="getEventSettingRecPageData" parameterType="HashMap" resultType="com.linyang.energy.model.EventSettingRecBean">
+		select rec_id recId,esr.ledger_id ledgerId,l.ledger_name ledgerName,esr.event_id eventTypeId,et.event_name eventTypeName,object_type objType,object_id objId,alarm_value alarmPercent from t_event_setting_rec esr
+		join t_event_type et on esr.event_id = et.event_id
+		join t_ledger l on esr.ledger_id =l.ledger_id
+		left join t_meter tm on tm.meter_id = esr.object_id
+		left join t_ledger tl on tl.ledger_id = esr.object_id
+	    where esr.ledger_id = #{ledgerId}
+		and object_type = #{objectType}
+		<if test="eventTypeId != null and eventTypeId !=''">
+			and esr.event_id = #{eventTypeId}
+		</if>
+		<if test="objectName != null and objectName !='' and objectType == 1">
+			and tl.ledger_name like '%' || #{objectName} || '%'
+		</if>
+		<if test="objectName != null and objectName !='' and objectType == 2">
+			and tm.meter_name like '%' || #{objectName} || '%'
+		</if>
+	    ORDER BY rec_id DESC,esr.ledger_id,esr.event_id
+	</select>
+	
+	<!-- 获取事件参数设置记录 -->
+	<select id="getEventSettingRecByRecId" resultType="com.linyang.energy.model.EventSettingRecBean">
+		select rec_id recId,esr.ledger_id ledgerId,l.ledger_name ledgerName,esr.event_id eventTypeId,et.event_name eventTypeName,object_type objType,object_id objId,alarm_value alarmPercent from t_event_setting_rec esr
+		join t_event_type et on esr.event_id = et.event_id
+		join t_ledger l on esr.ledger_id =l.ledger_id
+	    where esr.rec_id = #{recId}
+	</select>
+	
+	<!-- 获取所有事件参数类型 -->
+	<select id="getAllEventType" resultType="HashMap">
+        <if test="roleType == null">
+            select event_id id,event_name name from t_event_type order by event_id
+        </if>
+        <if test="roleType == 1">
+            select event_id id,event_name name from t_event_type where event_owner = 0 or event_owner = 2 order by event_id
+        </if>
+        <if test="roleType == 2">
+            select event_id id,event_name name from t_event_type where event_owner = 0 or event_owner = 1 order by event_id
+        </if>
+	</select>
+	
+	<!-- 获取事件相关节点 -->
+	<select id="getEventRelatedNodes" resultType="com.linyang.energy.dto.EventRelatedNodeTreeBean">
+		<if test="treeType == 1">
+			select ll.*,(case when esr.rec_id is null then 0 else 1 end) isConfiged from (select m.meter_id as id,0 as pId,m.meter_name as name ,tl.rate_id rateId,2 treeNodeType,m.meter_type meterType 
+			from t_meter m join t_ledger tl on tl.ledger_id = m.ledger_id 
+			where m.meter_id not in (select meter_id from t_lineloss_meter_info) and m.ledger_id in (
+	          select l1.ledger_id from t_ledger l1,t_ledger l2
+	              where l1.ledger_lft>=l2.ledger_lft and l1.ledger_rgt &lt;=l2.ledger_rgt
+	              and l2.ledger_id = #{legerId}
+	        ) and m.meter_status = 1
+	        union
+			select m.meter_id as id,l.parement_meter_id as pId,m.meter_name as name ,tl.rate_id rateId,2 treeNodeType,m.meter_type meterType from t_lineloss_meter_info l,t_meter m
+			  join t_ledger tl on tl.ledger_id = m.ledger_id where l.meter_id=m.meter_id and m.ledger_id in (
+			    select l1.ledger_id from t_ledger l1,t_ledger l2
+			        where l1.ledger_lft>=l2.ledger_lft and l1.ledger_rgt &lt;=l2.ledger_rgt
+			        and l2.ledger_id = #{legerId}
+			  ) and m.meter_status = 1) ll
+			left join t_event_setting_rec esr on esr.object_id = ll.id and esr.object_type = 2
+			<if test="eventTypeId != 0">
+				and esr.event_id = #{eventTypeId}
+			</if>  
+			order by nlssort(name, 'NLS_SORT=SCHINESE_PINYIN_M')
+		</if>
+		<if test="treeType == 2">
+			select ll.*,(case when esr.rec_id is null then 0 else 1 end) isConfiged from (SELECT A.LEDGER_ID id,(case when A.LEDGER_ID = #{legerId} then 0 else A.PARENT_LEDGER_ID end) pId,A.LEDGER_NAME  name,A.RATE_ID rateId,1  treeNodeType,0 meterType FROM T_LEDGER A 
+			start with A.LEDGER_ID = #{legerId} connect by prior A.LEDGER_ID = A.PARENT_LEDGER_ID) ll
+			left join t_event_setting_rec esr on esr.object_id = ll.id and esr.object_type = 1
+			<if test="eventTypeId != 0">
+				and esr.event_id = #{eventTypeId}
+			</if>
+			order by nlssort(ll.name, 'NLS_SORT=SCHINESE_PINYIN_M')
+		</if>
+	</select>
+	
+    <!-- 获取事件参数设置记录 -->
+	<select id="getFilteredEventSettingRecData" parameterType="HashMap" resultType="com.linyang.energy.model.EventSettingRecBean">
+		select rec_id recId,ledger_id ledgerId,event_id eventTypeId,object_type objType,object_id objId,alarm_value alarmPercent from t_event_setting_rec
+	    where 1=1
+        <if test="ledgerId != null and ledgerId != '' and ledgerId != 0">
+            and ledger_id = #{ledgerId}
+        </if>
+        <if test="eventTypeId != null and eventTypeId != '' and eventTypeId != 0">
+            and event_id = #{eventTypeId}
+        </if>
+        <if test="objectType != null and objectType != '' and objectType != 0">
+            and object_type = #{objectType}
+        </if>
+		<if test="objId != null and objId !='' and objId != 0">
+			and object_id = #{objId}
+		</if>
+	</select>
+    
+	<!-- 保存事件参数设置 -->
+	<insert id="insertEventSettingData" parameterType="com.linyang.energy.model.EventSettingRecBean">
+		insert into t_event_setting_rec (rec_id,ledger_id,event_id,object_type,object_id
+		<if test="alarmPercent != null">
+			,alarm_value
+		</if>
+		)
+		values (#{recId},#{ledgerId},#{eventTypeId},#{objType},#{objId}
+		<if test="alarmPercent != null">
+			,#{alarmPercent}
+		</if>
+		)
+	</insert>
+	
+		<!-- 修改事件参数设置 -->
+	<update id="updateEventSettingData" parameterType="HashMap">
+		update t_event_setting_rec set alarm_value = #{alarmPercent} where rec_id = #{recId}
+	</update>
+	
+		<!-- 修改事件参数设置 -->
+	<delete id="deleteEventSettingData">
+		delete from t_event_setting_rec where rec_id = #{recId}
+	</delete>
+	
+	<!-- 最大负载率 -->
+	<select id="getMaxLoadByLedgerId" resultType="HashMap">
+        select max(t.LOAD_MAX) as val, t.meter_id, t1.meter_name
+        from t_day_lf_opt t
+        left join t_meter t1
+		    on t.meter_id = t1.meter_id
+        where t.FREEZE_TIME between #{beginTime,jdbcType=TIME} and #{endTime,jdbcType=TIME}
+        and t1.ledger_id = #{ledgerId}
+        group by t.meter_id, t1.meter_name
+		 order by val desc
+    </select>
+    
+    <!-- 获取指定时间段内，某测量点 电压不平衡度的最大值 -->
+    <select id="getVolBalanceByLedgerId" resultType="HashMap">
+        select max(t.VU_MAX) as val, m.meter_id, m.meter_name
+        from t_day_unbf_opt t left join t_meter m on t.METER_ID=m.METER_ID
+              left join t_mped_info mi on m.MPED_ID=mi.MPED_ID
+         where t.FREEZE_TIME between #{beginTime} and #{endTime}
+        and m.ledger_id = #{ledgerId}
+        and mi.COMM_MODE=2
+        group by m.meter_id,m.meter_name
+		 order by val desc
+    </select>
+
+    <!-- 获取指定时间段内，某测量点 电流不平衡度的最大值 -->
+    <select id="getIBalanceByLedgerId" resultType="HashMap">
+        select max(t.IU_MAX) as val, m.meter_id, m.meter_name
+        from t_day_unbf_opt t left join t_meter m on t.METER_ID=m.METER_ID
+              left join t_mped_info mi on m.MPED_ID=mi.MPED_ID
+        where t.FREEZE_TIME between #{beginTime} and #{endTime}
+        and m.ledger_id = #{ledgerId}
+        and mi.COMM_MODE=2
+        group by m.meter_id,m.meter_name
+		 order by val desc
+    </select>
+    
+    <!-- 获取指定时间段内，某测量点 最小功率因数 -->
+    <select id="getMinPfByLedgerId" resultType="HashMap">
+        select  abs(min(t.PF)) as val, t.meter_id, t1.meter_name
+        from t_cur_pf t
+        left join t_meter t1
+		    on t.meter_id = t1.meter_id
+        where t.FREEZE_TIME between #{beginTime,jdbcType=TIME} and #{endTime,jdbcType=TIME}
+        and t1.ledger_id = #{ledgerId}
+         and t.pf is not null 
+         group by t.meter_id, t1.meter_name
+		 order by val
+    </select>
+    
+     <!-- 获取指定时间段内，某测量点 电压不平衡度的日均值 -->
+    <select id="getVBalanAvgByLedgerId" resultType="HashMap">
+        select avg(t.VU_MAX) as val, t.meter_id, t1.meter_name
+        from t_day_unbf_opt t 
+        left join t_meter t1
+		    on t.meter_id = t1.meter_id
+        where t.FREEZE_TIME between #{beginTime,jdbcType=TIME} and #{endTime,jdbcType=TIME}
+         and t1.ledger_id = #{ledgerId}
+        and t.VU_MAX is not null
+         group by t.meter_id, t1.meter_name
+		 order by val desc
+    </select>
+    
+    <!-- 获取指定时间段内，某测量点 电流不平衡度的日均值 -->
+    <select id="getIBalanAvgByLedgerId" resultType="HashMap">
+        select avg(t.IU_MAX) as val, t.meter_id, t1.meter_name
+        from t_day_unbf_opt t
+         left join t_meter t1
+		    on t.meter_id = t1.meter_id
+        where t.FREEZE_TIME between #{beginTime,jdbcType=TIME} and #{endTime,jdbcType=TIME}
+        and t1.ledger_id = #{ledgerId}
+        and t.IU_MAX is not null 
+        group by t.meter_id, t1.meter_name
+		 order by val desc
+    </select>
+    
+    <select id="getUserIdByMsgHis" resultType="Long">
+    	select distinct(t.account_id) from t_msg_his t
+    </select>
+    
+    <select id="getVolumeType1" resultType="java.lang.Integer">
+    	select count(1) from t_ledger a 
+    	inner join t_ledger_meter b on a.ledger_id = b.ledger_id 
+    	inner join t_meter c on b.meter_id = c.meter_id
+    	where a.ledger_id = #{ledgerId} and c.volume_type = 1
+    </select>
+    
+    <select id="getRateIdByLedger" resultType="java.lang.Long">
+    	select t.rate_id from t_ledger t where ledger_id = #{ledgerId}
+    </select>
+    
+    <select id="getThresholdByLedger" resultType="java.lang.Integer">
+    	select count(1) from t_ledger_threshold_relation
+    	where ledger_id = #{ledgerId}
+    </select>
+    
+    <select id="getMeterByVolumeType" resultType="HashMap">
+    	select c.meter_id,c.meter_name from t_ledger a 
+    	inner join t_ledger_meter b on a.ledger_id = b.ledger_id 
+    	inner join t_meter c on b.meter_id = c.meter_id
+    	where a.ledger_id = #{ledgerId} and c.volume_type != 0
+    </select>
+    
+    <select id="hasThresholdId1" resultType="java.lang.Integer">
+    	select count(1) from t_meter_threshold_relation
+    	where meter_id = #{meterId} and threshold_id = 1
+    </select>
+    
+    <select id="hasThresholdId3" resultType="java.lang.Integer">
+    	select count(1) from t_meter_threshold_relation
+    	where meter_id = #{meterId} and threshold_id = 3
+    </select>
+    
+    <select id="hasThresholdId4" resultType="java.lang.Integer">
+    	select count(1) from t_meter_threshold_relation
+    	where meter_id = #{meterId} and threshold_id = 4
+    </select>
+    
+    <insert id="insertVisitorRecord">
+    	insert into t_visitor_record (visitor_id,visitor_info,visitor_time)
+    	values (#{visitorId},#{visitorInfo},#{visitorTime})
+    </insert>
+</mapper>

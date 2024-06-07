@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<pmd>
+    <useProjectRuleSet>false</useProjectRuleSet>
+    <ruleSetFile>.ruleset</ruleSetFile>
+    <excludePatterns/>
+    <includePatterns/>
+    <rules>
+        <rule>
+            <name>SystemPrintln</name>
+            <ruleset>Java Logging</ruleset>
+        </rule>
+        <rule>
+            <name>AvoidPrintStackTrace</name>
+            <ruleset>Java Logging</ruleset>
+        </rule>
+        <rule>
+            <name>EmptyCatchBlock</name>
+            <ruleset>Empty Code</ruleset>
+        </rule>
+        <rule>
+            <name>EmptyTryBlock</name>
+            <ruleset>Empty Code</ruleset>
+        </rule>
+        <rule>
+            <name>EmptyFinallyBlock</name>
+            <ruleset>Empty Code</ruleset>
+        </rule>
+        <rule>
+            <name>EmptyCatchBlock</name>
+            <ruleset>Empty Code</ruleset>
+        </rule>
+        <rule>
+            <name>EmptyTryBlock</name>
+            <ruleset>Empty Code</ruleset>
+        </rule>
+        <rule>
+            <name>EmptyFinallyBlock</name>
+            <ruleset>Empty Code</ruleset>
+        </rule>
+        <rule>
+            <name>ShortVariable</name>
+            <ruleset>Naming</ruleset>
+        </rule>
+        <rule>
+            <name>LongVariable</name>
+            <ruleset>Naming</ruleset>
+        </rule>
+        <rule>
+            <name>ShortMethodName</name>
+            <ruleset>Naming</ruleset>
+        </rule>
+        <rule>
+            <name>VariableNamingConventions</name>
+            <ruleset>Naming</ruleset>
+        </rule>
+        <rule>
+            <name>AvoidDeeplyNestedIfStmts</name>
+            <ruleset>Design</ruleset>
+        </rule>
+        <rule>
+            <name>AvoidDeeplyNestedIfStmts</name>
+            <ruleset>Design</ruleset>
+        </rule>
+        <rule>
+            <name>BeanMembersShouldSerialize</name>
+            <ruleset>JavaBeans</ruleset>
+        </rule>
+    </rules>
+    <includeDerivedFiles>false</includeDerivedFiles>
+    <violationsAsErrors>true</violationsAsErrors>
+    <fullBuildEnabled>true</fullBuildEnabled>
+</pmd>

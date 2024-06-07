@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.linyang.energy.mapping.yunNan.StructureMapper">
+
+    <select id="queryProductPageList" resultType="HashMap">
+        SELECT T1.PRODUCT_ID,T1.PRODUCT_NAME,T1.PRODUCT_CODE,T1.PRODUCT_TYPE,T1.PRODUCT_UNIT,T2.ENT_ID,T2.ENT_NAME
+		FROM T_PRODUCT_INFO T1
+		LEFT JOIN T_ENT_INFO T2 ON T1.ENT_ID = T2.ENT_ID
+        JOIN (
+        SELECT T1.LEDGER_ID AS ID, T1.LEDGER_NAME AS NAME, 1 AS TYPE FROM T_LEDGER T1,T_LEDGER T2
+        WHERE T1.LEDGER_LFT >= T2.LEDGER_LFT AND T1.LEDGER_RGT &lt;=T2.LEDGER_RGT AND T2.LEDGER_ID=#{pId}
+        ) T4 ON T1.ENT_ID = T4.ID
+        WHERE T1.IS_EN_PRODUT = #{isEnProDut}
+		<if test="ledgerId != null and ledgerId != ''">
+            AND T1.ENT_ID = #{ledgerId}
+        </if>
+    </select>
+
+    <insert id="saveData" parameterType="HashMap">
+		INSERT INTO T_PRODUCT_INFO (
+        <if test="productId">
+            PRODUCT_ID,
+        </if>
+        <if test="productName">
+            PRODUCT_NAME,
+        </if>
+        <if test="isEnProdut">
+            IS_EN_PRODUT,
+        </if>
+        <if test="productCode">
+            PRODUCT_CODE,
+        </if>
+        <if test="productType">
+            PRODUCT_TYPE,
+        </if>
+        <if test="productUnit">
+            PRODUCT_UNIT,
+        </if>
+        <if test="remark != null and remark != ''">
+            REMARK,
+        </if>
+        <if test="ledgerId">
+            ENT_ID,
+        </if>
+		UPLOAD_STATUS )
+		VALUES (
+        <if test="productId">
+            #{productId},
+        </if>
+        <if test="productName">
+            #{productName},
+        </if>
+        <if test="isEnProdut">
+            #{isEnProdut},
+        </if>
+        <if test="productCode">
+            #{productCode},
+        </if>
+        <if test="productType">
+            #{productType},
+        </if>
+        <if test="productUnit">
+            #{productUnit},
+        </if>
+        <if test="remark != null and remark != ''">
+            #{remark},
+        </if>
+        <if test="ledgerId">
+            #{ledgerId},
+        </if>
+        0 )
+    </insert>
+
+    <update id="modifyData" parameterType="HashMap">
+        UPDATE T_PRODUCT_INFO
+        <set>
+            <if test="productName != null and productName != ''">
+                PRODUCT_NAME = #{productName} ,
+            </if>
+            <if test="productCode != null and productCode != ''">
+                PRODUCT_CODE = #{productCode} ,
+            </if>
+            <if test="productType != null and productType != ''">
+                PRODUCT_TYPE = #{productType} ,
+            </if>
+            <if test="productUnit != null and productUnit != ''">
+                PRODUCT_UNIT = #{productUnit} ,
+            </if>
+            <if test="remark != null and remark != ''">
+                REMARK = #{remark} ,
+            </if>
+            <if test="uploadStatus != null and uploadStatus != ''">
+                UPLOAD_STATUS = #{uploadStatus} ,
+            </if>
+            <if test="ledgerId != null and ledgerId != ''">
+                ENT_ID = #{ledgerId} ,
+            </if>
+            <if test="dataIndex != null">
+                DATA_INDEX = #{dataIndex},
+            </if>
+        </set>
+		WHERE PRODUCT_ID = #{productId}
+    </update>
+
+    <select id="queryDataById" resultType="HashMap">
+        SELECT T1.PRODUCT_ID,T1.PRODUCT_NAME,T1.PRODUCT_CODE,T1.PRODUCT_TYPE,T1.PRODUCT_UNIT,
+        T2.ENT_ID,T2.ENT_NAME,T1.REMARK ,T1.DATA_INDEX,T1.UPLOAD_STATUS,T2.ENT_CODE
+		FROM T_PRODUCT_INFO T1
+		LEFT JOIN T_ENT_INFO T2 ON T1.ENT_ID = T2.ENT_ID
+		WHERE T1.PRODUCT_ID = #{productId}
+    </select>
+
+    <delete id="delStructureData" parameterType="Long">
+        DELETE FROM T_PRODUCT_INFO WHERE PRODUCT_ID = #{productId}
+    </delete>
+
+
+</mapper>

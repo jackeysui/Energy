@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+
+<mapper namespace="com.linyang.energy.mapping.IndustryPollut.IndustryQueryMapper">
+
+    <select id="queryAllEnterprise" resultType="HashMap">
+        <if test="analyType != 102">
+            SELECT
+            *
+            FROM
+            T_LEDGER
+            WHERE
+            PARENT_ledger_id = #{ledgerId}
+        </if>
+        <if test="analyType == 102">  <!-- 如果是企业的话就是查自己 -->
+            SELECT
+            *
+            FROM
+            T_LEDGER
+            WHERE
+            LEDGER_ID = #{ledgerId}
+        </if>
+    </select>
+
+    <select id="queryCountByPollutctl" resultType="Long">
+        select count(1) AS CTLcount  from T_LEDGER t1 ,T_LEDGER t2
+        where T1.LEDGER_LFT >= T2.LEDGER_LFT
+        AND T1.LEDGER_RGT &lt;= T2.LEDGER_RGT
+        AND t2.LEDGER_ID = #{ledgerId}
+        and t1.POLLUTCTL_ID is not null
+    </select>
+
+    <select id="queryCountByPollut" resultType="Long">
+        select count(1) AS count  from T_LEDGER t1 ,T_LEDGER t2
+        where T1.LEDGER_LFT >= T2.LEDGER_LFT
+        AND T1.LEDGER_RGT &lt;= T2.LEDGER_RGT
+        AND t2.LEDGER_ID = #{ledgerId}
+        and t1.POLLUT_ID is not null
+    </select>
+
+    <select id="queryCountForParent" resultType="Long">
+        select count(1) FROM
+        T_LEDGER t1,
+        T_LEDGER t2
+        WHERE
+        T1.LEDGER_LFT >= T2.LEDGER_LFT
+        AND T1.LEDGER_RGT &lt;= T2.LEDGER_RGT
+        AND T2.LEDGER_ID = #{ledgerId}
+        and T1.ANALY_TYPE = 102
+    </select>
+
+    <select id="queryAllLedger" resultType="HashMap">
+        SELECT
+        t1.ledger_id,
+        "NVL" (T2.INDUSTRY_NAME, '其它') INDUSTRY_NAME
+        FROM
+        T_LEDGER t1
+        LEFT JOIN T_INDUSTRY t2 ON t1.INDUSTRY_TYPE = T2.INDUSTRY_ID
+        JOIN (
+        SELECT
+        T1.LEDGER_ID
+        FROM
+        T_LEDGER t1,
+        T_LEDGER t2
+        WHERE
+        T1.LEDGER_LFT >= T2.LEDGER_LFT
+        AND T1.LEDGER_RGT &lt;= T2.LEDGER_RGT
+        AND T2.LEDGER_ID = #{ledgerId}
+        AND T1.ANALY_TYPE = 102
+        ) t3 ON t3.ledger_id = t1.ledger_id
+    </select>
+
+
+    <select id="queryCountByPollutctl_2" resultType="Long">
+        select count(1) AS CTLcount  from T_LEDGER t1 ,T_LEDGER t2
+        where T1.LEDGER_LFT >= T2.LEDGER_LFT
+        AND T1.LEDGER_RGT &lt;= T2.LEDGER_RGT
+        AND t2.LEDGER_ID in (${ledgerIds})
+        and t1.POLLUTCTL_ID is not null
+    </select>
+
+    <select id="queryCountByPollut_2" resultType="Long">
+        select count(1) AS count  from T_LEDGER t1 ,T_LEDGER t2
+        where T1.LEDGER_LFT >= T2.LEDGER_LFT
+        AND T1.LEDGER_RGT &lt;= T2.LEDGER_RGT
+        AND t2.LEDGER_ID in (${ledgerIds})
+        and t1.POLLUT_ID is not null
+    </select>
+
+
+
+</mapper>

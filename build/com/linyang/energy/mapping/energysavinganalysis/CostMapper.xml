@@ -1,0 +1,801 @@
+<?xml version="1.0" encoding="UTF-8" ?> 
+<!DOCTYPE mapper PUBLIC "-//ibatis.apache.org//DTD Mapper 3.0//EN" "http://ibatis.apache.org/dtd/ibatis-3-mapper.dtd">
+
+<mapper namespace="com.linyang.energy.mapping.energysavinganalysis.CostMapper">
+
+	<!-- 取测量点对应的费率信息 -->
+	<select id="getPointRateInfo" parameterType="Long" resultType="RateSectorBean">
+		select t.sector_id as sectorId,t.rate_value as rateValue,t.rate_id as
+		rateId,t.sector_name as sectorName
+		from t_rate_sector t,t_meter
+		m,t_ledger l
+		where t.rate_id = l.rate_id and m.ledger_id=l.ledger_id
+		and
+		m.meter_id=#{pointId} and m.meter_type = 1
+	</select>
+
+	<!-- 查询测量点日电量 -->
+	<select id="getEleValue" parameterType="HashMap" resultType="HashMap">
+		<if test="rateId == -1"> <!-- 只查询总 -->
+			<if test="meterType == 1">
+				SELECT faq_value ELE_VALUE,freeze_time TIME_FIELD FROM
+				T_DAY_Q
+				WHERE meter_id =#{pointId} AND freeze_time BETWEEN
+				#{beginTime,jdbcType=TIME} AND #{endTime,jdbcType=TIME}
+			</if>
+			<if test="meterType == 2">
+				SELECT WFLOW_VALUE ELE_VALUE,FREEZE_TIME TIME_FIELD FROM
+				T_DAY_WFLOW_STAT
+				WHERE meter_id =#{pointId} AND freeze_time BETWEEN
+				#{beginTime,jdbcType=TIME} AND #{endTime,jdbcType=TIME}
+			</if>
+			<if test="meterType == 3">
+				SELECT GFLOW_VALUE ELE_VALUE,FREEZE_TIME TIME_FIELD FROM
+				T_DAY_GFLOW_STAT
+				WHERE meter_id =#{pointId} AND freeze_time BETWEEN
+				#{beginTime,jdbcType=TIME} AND #{endTime,jdbcType=TIME}
+			</if>
+			<if test="meterType == 4">
+				SELECT HEAT_VALUE ELE_VALUE,FREEZE_TIME TIME_FIELD FROM
+				T_DAY_HEAT_STAT
+				WHERE meter_id =#{pointId} AND freeze_time BETWEEN
+				#{beginTime,jdbcType=TIME} AND #{endTime,jdbcType=TIME}
+			</if>
+		</if>
+		<if test="rateId != -1"> <!-- 按费率查询 -->
+			<!-- SELECT T1.freeze_time TIME_FIELD, T1.day_faq ELE_VALUE ,T2.SECTOR_ID
+			SECTOR_ID,T2.SECTOR_NAME SECTOR_NAME
+			FROM T_DAY_Q_RATE T1,
+			T_RATE_SECTOR T2
+			WHERE t1.rate_number=t2.sector_id and t1.meter_id =
+			#{pointId} AND
+			T2.RATE_ID = #{rateId}
+			AND T1.freeze_time BETWEEN
+			#{beginTime,jdbcType=TIME} AND
+			#{endTime,jdbcType=TIME} ORDER BY
+			T2.SECTOR_ID ASC -->
+			
+			SELECT T1.freeze_time TIME_FIELD, T1.day_faq ELE_VALUE ,T2.SECTOR_ID
+			SECTOR_ID,T2.SECTOR_NAME SECTOR_NAME
+			FROM (
+				SELECT T1.DAY_FAQ*T3.PT*T3.CT DAY_FAQ,T1.FREEZE_TIME,T1.METER_ID,T1.RATE_NUMBER
+				FROM (
+					SELECT E.FREEZE_TIME,E.METER_ID,E.RATE_NUMBER,abs(E.endvalue-S.STARTVALUE) day_faq
+					FROM (
+						SELECT v.FREEZE_TIME,v.METER_ID,v.RATE_NUMBER,v.DAY_FAE_RATE ENDVALUE
+						FROM VIEW_DAY_E_RATE V
+						WHERE  V.FREEZE_TIME BETWEEN #{beginTime,jdbcType=TIME} AND #{endTime,jdbcType=TIME}
+						 AND V.METER_ID=#{pointId}
+					 ) E
+					JOIN (
+						SELECT v.FREEZE_TIME+1 FREEZE_TIME,v.METER_ID,v.RATE_NUMBER,v.DAY_FAE_RATE STARTVALUE
+						FROM VIEW_DAY_E_RATE V
+						WHERE  V.FREEZE_TIME BETWEEN #{beginTime,jdbcType=TIME}-1 AND #{endTime,jdbcType=TIME}-1
+						AND V.METER_ID=#{pointId}
+					) S ON E.FREEZE_TIME=S.FREEZE_TIME and E.meter_id=S.METER_ID AND E.rate_number=S.RATE_NUMBER
+				) T1,T_METER T2,T_MPED_INFO T3
+				WHERE T1.METER_ID=T2.METER_ID AND T2.MPED_ID=T3.MPED_ID
+			) T1, T_RATE_SECTOR T2
+			WHERE t1.rate_number=t2.sector_id  AND T2.RATE_ID = #{rateId}
+			ORDER BY T2.SECTOR_ID ASC
+		</if>
+	</select>
+
+	<!-- 得到电表的标准功率因素 -->
+	<select id="getThresholdValue" parameterType="long" resultType="java.lang.Double">
+		SELECT A.THRESHOLD_VALUE FROM T_LEDGER_THRESHOLD_RELATION A,t_meter m
+		WHERE m.LEDGER_ID=A.LEDGER_ID and m.meter_id=#{pointId}
+	</select>
+
+	<select id="getEmoThresholdValue" parameterType="long"
+		resultType="java.lang.Double">
+		SELECT A.THRESHOLD_VALUE FROM T_LEDGER_THRESHOLD_RELATION A
+		WHERE
+		A.LEDGER_ID =#{ledgerId}
+	</select>
+
+	<!-- 查询功率因数对照表 -->
+	<select id="getFactor" resultType="java.lang.Double">
+		SELECT
+		<if test="rate==0.90">
+			RATE1
+		</if>
+		<if test="rate==0.85">
+			RATE2
+		</if>
+		<if test="rate==0.80">
+			RATE3
+		</if>
+		FROM T_PF_RATE_CONTRAST WHERE PF = #{pf}
+	</select>
+
+	<!-- 获取电表基本电费计算相关信息 -->
+	<select id="getMeterBasicFeeInfo" parameterType="HashMap"
+		resultType="HashMap">
+		select m.volume as volume,d.declare_type as
+		declareType,d.declare_value as declareValue,d.begin_time as time
+		from
+		t_meter m left join T_LEDGER_DECLARE d on m.LEDGER_ID=d.LEDGER_ID and
+		d.begin_time between #{beginTime,jdbcType=TIME} AND
+		#{endTime,jdbcType=TIME}
+		where m.meter_id=#{pointId} order by
+		d.begin_time
+	</select>
+
+	<!-- 获取电表基本电费计算相关信息 -->
+	<select id="getLedgerBasicFeeInfo" parameterType="HashMap"
+		resultType="HashMap">
+		select tl.LEDGER_NAME name,tlm.volume as
+		volume,tdr.declare_type as declareType,tdr.declare_value as
+		declareValue,tdr.begin_time as time,
+		tdr.DECLARE_TIME 
+		from t_ledger tl
+		left join (select
+		sum(tm.volume) volume from t_meter tm
+		WHERE tm.LEDGER_ID IN (
+		select
+		l1.ledger_id from t_ledger l1,t_ledger l2
+		where
+		l1.ledger_lft>=l2.ledger_lft and l1.ledger_rgt &lt;=l2.ledger_rgt
+		and
+		l2.ledger_id = #{pointId}
+		)AND tm.METER_STATUS = 1 AND tm.VOLUME_TYPE =
+		1 AND tm.VOLUME > 0) tlm on 1 = 1
+		left join (
+		SELECT * FROM
+		T_LEDGER_DECLARE WHERE LEDGER_ID = #{pointId} AND BEGIN_TIME between
+		#{beginTime,jdbcType=TIME} AND #{endTime,jdbcType=TIME}
+		) tdr on 1 = 1
+		where tl.ledger_id=#{pointId}
+		ORDER BY TDR.DECLARE_TIME DESC 
+	</select>
+
+	<!-- 查询测量点月总电量 -->
+	<select id="getMonthTotalEleValue" parameterType="HashMap"
+		resultType="HashMap">
+		select t.faq_value as faqValue,t.frq_value as frqValue from
+		t_mon_q t
+		where t.meter_id=#{pointId} AND t.freeze_time BETWEEN
+		#{sTime,jdbcType=TIME} AND #{eTime,jdbcType=TIME}
+	</select>
+
+	<!-- 查询分户月总电量 -->
+	<select id="getLedgerMonthTotalEleValue" resultType="HashMap">
+		select nvl(sum(t.faq_value * lm.ADD_ATTR * lm.PCT/100), 0) as faqValue,
+		nvl(sum(t.frq_value * lm.ADD_ATTR * lm.PCT/100), 0) as frqValue
+		from
+		t_ledger_meter lm
+		inner join t_meter m on lm.METER_ID = m.METER_ID
+		inner join t_mon_q t on lm.METER_ID = t.METER_ID
+		where
+		lm.LEDGER_ID=#{ledgerId}
+		AND t.freeze_time BETWEEN
+		#{sTime,jdbcType=TIME} AND
+		#{eTime,jdbcType=TIME}
+		<if test="analyType == 102">
+			and m.VOLUME_TYPE = 1
+		</if>
+	</select>
+
+	<!-- 查询测量点分费率月电量、电费 -->
+<!--	<select id="getMonthRateEleValue" parameterType="HashMap"
+		resultType="RateFeeBean">
+		select r.sector_id as sectorId,r.sector_name as
+		sectorName,(a.value1-a.value2)*i.pt*i.ct as value,r.rate_value as
+		price,(a.value1-a.value2)*i.pt*i.ct*r.rate_value as fee from
+		(select
+		t.rate_number as sectorId,t.meter_id,max(t.day_fae_rate) as
+		value1,min(t.day_fae_rate) as value2 from view_day_e_rate t
+		where
+		t.meter_id=#{pointId} and t.freeze_time between
+		to_date(#{strBeginTime},'yyyy-MM-dd') AND
+		to_date(#{strEndTime},'yyyy-MM-dd')
+		group by
+		t.rate_number,t.meter_id) a,
+		t_meter m,t_ledger l,t_rate_sector
+		r,t_mped_info i where
+		m.meter_id=#{pointId} and m.ledger_id=l.ledger_id
+		and l.rate_id=r.rate_id and
+		a.sectorId=r.sector_id
+		and
+		m.mped_id=i.mped_id order by r.sector_id
+	</select>-->
+	<select id="getMonthRateEleValue" parameterType="HashMap"
+			resultType="RateFeeBean">
+		select
+			r.sector_id as sectorId,
+			r.sector_name as sectorName,
+			ELE_VALUE as value,
+			r.rate_value as price,
+			ELE_VALUE*r.rate_value as fee
+		from (
+			SELECT
+				T2.SECTOR_ID sectorId,
+				T2.SECTOR_NAME,
+				T3.LEDGER_ID,lm.METER_ID,
+				sum(T3.DAY_FAQ) ELE_VALUE
+			 FROM T_RATE T1, T_RATE_SECTOR T2, T_DAY_LEDGER_Q_RATE T3, T_LEDGER_METER lm, t_ledger l
+			WHERE T1.RATE_ID = T2.RATE_ID
+			AND T2.SECTOR_ID = T3.RATE_NUMBER
+			AND T3.LEDGER_ID = lm.LEDGER_ID
+			AND l.LEDGER_ID = lm.LEDGER_ID and l.ANALY_TYPE != 102
+			AND lm.METER_ID = #{pointId}
+			AND T3.FREEZE_TIME BETWEEN to_date(#{strBeginTime},'yyyy-MM-dd')
+				AND to_date(#{strEndTime},'yyyy-MM-dd')
+			group by T2.SECTOR_ID,T2.SECTOR_NAME, T3.LEDGER_ID, lm.METER_ID
+		) a,
+		t_meter m,t_ledger l,t_rate_sector r,t_mped_info i
+		where m.meter_id=#{pointId} and m.ledger_id=l.ledger_id
+		and l.rate_id=r.rate_id and
+		a.sectorId=r.sector_id
+		and m.mped_id=i.mped_id
+		order by r.sector_id
+	</select>
+
+	<!-- 查询 分户(分户计算模型中的主变)、复费率 月电量、电费 -->
+	<select id="getEmoMonthRateEleValue" parameterType="HashMap"
+		resultType="RateFeeBean">
+		select r.sector_id as sectorId, r.sector_name as sectorName,
+		ROUND(sum((a.value1 - a.value2) * i.pt * i.ct * lm.add_attr * lm.pct /100),2)
+		as value,
+		sum((a.value1 - a.value2) * i.pt * i.ct * r.rate_value *
+		lm.add_attr * lm.pct /100)
+		as fee,
+		avg(r.rate_value) as price
+		from
+		(select t.rate_number as sectorId,
+		t.meter_id,
+		max(t.day_fae_rate) as
+		value1,
+		min(t.day_fae_rate) as value2
+		from view_day_e_rate t
+		where
+		t.freeze_time between to_date(#{strBeginTime},'yyyy-MM-dd')-1 AND
+		to_date(#{strEndTime},'yyyy-MM-dd')-1
+		group by t.rate_number,
+		t.meter_id) a,
+		(select m1.meter_id,count(r1.rate_id) as r_num
+		from
+		t_meter m1
+		inner join t_ledger t1 on m1.ledger_id=t1.ledger_id
+		inner
+		join t_rate_sector r1 on t1.rate_id=r1.rate_id
+		where 1=1 group by
+		m1.meter_id) b,
+		t_meter m,
+		t_ledger l,
+		t_rate_sector r,
+		t_mped_info i,
+		t_ledger_meter lm
+		where lm.meter_id = m.meter_id
+		and a.meter_id =
+		m.meter_id
+		and m.ledger_id = l.ledger_id
+		and l.rate_id = r.rate_id
+		and
+		a.sectorId = r.sector_id
+		and m.mped_id = i.mped_id
+		and m.meter_id =
+		b.meter_id
+		and lm.ledger_id = #{ledgerId}
+		and b.r_num > 1
+		<if test="analyType == 102">
+			and m.VOLUME_TYPE = 1
+		</if>
+		group by r.sector_id, r.sector_name
+		order by r.sector_id
+	</select>
+	<select id="getEmoMonthRateEleValue2" parameterType="HashMap" resultType="RateFeeBean">
+			SELECT
+		r.sector_id as sectorId,
+		r.sector_name as sectorName,
+		ROUND((t.total_value * lm.add_attr * lm.pct /100),2) as value,
+		(t.total_value * r.rate_value * lm.add_attr * lm.pct /100) as fee,
+		r.rate_value as price
+	FROM (
+		SELECT
+			t.rate_number as sectorId, t.ledger_id, sum(t.DAY_FAQ) total_value
+		FROM T_DAY_LEDGER_Q_RATE t
+		where t.ledger_id = #{ledgerId}
+		and t.freeze_time between to_date(#{strBeginTime},'yyyy-MM-dd')-1 AND to_date(#{strEndTime},'yyyy-MM-dd')-1
+		group by t.rate_number, t.ledger_id
+	) t
+	join t_ledger t1 on t.ledger_id = t1.ledger_id
+	join t_rate_sector r on t1.rate_id=r.rate_id and t.sectorId = r.SECTOR_ID
+	join (
+		SELECT ledger_id, avg(ADD_ATTR) ADD_ATTR, avg(pct) pct FROM t_ledger_meter group by ledger_id
+	)lm on t.ledger_id = lm.ledger_id
+	ORDER BY r.SECTOR_ID
+	</select>
+
+	<!-- 查询 分户(分户计算模型中的主变)、单费率 月电量、电费 -->
+	<select id="getEmoMonthSingleEleValue" parameterType="HashMap"
+		resultType="RateFeeBean">
+		select '3' as sectorId, '平' as sectorName,
+		sum(q.faq_value *
+		lm.add_attr * lm.pct /100) as value,
+		sum(q.faq_value * lm.add_attr *
+		r.rate_value * lm.pct /100) as fee
+		from t_ledger_meter lm, t_meter m,
+		t_mped_info i, t_ledger l,
+		t_rate_sector r,
+		(select
+		m1.meter_id,count(r1.rate_id) as r_num
+		from t_meter m1
+		inner join
+		t_ledger t1 on m1.ledger_id=t1.ledger_id
+		inner join t_rate_sector r1 on
+		t1.rate_id=r1.rate_id
+		where 1=1 group by m1.meter_id) b,
+		t_mon_q q
+		where
+		lm.meter_id = m.meter_id and m.mped_id = i.mped_id and m.ledger_id =
+		l.ledger_id and l.rate_id = r.rate_id
+		and m.meter_id = b.meter_id
+		and
+		m.meter_id = q.meter_id
+		and lm.ledger_id = #{ledgerId}
+		AND q.freeze_time
+		BETWEEN #{sTime,jdbcType=TIME} AND
+		#{eTime,jdbcType=TIME}
+		and b.r_num =
+		1
+		<if test="analyType == 102">
+			and m.VOLUME_TYPE = 1
+		</if>
+	</select>
+	
+	<!-- 查询 分户(分户计算模型中的主变)、单费率电量，从日表取数据 -->
+	<select id="getEmoMonthSingleEleValueNew" parameterType="HashMap"
+		resultType="RateFeeBean">
+		select '3' as sectorId, '平' as sectorName,
+		sum((a.value1 - a.value2) * i.pt * i.ct * lm.add_attr * lm.pct /100) as value,
+    sum((a.value1 - a.value2) * i.pt * i.ct * r.rate_value *lm.add_attr * lm.pct /100) as fee
+		from 	(select t.meter_id,max(t.DAY_FAE_TOTAL) as value1,
+		min(t.DAY_FAE_TOTAL) as value2 from VIEW_DAY_E_TOTAL t
+		where t.freeze_time between to_date(#{strBeginTime},'yyyy-MM-dd')-1 AND
+		to_date(#{strEndTime},'yyyy-MM-dd')-1
+		group by t.meter_id) a,
+		(select
+		m1.meter_id,count(r1.rate_id) as r_num
+		from t_meter m1
+		inner join
+		t_ledger t1 on m1.ledger_id=t1.ledger_id
+		inner join t_rate_sector r1 on
+		t1.rate_id=r1.rate_id
+		where 1=1 group by m1.meter_id) b,
+	  t_meter m,t_ledger l,	t_mped_info i,t_ledger_meter lm,t_rate_sector r
+		where lm.meter_id = m.meter_id
+		and m.meter_id = b.meter_id
+		and a.meter_id = m.meter_id
+		and m.ledger_id = l.ledger_id
+		and m.mped_id = i.mped_id
+		and lm.ledger_id = #{ledgerId}
+	  	and l.RATE_ID=r.RATE_ID
+    	and b.R_NUM=1
+		--<if test="analyType == 102">
+			and m.VOLUME_TYPE = 1
+		--</if>
+	</select>
+
+	<!-- 查询 分户(分户计算模型中的主变) 容量电费 -->
+	<select id="getEmoCapacityFee" parameterType="HashMap"
+		resultType="RateFeeBean">
+		select 4 as feeId, '基本' as sectorName,
+		sum(m.volume *
+		lm.add_attr * lm.pct /100) as value,
+		sum(m.volume * lm.add_attr *
+		r.volume_rate * lm.pct /100) as fee,
+		avg(r.volume_rate) as price
+		from
+		t_ledger_meter lm, t_meter m, t_ledger l, t_rate r
+		where lm.meter_id =
+		m.meter_id
+		and m.ledger_id = l.ledger_id
+		and l.rate_id = r.rate_id
+		and
+		lm.ledger_id = #{ledgerId}
+		and m.volume_type = 1
+	</select>
+
+	<!-- 取月最大需量 -->
+	<select id="getMaxDemandValue" parameterType="HashMap"
+		resultType="Double">
+		select max(t.max_fad) as maxFad from T_DAY_D_TOTAL t
+		where
+		t.meter_id=#{pointId} AND t.freeze_time BETWEEN
+		#{beginTime,jdbcType=TIME} AND #{endTime,jdbcType=TIME}
+	</select>
+
+	<!-- 取容量需量电价 -->
+	<select id="getBasicFeePrice" parameterType="Long" resultType="HashMap">
+		select t.volume_rate as volRate,t.demand_rate as deRate,t.demand_thres
+		as deTh from t_rate t where t.rate_id=#{rateId}
+	</select>
+
+	<!-- 取分户容量需量电价 -->
+	<select id="getLedgerFeePrice" parameterType="Long" resultType="HashMap">
+		select t.volume_rate as volRate,t.demand_rate as deRate,t.demand_thres
+		as deTh
+		from t_rate t inner join t_ledger l on t.RATE_ID=l.RATE_ID
+		where l.LEDGER_ID=#{ledgerId}
+	</select>
+
+	<!-- 取计算基本电费相关信息 -->
+	<select id="getBasicFeeInfo" parameterType="Long" resultType="HashMap">
+		select m.volume as volume,m.meter_name as name,r.volume_rate as
+		volRate,r.demand_rate as deRate,r.demand_thres as deTh
+		from t_meter
+		m,t_ledger l,t_rate r
+		where m.ledger_id=l.ledger_id and
+		l.rate_id=r.rate_id and m.meter_id=#{pointId}
+	</select>
+
+	<!-- 取计算emo基本电费相关信息 -->
+	<select id="getLedgerIdBasicFeeInfo" parameterType="Long"
+		resultType="HashMap">
+		<!-- select tlm.volume as volume,l.ledger_name as name,r.volume_rate as 
+			volRate,r.demand_rate as deRate,r.demand_thres as deTh from t_ledger l left 
+			join t_rate r on l.rate_id=r.rate_id left join (select sum(tm.volume) volume 
+			from t_meter tm WHERE tm.LEDGER_ID IN ( select l1.ledger_id from t_ledger 
+			l1,t_ledger l2 where l1.ledger_lft>=l2.ledger_lft and l1.ledger_rgt &lt;=l2.ledger_rgt 
+			and l2.ledger_id = #{ledgerId} )AND tm.METER_STATUS = 1 AND tm.VOLUME_TYPE 
+			= 1 AND tm.VOLUME > 0) tlm on 1 = 1 where l.ledger_id=#{ledgerId} -->
+	select tlm.volume as volume,l.ledger_name as name,r.volume_rate as
+		volRate,r.demand_rate as deRate,r.demand_thres as deTh
+		from t_ledger l	left join t_rate r	on l.rate_id=r.rate_id
+		left join
+		(
+		select SUM(m.VOLUME) volume from T_LEDGER_METER r,T_METER m
+	  where r.METER_ID=m.METER_ID AND m.VOLUME_TYPE=1 AND m.METER_STATUS=1 AND m.VOLUME>0
+    AND r.LEDGER_ID=#{ledgerId}
+		) tlm on 1 = 1
+		where l.ledger_id=#{ledgerId}
+	</select>
+
+	<!-- 按月取最大需量 -->
+	<select id="getMonthMaxDemand" parameterType="HashMap"
+		resultType="HashMap">
+		<if test="treeType == 1">
+			SELECT to_char(tcs.FREEZE_TIME,'yyyy-MM') as time ,
+			MAX(tcs.sumAp) maxFad FROM (SELECT FREEZE_TIME AS FREEZE_TIME,
+			sum(tc.AP * tlm.ADD_ATTR * tlm.PCT/100) AS sumAp
+			FROM T_CUR_AP tc
+			JOIN
+			(SELECT t.METER_ID METER_ID, t.ADD_ATTR ADD_ATTR,t.PCT PCT FROM
+			T_LEDGER_METER t JOIN T_METER tm ON t.mETER_ID = tm.METER_ID WHERE
+			t.LEDGER_ID = #{pointId}) tlm
+			ON tc.METER_ID = tlm.METER_ID WHERE
+			FREEZE_TIME BETWEEN #{beginTime,jdbcType=TIME} AND
+			#{endTime,jdbcType=TIME} GROUP BY FREEZE_TIME) tcs
+			GROUP BY
+			to_char(tcs.FREEZE_TIME,'yyyy-MM') ORDER BY time
+		</if>
+		<if test="treeType == 2">
+			select t.freeze_time as time,max(t.max_fad) as maxFad
+			from
+			(select to_char(freeze_time,'yyyy-MM') as
+			freeze_time,max_fad,meter_id from T_DAY_D_TOTAL
+			where freeze_time
+			BETWEEN #{beginTime,jdbcType=TIME} AND #{endTime,jdbcType=TIME}) t
+			where t.meter_id=#{pointId}
+			group by t.freeze_time order by
+			t.freeze_time
+		</if>
+	</select>
+
+	<!-- 近12个月,月最大需量的MAX_FAD_TIME的list（按小时分钟排序） -->
+	<select id="monthMaxFadTime" parameterType="HashMap" resultType="HashMap">
+		select temp.freeze_time as year_month,
+		to_char(max(temp.max_fad_time),'HH24:MI') as fad_time
+		from
+		( select
+		t.meter_id as meter_id, to_char(t.freeze_time,'yyyy-MM') as
+		freeze_time, t.max_fad_time as max_fad_time
+		from T_DAY_D_TOTAL t
+		where
+		(t.freeze_time BETWEEN #{beginTime,jdbcType=TIME} AND
+		#{endTime,jdbcType=TIME})
+		and t.meter_id=#{pointId} ) temp
+		where 1=1
+		group by temp.freeze_time order by fad_time asc
+	</select>
+
+	<!-- 近12个月,月最大需量的MAX_FAD_TIME的list（按小时分钟排序） -->
+	<select id="getLedgerMonthMaxFadTime" parameterType="HashMap"
+		resultType="HashMap">
+		WITH tcs AS (SELECT FREEZE_TIME AS FREEZE_TIME, sum(tc.AP *
+		tlm.ADD_ATTR *
+		tlm.PCT/100) AS sumAp
+		FROM T_CUR_AP tc
+		JOIN (SELECT
+		t.METER_ID METER_ID, t.ADD_ATTR ADD_ATTR,t.PCT PCT FROM
+		T_LEDGER_METER
+		t JOIN T_METER tm ON t.mETER_ID = tm.METER_ID WHERE
+		t.LEDGER_ID =
+		#{pointId}) tlm
+		ON tc.METER_ID = tlm.METER_ID WHERE FREEZE_TIME BETWEEN
+		#{beginTime,jdbcType=TIME} AND #{endTime,jdbcType=TIME} GROUP BY
+		FREEZE_TIME)
+		select temp.freeze_time as year_month,
+		max(to_char(tcs.freeze_time,'HH24:MI')) as fad_time
+		from ( select
+		to_char(freeze_time,'yyyy-MM') as freeze_time, max(sumAp) as
+		max from
+		tcs group by to_char(freeze_time,'yyyy-MM')) temp
+		join tcs on temp.max
+		= tcs.sumAp group by temp.freeze_time order by
+		fad_time asc
+	</select>
+
+	<!-- 按月取分户计算模型中主变压器的最大需量 -->
+	<select id="getLedgerMainDemand" parameterType="HashMap"
+		resultType="HashMap">
+		SELECT to_char(tcs.FREEZE_TIME,'yyyy-MM') as time ,
+		MAX(tcs.sumAp) maxFad
+		FROM (SELECT FREEZE_TIME AS FREEZE_TIME,
+		sum(tc.AP * tlm.ADD_ATTR *
+		tlm.PCT/100) AS sumAp
+		FROM T_CUR_AP tc
+		JOIN
+		(SELECT t.METER_ID METER_ID, t.ADD_ATTR ADD_ATTR,t.PCT PCT
+		FROM
+		T_LEDGER_METER t JOIN T_METER tm ON t.mETER_ID = tm.METER_ID
+		WHERE
+		t.LEDGER_ID = #{pointId} and tm.VOLUME_TYPE=1) tlm
+		ON tc.METER_ID =
+		tlm.METER_ID WHERE FREEZE_TIME BETWEEN
+		#{beginTime,jdbcType=TIME} AND
+		#{endTime,jdbcType=TIME} GROUP BY
+		FREEZE_TIME) tcs
+		GROUP BY
+		to_char(tcs.FREEZE_TIME,'yyyy-MM') ORDER BY time
+	</select>
+
+	<!-- 获取分户下的测量点 -->
+	<select id="getLedgerMeters" resultType="Long">
+		select t.meter_id from
+		t_ledger_meter t where t.ledger_id=#{ledgerId}
+	</select>
+
+	<!-- 获取当前申报类型 -->
+	<select id="getCurrentDeclareType" resultType="Integer">
+		select
+		t.DECLARE_TYPE from t_demand_rec t where t.meter_id=#{pointId}
+		and
+		to_char(t.begin_time,'yyyy-MM') = #{nowStr}
+		order by t.begin_time desc
+	</select>
+
+	<!-- 获取当前申报类型 -->
+	<select id="getCurrentLedgerDeclareType" resultType="Integer">
+		select
+		distinct t.DECLARE_TYPE from t_demand_rec t
+		join T_METER tm ON
+		t.METER_ID = tm.METER_ID WHERE tm.LEDGER_ID IN (
+		select l1.ledger_id
+		from t_ledger l1,t_ledger l2
+		where l1.ledger_lft>=l2.ledger_lft and
+		l1.ledger_rgt &lt;=l2.ledger_rgt
+		and l2.ledger_id = #{ledgerId}
+		)AND
+		tm.METER_STATUS = 1 AND tm.VOLUME_TYPE = 1 AND tm.VOLUME > 0
+		and
+		to_char(t.begin_time,'yyyy-MM') = #{nowStr}
+	</select>
+
+	<!-- 分户月正向有功总电量 -->
+	<select id="getLedgerMonQEnd" resultType="Double">
+		select sum (b.total *
+		i.ct *i.pt * lm.pct/100 * lm.add_attr ) from
+		(select a.meter_id,
+		(a.value1-a.value2) as total from
+		(select m.meter_id,
+		max(t.day_fae_total) as value1, min(t.day_fae_total) as
+		value2
+		from
+		view_day_e_total t, t_ledger_meter m
+		where t.meter_id = m.meter_id
+		and
+		m.ledger_id = #{ledgerId}
+		and t.freeze_time between
+		#{beginTime,jdbcType=TIME} - 1 AND
+		#{endTime,jdbcType=TIME}-1
+		group by
+		m.meter_id) a) b,
+		t_meter r,
+		t_mped_info i,
+		t_ledger_meter lm
+		where
+		b.meter_id = r.meter_id
+		and r.mped_id = i.mped_id
+		and r.meter_id =
+		lm.meter_id
+	</select>
+
+	<!-- 分户月正向无功总电量 -->
+	<select id="getLedgerMonRQEnd" resultType="Double">
+		select sum (b.total *
+		i.ct *i.pt * lm.pct/100 * lm.add_attr ) from
+		(select a.meter_id,
+		(a.value1-a.value2) as total from
+		(select m.meter_id,
+		max(t.day_fre_total) as value1, min(t.day_fre_total) as
+		value2
+		from
+		view_day_e_total t, t_ledger_meter m
+		where t.meter_id = m.meter_id
+		and
+		m.ledger_id = #{ledgerId}
+		and t.freeze_time between
+		#{beginTime,jdbcType=TIME} - 1 AND
+		#{endTime,jdbcType=TIME}-1
+		group by
+		m.meter_id) a) b,
+		t_meter r,
+		t_mped_info i,
+		t_ledger_meter lm
+		where
+		b.meter_id = r.meter_id
+		and r.mped_id = i.mped_id
+		and r.meter_id =
+		lm.meter_id
+	</select>
+
+	<!-- 测量点月正向有功总电量 -->
+	<select id="getMeterMonQEnd" resultType="Double">
+		select (a.value1 -
+		a.value2) * i.ct * i.pt
+		from (select t.meter_id, max(t.day_fae_total)
+		as value1,
+		min(t.day_fae_total) as value2
+		from view_day_e_total t
+		where
+		t.meter_id = #{objectId}
+		and t.freeze_time between
+		#{beginTime,jdbcType=TIME} - 1 AND
+		#{endTime,jdbcType=TIME} -1
+		group by
+		t.meter_id) a,
+		t_meter r,
+		t_mped_info i
+		where a.meter_id = r.meter_id
+		and
+		r.mped_id = i.mped_id
+	</select>
+
+	<!-- 测量点月正向无功总电量 -->
+	<select id="getMeterMonRQEnd" resultType="Double">
+		select (a.value1 -
+		a.value2) * i.ct * i.pt
+		from (select t.meter_id, max(t.day_fre_total)
+		as value1,
+		min(t.day_fre_total) as value2
+		from view_day_e_total t
+		where
+		t.meter_id = #{objectId}
+		and t.freeze_time between
+		#{beginTime,jdbcType=TIME} - 1 AND
+		#{endTime,jdbcType=TIME} -1
+		group by
+		t.meter_id) a,
+		t_meter r,
+		t_mped_info i
+		where a.meter_id = r.meter_id
+		and
+		r.mped_id = i.mped_id
+
+	</select>
+
+	<!-- 得到EMO计算所需的DCP -->
+	<select id="getComputeMeter" resultType="HashMap">
+		select lm.METER_ID as METER_ID, lm.ADD_ATTR as ADD_ATTR, lm.PCT as
+		PCT, m.meter_type METER_TYPE
+		from t_ledger_meter lm inner join t_meter
+		m on lm.METER_ID=m.METER_ID
+		where lm.ledger_id = #{ledgerId}
+		<if test="analyType == 102">
+			and ( (m.METER_TYPE = 1 and m.VOLUME_TYPE = 1) or
+			m.METER_TYPE = 2 or
+			m.METER_TYPE = 3 or m.METER_TYPE = 4)
+		</if>
+	</select>
+
+	<select id="getAllottedPointIdsByLedgerId" resultType="Long">
+		SELECT
+		t.METER_ID METER_ID FROM T_LEDGER_METER t
+		JOIN T_METER tm ON t.METER_ID
+		= tm.METER_ID WHERE t.LEDGER_ID =
+		#{ledgerId}
+	</select>
+
+	<!-- 得到EMO计算所需的DCP类型 -->
+	<select id="getComputeMeterTypes" resultType="Short">
+		select distinct m.meter_type
+		from t_ledger_meter lm inner join t_meter
+		m on lm.METER_ID=m.METER_ID
+		where lm.ledger_id = #{ledgerId}
+		<if test="analyType == 102">
+			and ( (m.METER_TYPE = 1 and m.VOLUME_TYPE = 1) or
+			m.METER_TYPE = 2 or
+			m.METER_TYPE = 3 or m.METER_TYPE = 4)
+		</if>
+	</select>
+
+	<select id="getMonthEleValue" parameterType="HashMap"
+		resultType="HashMap">
+		<if test="objType == 1">
+			<if test="meterType == 1">
+				SELECT Q ELE_VALUE,STAT_DATE TIME_FIELD FROM
+				T_MON_LEDGER_STAT
+				WHERE LEDGER_ID = #{ledgerId} AND STAT_DATE BETWEEN
+				#{sTime,jdbcType=TIME} AND #{eTime,jdbcType=TIME}
+			</if>
+			<if test="meterType == 2">
+				SELECT WATER_FLOW ELE_VALUE,STAT_DATE TIME_FIELD FROM
+				T_MON_LEDGER_STAT
+				WHERE LEDGER_ID = #{ledgerId} AND STAT_DATE BETWEEN
+				#{sTime,jdbcType=TIME} AND #{eTime,jdbcType=TIME}
+			</if>
+			<if test="meterType == 3">
+				SELECT GAS_FLOW ELE_VALUE,STAT_DATE TIME_FIELD FROM
+				T_MON_LEDGER_STAT
+				WHERE LEDGER_ID = #{ledgerId} AND STAT_DATE BETWEEN
+				#{sTime,jdbcType=TIME} AND #{eTime,jdbcType=TIME}
+			</if>
+			<if test="meterType == 4">
+				SELECT TEMPER ELE_VALUE,STAT_DATE TIME_FIELD FROM
+				T_MON_LEDGER_STAT
+				WHERE LEDGER_ID = #{ledgerId} AND STAT_DATE BETWEEN
+				#{sTime,jdbcType=TIME} AND #{eTime,jdbcType=TIME}
+			</if>
+		</if>
+		<if test="objType == 2">
+			<if test="meterType == 1">
+				SELECT faq_value ELE_VALUE,freeze_time TIME_FIELD FROM
+				T_MON_Q
+				WHERE meter_id =#{pointId} AND freeze_time BETWEEN
+				#{sTime,jdbcType=TIME}
+				AND #{eTime,jdbcType=TIME}
+			</if>
+			<if test="meterType == 2">
+				SELECT WFLOW_VALUE ELE_VALUE,FREEZE_TIME TIME_FIELD FROM
+				T_MON_WFLOW_STAT
+				WHERE meter_id =#{pointId} AND freeze_time BETWEEN
+				#{sTime,jdbcType=TIME} AND #{eTime,jdbcType=TIME}
+			</if>
+			<if test="meterType == 3">
+				SELECT GFLOW_VALUE ELE_VALUE,FREEZE_TIME TIME_FIELD FROM
+				T_MON_GFLOW_STAT
+				WHERE meter_id =#{pointId} AND freeze_time BETWEEN
+				#{sTime,jdbcType=TIME} AND #{eTime,jdbcType=TIME}
+			</if>
+			<if test="meterType == 4">
+				SELECT HEAT_VALUE ELE_VALUE,FREEZE_TIME TIME_FIELD FROM
+				T_MON_HEAT_STAT
+				WHERE meter_id =#{pointId} AND freeze_time BETWEEN
+				#{sTime,jdbcType=TIME} AND #{eTime,jdbcType=TIME}
+			</if>
+		</if>
+	</select>
+
+	<!-- 查询 分户(分户计算模型中的主变) 容量电费____容需对比 -->
+	<select id="getEmoCapacityFee_new" parameterType="HashMap"
+			resultType="RateFeeBean">
+		select 6 as feeId, '基本' as sectorName,
+		sum(m.volume *
+		lm.add_attr * lm.pct /100) as value,
+		sum(m.volume * lm.add_attr *
+		r.volume_rate * lm.pct /100) as fee,
+		avg(r.volume_rate) as price
+		from
+		t_ledger_meter lm, t_meter m, t_ledger l, t_rate r
+		where lm.meter_id =
+		m.meter_id
+		and m.ledger_id = l.ledger_id
+		and l.rate_id = r.rate_id
+		and
+		lm.ledger_id = #{ledgerId}
+		and m.volume_type = 1
+	</select>
+</mapper>

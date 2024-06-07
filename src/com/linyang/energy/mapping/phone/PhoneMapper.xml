@@ -1,0 +1,2448 @@
+<?xml version="1.0" encoding="UTF-8" ?> 
+<!DOCTYPE mapper PUBLIC "-//ibatis.apache.org//DTD Mapper 3.0//EN" "http://ibatis.apache.org/dtd/ibatis-3-mapper.dtd">
+
+<mapper namespace="com.linyang.energy.mapping.phone.PhoneMapper">
+	<!-- 分户bean map -->
+	<resultMap id="BaseResultMap" type="com.linyang.energy.model.LedgerBean" >
+		<id column="LEDGER_ID"            property="ledgerId"        jdbcType="DECIMAL" />
+		<result column="LEDGER_NAME"      property="ledgerName"      jdbcType="VARCHAR" />
+		<result column="NUMBER_OF_PEOPLE" property="numberOfPeople"  jdbcType="DECIMAL" />
+		<result column="USE_AREA"         property="useArea"         jdbcType="DECIMAL" />
+		<result column="DEPTH"            property="depth"           jdbcType="DECIMAL" />
+		<result column="LEDGER_LFT"       property="ledgerLft"       jdbcType="DECIMAL" />
+		<result column="LEDGER_RGT"       property="ledgerRgt"       jdbcType="DECIMAL" />
+		<result column="PARENT_LEDGER_ID" property="parentLedgerId"  jdbcType="DECIMAL" />
+		<result column="COLLMETER_NUMBER" property="collmeterNumber" jdbcType="DECIMAL" />
+		<result column="RATE_ID"          property="rateId"          jdbcType="DECIMAL" />
+		<result column="LEDGER_REMARK"    property="ledgerRemark"    jdbcType="VARCHAR" />
+		<result column="THRESHOLD_ID"     property="thresholdId"     jdbcType="DECIMAL" />
+		<result column="THRESHOLD_NAME"   property="thresholdName"   jdbcType="VARCHAR" />
+		<result column="THRESHOLD_VALUE"  property="thresholdValue"  jdbcType="VARCHAR" />
+		<result column="X"                property="x"               jdbcType="DOUBLE" />
+		<result column="Y"                property="y"               jdbcType="DOUBLE" />
+		<result column="PIC_ID"           property="picId"           jdbcType="DECIMAL" />
+		<result column="ANALY_TYPE"       property="analyType"       jdbcType="INTEGER" />
+		<result column="INHERIT"          property="inherit"         jdbcType="INTEGER" />
+		
+		<result column="USER_NO"          property="userNo"          jdbcType="VARCHAR" />
+		<result column="INDUSTRY_TYPE"    property="industryType"    jdbcType="VARCHAR" />
+		<result column="INDUSTRY_NAME"    property="industryName"    jdbcType="VARCHAR" />
+		<result column="REGION"           property="region"          jdbcType="VARCHAR" />
+		<result column="REGION_NAME"      property="regionName"      jdbcType="VARCHAR" />
+		<result column="CONTACTS"         property="contacts"        jdbcType="VARCHAR" />
+		<result column="CONTACT_INFO"     property="contactInfo"     jdbcType="VARCHAR" />
+		<result column="ADDRESS"          property="address"         jdbcType="VARCHAR" />
+		
+	</resultMap>
+
+    <!-- 事件记录map -->
+    <resultMap id="eventResultMap" type="com.linyang.energy.model.EventBean">
+        <id property="eventRecId"          column="EVENT_RECID"/>
+        <result property="eventStartTime"  column="EVENT_START_TIME"/>
+        <result property="eventEndTime"    column="EVENT_END_TIME"/>
+        <result property="eventName"       column="EVENT_NAME"/>
+        <result property="eventId"         column="EVENT_ID"/>
+        <result property="eventStatus"     column="EVENT_STATUS"/>
+        <result property="objectId"        column="OBJECT_ID"/>
+        <result property="objectType"      column="OBJECT_TYPE"/>
+        <result property="objectName"      column="OBJECT_NAME"/>
+        <result property="eventContent"      column="CONTENT"/>
+    </resultMap>
+	<sql id="Base_Column_List" >
+		LEDGER_ID, LEDGER_NAME, NUMBER_OF_PEOPLE, USE_AREA, DEPTH, LEDGER_LFT, LEDGER_RGT, PARENT_LEDGER_ID, 
+		COLLMETER_NUMBER, RATE_ID, LEDGER_REMARK, X, Y, PIC_ID, ANALY_TYPE, INHERIT,USER_NO,INDUSTRY_TYPE,
+		REGION,CONTACTS,CONTACT_INFO,ADDRESS
+	</sql>
+	
+	
+	<!-- 查询测量点曲线功率因数 -->
+	<select id="getPointCurPFData" parameterType="HashMap" resultType="HashMap">
+		select t.freeze_time as dataTime,round(t.pf/100,2) as data from T_CUR_PF t
+		where t.freeze_time between #{startDate} and #{endDate}
+		and t.freeze_time &lt;= SYSDATE
+		and t.meter_id=#{objId} order by t.freeze_time
+	</select>
+   
+   <!-- 查询分户功率因数数据 -->
+   <select id="getLedgerPFData" parameterType="HashMap" resultType="HashMap">
+
+   		<choose>
+    		<!-- 曲线 -->
+    		<when test="dateType == 1 || dateType == 2">
+				with t1 as (
+				SELECT #{startDate,jdbcType=TIME} + (ROWNUM - 1)*15/24/60 as dataTime
+				FROM DUAL CONNECT BY ROWNUM &lt;= (floor(#{endDate,jdbcType=TIME} - #{startDate,jdbcType=TIME}) + 1)*24*60/15
+				),
+				t2 as (
+				SELECT T2.LEDGER_ID, T.FREEZE_TIME, SUM(T.AP * T2.add_attr * t2.pct /100) AP, SUM(T3.RP * T2.add_attr * t2.pct /100) RP
+				FROM   T_CUR_AP T LEFT JOIN  T_LEDGER_METER T2
+				ON T.METER_ID = T2.METER_ID
+				LEFT JOIN T_CUR_RP T3 ON T.METER_ID = T3.METER_ID AND T.FREEZE_TIME = T3.FREEZE_TIME
+				WHERE  T.FREEZE_TIME >= #{startDate,jdbcType=TIME}
+				AND    T.FREEZE_TIME &lt; #{endDate,jdbcType=TIME}
+				and t.freeze_time &lt;= SYSDATE
+				AND    T2.LEDGER_ID  = #{objId}
+				group by t2.LEDGER_ID,t.freeze_time
+				)
+				SELECT t1.dataTime,nvl(t2.AP,0) as AP,nvl(t2.RP,0) rp from t1 left join t2
+				on t1.dataTime = t2.freeze_time
+				ORDER BY t1.dataTime
+   			</when>
+   			<!-- 日 -->
+   			<when test="dateType == 3 || dateType == 4">
+				with t1 as (
+				SELECT #{startDate,jdbcType=TIME} + (ROWNUM - 1) as dataTime
+				FROM DUAL CONNECT BY ROWNUM &lt;= (floor(#{endDate,jdbcType=TIME} - #{startDate,jdbcType=TIME}) + 1)
+				),
+				t2 as (
+				select t.freeze_time as dataTime,t.pf as data from
+				t_day_ledger_pf t
+				where t.freeze_time between #{startDate,jdbcType=TIME} and #{endDate,jdbcType=TIME}
+				and t.ledger_id=#{objId} order by t.freeze_time
+				)
+				SELECT t1.dataTime,nvl(data,0) as data from t1 left join t2
+				on t1.dataTime = t2.dataTime
+				ORDER BY t1.dataTime
+   			</when>
+   			<!-- 月 -->
+   			<when test="dateType == 5">
+				with t1 as (
+				select add_months(#{startDate,jdbcType=TIME} , (rownum - 1)) as dataTime
+				from dual connect by rownum &lt;= (months_between(add_months(#{endDate,jdbcType=TIME}, 1) , #{startDate,jdbcType=TIME}))
+				),
+				t2 as (
+				select t.freeze_time as dataTime,t.pf as data from t_mon_ledger_pf t
+				where t.freeze_time  between #{startDate,jdbcType=TIME} and #{endDate,jdbcType=TIME} and
+				t.ledger_id=#{objId}
+				)
+				SELECT t1.dataTime,nvl(data,0) as data from t1 left join t2
+				on t1.dataTime = t2.dataTime
+				ORDER BY t1.dataTime
+   			</when>
+   		</choose> 
+
+   </select>
+
+  <!-- 根据用户登录名得到用户信息 by chengq 2014-08-19 --> 
+  <select id="getUserByUserName" resultType="com.linyang.energy.model.UserBean" parameterType="String" >
+        SELECT ACCOUNT_ID 	  AS accountId,
+        	   LOGIN_NAME	  AS loginName,
+        	   LOGIN_PASSWORD AS loginPassword,
+        	   ACCOUNT_STATUS AS accountStatus,
+        	   REAL_NAME 	  AS realName,
+        	   CREATE_DATE 	  AS createDate,
+        	   PHONE 		  AS phone,
+        	   EMAIL 		  AS email, 
+        	   LEDGER_ID 	  AS ledgerId, 
+        	   LAST_DATE 	  AS lastDate,
+        	   LOGIN_TIMES    AS loginTimes,
+        	   FREETIME_PERIOD AS freeTimePeriod,
+        	   IS_SHIELD       AS isShield
+        FROM T_ACCOUNT
+    	WHERE LOGIN_NAME = #{userName,jdbcType=VARCHAR} AND ACCOUNT_STATUS != 2
+  </select>
+  
+  <!-- 根据用户登录Id得到用户信息 by chengq 2014-08-19 --> 
+  <select id="getUserByAccountId" resultType="com.linyang.energy.model.UserBean"  parameterType="Long" >
+  		SELECT U.ACCOUNT_ID     AS accountId,
+		       U.LOGIN_NAME     AS loginName,
+		       E.LEDGER_NAME    AS ledgerName,
+		       U.REAL_NAME      AS realName,
+		       U.EMAIL          AS email,
+		       U.LOGIN_PASSWORD AS loginPassword,
+		       U.PHONE          AS phone,
+		       U.ACCOUNT_STATUS AS accountStatus,
+		       U.LEDGER_ID      AS ledgerId,
+		       U.LAST_DATE      AS lastDate,
+               R.ROLE_ID        AS roleId,
+               U.LOGIN_TIMES    AS loginTimes,
+               U.FREETIME_PERIOD AS freeTimePeriod,
+               U.IS_SHIELD       AS isShield
+		  FROM T_ACCOUNT U, T_LEDGER E, T_ACCOUNT_ROLE AR, T_ROLE R
+		 WHERE U.LEDGER_ID = E.LEDGER_ID(+)
+		   AND U.ACCOUNT_ID = AR.ACCOUNT_ID
+		   AND AR.ROLE_ID = R.ROLE_ID
+	       AND U.ACCOUNT_ID = #{accountId}
+  </select>
+  
+  <!-- 更新用户信息 by chengq 2014-08-19 -->
+  <update id="updateUserInfo" parameterType="com.linyang.energy.model.UserBean">
+  		update T_ACCOUNT
+	    <set >
+	      <if test="loginName != null" >
+	        LOGIN_NAME = #{loginName,jdbcType=VARCHAR},
+	      </if>
+	      <if test="loginPassword != null &amp; loginPassword != '' " >
+	        LOGIN_PASSWORD = #{loginPassword,jdbcType=VARCHAR},
+	      </if>
+	      <if test="accountStatus != null" >
+	        ACCOUNT_STATUS = #{accountStatus,jdbcType=DECIMAL},
+	      </if>
+	      <if test="realName != null" >
+	        REAL_NAME = #{realName,jdbcType=VARCHAR},
+	      </if>
+	      <if test="createDate != null" >
+	        CREATE_DATE = #{createDate,jdbcType=TIMESTAMP},
+	      </if>
+	      <if test="phone != null" >
+	        PHONE = #{phone,jdbcType=VARCHAR},
+	      </if>
+	      <if test="email != null" >
+	        EMAIL = #{email,jdbcType=VARCHAR},
+	      </if>
+	      <if test="ledgerId != null" >
+	        LEDGER_ID = #{ledgerId,jdbcType=DECIMAL},
+	      </if>
+	    </set>
+	    where ACCOUNT_ID = #{accountId,jdbcType=DECIMAL}
+  </update>
+  
+  <!-- 获取用户群组数据 by chengq 2014-08-19  -->
+  <select id="getPageUserGroupByType" parameterType="HashMap" resultType="com.linyang.energy.model.GroupBean">
+      select * from
+     	(
+     	<!-- 个人创建的私人组 -->
+     	SELECT GROUP_ID AS groupId, GROUP_NAME AS groupName, PUBLIC_TYPE AS publicType, GROUP_TYPE AS groupType, 
+		GROUP_REMARK AS groupRemark, CREATE_ACCOUNT AS accountId
+		FROM T_GROUP WHERE 1=1
+ 		<if test="accountId != null">
+   			AND CREATE_ACCOUNT = #{accountId,jdbcType=DECIMAL}
+   			AND PUBLIC_TYPE = 0
+     	</if>
+		<if test="groupType != null and groupType!=-1">
+			AND GROUP_TYPE = #{groupType,jdbcType=DECIMAL}	
+     	</if>
+     	union 
+     	<!-- 所有公开组 -->
+     	SELECT GROUP_ID AS groupId, GROUP_NAME AS groupName, PUBLIC_TYPE AS publicType, GROUP_TYPE AS groupType, 
+		GROUP_REMARK AS groupRemark, CREATE_ACCOUNT AS accountId
+		FROM T_GROUP WHERE 1=1
+   		AND	PUBLIC_TYPE = 1
+		<if test="groupType != null and groupType!=-1">
+			AND GROUP_TYPE = #{groupType,jdbcType=DECIMAL}	
+     	</if>
+     	)    	
+      order by publicType, groupId asc
+	</select>
+	
+	<!-- 获取群组的组员分户信息列表  by chengq 2014-08-20 -->
+	<select id="getLedgerByGroupId" parameterType="Long" resultType="com.linyang.energy.model.LedgerBean">
+		select b.ledger_id as ledgerId, b.ledger_name as ledgerName
+  		from t_group_ledger a, T_LEDGER b
+ 		where a.ledger_id = b.ledger_id
+   		and a.group_id = #{groupId}
+	</select>
+	
+	<!-- 获取群组的组员计量点信息列表  by chengq 2014-08-20 -->
+	<select id="getMeterByGroupId" parameterType="Long" resultType="com.linyang.energy.model.MeterBean">
+		select b.meter_id as meterId, b.meter_name as meterName
+  		from t_group_meter a, t_meter b
+ 		where a.meter_id = b.meter_id 
+  		and a.group_id = #{groupId}
+	</select>
+	
+	<!-- 获取分户信息 by chengq 2014-08-19 -->
+	<select id="getLedgerById" parameterType="Long" resultType="com.linyang.energy.model.LedgerBean">
+		SELECT A.LEDGER_ID AS ledgerId, 
+			   A.LEDGER_NAME AS ledgerName, 
+			   A.NUMBER_OF_PEOPLE AS numberOfPeople, 
+			   A.USE_AREA AS useArea, 
+			   A.DEPTH AS depth, 
+			   A.LEDGER_LFT AS ledgerLft, 
+			   A.LEDGER_RGT AS ledgerRgt, 
+			   A.PARENT_LEDGER_ID AS parentLedgerId, 
+			   A.COLLMETER_NUMBER AS collmeterNumber, 
+			   A.RATE_ID AS rateId, 
+			   A.LEDGER_REMARK AS ledgerRemark, 
+			   A.X AS x, 
+			   A.Y AS y, 
+			   A.PIC_ID AS picId, 
+			   A.ANALY_TYPE AS analyType, 
+			   A.INHERIT AS inherit, 
+			   B.THRESHOLD_VALUE AS thresholdValue,
+			   A.USER_NO AS userNo, 
+			   A.INDUSTRY_TYPE AS industryType, 
+			   A.REGION AS region, 
+			   A.CONTACTS AS contacts, 
+			   A.CONTACT_INFO AS contactInfo, 
+			   A.ADDRESS AS address, 
+			   C.REGION_NAME AS regionName, 
+			   D.INDUSTRY_NAME AS industryName
+		FROM T_LEDGER A LEFT JOIN T_LEDGER_THRESHOLD_RELATION B ON A.LEDGER_ID = B.LEDGER_ID
+			            LEFT JOIN T_REGION C ON A.REGION = C.REGION_ID
+			            LEFT JOIN T_INDUSTRY D ON A.INDUSTRY_TYPE = D.INDUSTRY_ID
+		WHERE A.LEDGER_ID = #{ledgerId, jdbcType=DECIMAL}
+	</select>
+	<!-- 获取分户列表  by chengq 2014-08-19  -->
+	<select id="getPageLedger"  parameterType="HashMap" resultType="com.linyang.energy.model.LedgerBean">
+		select distinct ledger_id as ledgerId, ledger_name as ledgerName
+    	from t_ledger Start With ledger_id in (
+			select tl.LEDGER_ID AS ledgerId 
+			from t_account ta, t_group_account tga, t_group_ledger tgl,t_ledger tl
+			where ta.account_id = tga.account_id
+			and tga.group_id = tgl.group_id
+    		and tgl.ledger_id = tl.ledger_id 
+    		<if test="accountId != null">
+    			and ta.account_id = #{accountId}
+    		</if> 
+    		)
+    	Connect By Prior ledger_id = parent_ledger_id
+	</select>
+	
+	<!-- 根据已知分户Id获取测量点列表 by chengq 2014-08-19 -->
+	<select id="getMeterListByLedgerOrMeterId" resultType="com.linyang.energy.model.MeterBean">
+	 	SELECT M.METER_ID     AS meterId,
+		       M.METER_NAME   AS meterName,
+		       M.METER_TYPE   AS meterType,
+		       M.METER_ATTR   AS meterAttr,
+		       M.LEDGER_ID    AS ledgerId,
+		       M.TERMINAL_ID  AS terminalId,
+		       M.MPED_ID      AS mpedId,
+		       M.TYPE_ID      AS typeId,
+		       M.ATTRIBUTE_ID AS attributeId,
+		       M.ASSET_NUMBER AS assetNumber
+		FROM T_METER M
+		<where>
+			AND M.METER_STATUS =1
+		    AND M.LEDGER_ID IN (
+				SELECT NODE_LEDGER FROM V_LEDGER_TREE WHERE PARENT_LEDGER = #{objId}
+			)
+		</where>
+		ORDER BY M.METER_ID ASC
+	</select>
+
+    <!-- 由分户Id获取级别为level的计量点 -->
+    <select id="getMeterListByLeger" resultType="HashMap">
+        select m.METER_ID,m.METER_NAME from T_METER m left join T_LINELOSS_METER_INFO t on m.METER_ID=t.METER_ID
+          where m.LEDGER_ID=#{ledgerId} and t.METER_LEVEL=#{level}
+    </select>
+
+   <!-- 查询分户功率因数数据 by yaojiawei -->
+   <select id="getLedgerPFData2" parameterType="HashMap" resultType="java.lang.Double">
+   		select t.pf as data from 
+   		<choose>
+    		<!-- 曲线 -->
+    		<when test="dateType == 1">   	
+   				t_day_ledger_pf t
+   			</when>
+   			<!-- 月 -->
+   			<when test="dateType == 2">
+   				t_mon_ledger_pf t
+   			</when>
+   		</choose> 
+   		where t.freeze_time = #{startDate} 
+   		and t.ledger_id=#{objId}
+   </select>
+   
+   
+   	<!-- 查询测量点有功功率 by guosen 2014-8-19 -->
+	<select id="getPointCurAPData" parameterType="HashMap" resultType="HashMap">
+		select t.freeze_time as dataTime,t.ap as data
+		from T_CUR_AP t
+		where t.freeze_time between #{startDate} and #{endDate}
+		and A.freeze_time &lt;= SYSDATE
+		and t.meter_id=#{objId} order by t.freeze_time
+	</select>
+	
+	<!-- 查询EMO有功功率 by guosen 2014-12-15 -->
+	<select id="getLedgerAPData" parameterType="HashMap" resultType="HashMap">
+		SELECT T2.LEDGER_ID, A.FREEZE_TIME as dataTime, SUM(A.AP* t2.add_attr * t2.pct /100) as data
+		FROM   T_CUR_AP A 
+		LEFT JOIN  T_LEDGER_METER T2
+                   ON A.METER_ID = T2.METER_ID
+		WHERE  A.FREEZE_TIME  between #{startDate} and #{endDate}
+		and A.freeze_time &lt;= SYSDATE
+		AND  T2.LEDGER_ID  = #{objId}
+		GROUP BY T2.LEDGER_ID, A.FREEZE_TIME 
+		ORDER BY A.freeze_time
+	</select>
+   
+  	<!-- 查询测量点无功功率 by guosen 2014-8-19 -->
+	<select id="getPointCurRPData" parameterType="HashMap" resultType="HashMap">
+		select t.freeze_time as dataTime,t.rp as data
+		from T_CUR_RP t
+		where t.freeze_time between #{startDate} and #{endDate}
+		and t.freeze_time &lt;= SYSDATE
+		and t.meter_id=#{objId} order by t.freeze_time
+	</select>
+	
+	<!-- 查询EMO无功功率 by guosen 2014-12-15 -->
+	<select id="getLedgerRPData" parameterType="HashMap" resultType="HashMap">
+		SELECT T2.LEDGER_ID, A.FREEZE_TIME as dataTime,  SUM(A.RP* t2.add_attr * t2.pct /100) as data
+			FROM   T_CUR_RP A 
+			LEFT JOIN  T_LEDGER_METER T2
+	                   ON A.METER_ID = T2.METER_ID
+			WHERE  A.FREEZE_TIME between #{startDate} and #{endDate}
+			and A.freeze_time &lt;= SYSDATE
+			AND  T2.LEDGER_ID  = #{objId}
+			GROUP BY T2.LEDGER_ID, A.FREEZE_TIME
+			ORDER BY A.freeze_time
+	</select>
+	
+	<!-- 查询测量点三相电压曲线 -->
+	<select id="getPointVol" parameterType="HashMap" resultType="HashMap">
+		select t.freeze_time as dataTime,
+		<choose>  
+	        <when test="commMode != null &amp; commMode == 1">  
+	        	t.va as a, t.vc as c 
+	        </when>  
+	        <otherwise>  
+	            round(t.va*1.732,2) as a,round(t.vb*1.732,2) as b,round(t.vc*1.732,2) as c 
+	        </otherwise>  
+	    </choose>  
+		from t_cur_v t
+		where t.freeze_time between #{startDate} and #{endDate}
+		and t.freeze_time &lt;= SYSDATE
+		and t.meter_id=#{objId}
+		order by t.freeze_time
+	</select>
+
+    <select id="getNeedPointVol" parameterType="HashMap" resultType="HashMap">
+        select to_char(t.freeze_time,  'yyyy-MM-dd HH24:mi') as DATA_TIME,
+        <choose>
+            <when test="commMode != null &amp; commMode == 1">
+                t.va as a, t.vc as c
+            </when>
+            <otherwise>
+                round(t.va*1.732,2) as a,round(t.vb*1.732,2) as b,round(t.vc*1.732,2) as c
+            </otherwise>
+        </choose>
+        from t_cur_v t where t.freeze_time between #{startDate,jdbcType=TIME} and #{endDate,jdbcType=TIME} and t.meter_id=#{objId} order by t.freeze_time
+    </select>
+
+  	<!-- 查询测量点三相电流曲线 -->
+	<select id="getPointCur" parameterType="HashMap" resultType="HashMap">
+		select t.freeze_time as dataTime,
+		<choose>  
+	        <when test="commMode != null &amp; commMode == 1">  
+	        	t.ia as a,t.ic as c
+	        </when>  
+	        <otherwise>  
+	            t.ia as a,t.ib as b,t.ic as c 
+	        </otherwise>  
+	    </choose>  
+		from t_cur_i t 
+		where t.freeze_time between #{startDate} and #{endDate}
+		and t.freeze_time &lt;= SYSDATE
+		and t.meter_id=#{objId}
+		order by t.freeze_time
+	</select>
+
+    <select id="getNeedPointCur" parameterType="HashMap" resultType="HashMap">
+        select to_char(t.freeze_time, 'yyyy-MM-dd HH24:mi') as DATA_TIME,
+        <choose>
+            <when test="commMode != null &amp; commMode == 1">
+                t.ia as a,t.ic as c
+            </when>
+            <otherwise>
+                t.ia as a,t.ib as b,t.ic as c
+            </otherwise>
+        </choose>
+        from t_cur_i t
+        where t.freeze_time between #{startDate,jdbcType=TIME} and #{endDate,jdbcType=TIME}
+        and t.meter_id=#{objId} order by t.freeze_time
+    </select>
+   
+   <!-- 查询分户96点电量 by yaojiawei -->
+   <select id="getLedger96EnergyData" parameterType="HashMap" resultType="HashMap">  
+       select  q.LEDGER_ID as ledgerId,  to_date(q.freeze_time, 'yyyy-MM-dd HH24')+1/24 as dataTime,
+						sum(faq) as data
+						from (
+						select substr(to_char(t.freeze_time,  'yyyy-MM-dd HH24:mi:ss'), 0,  13) as freeze_time,
+						T2.LEDGER_ID, t.faq_value * t2.add_attr * t2.pct /100 as faq
+						from T_CUR_Q t LEFT JOIN T_LEDGER_METER T2
+						ON T.METER_ID = T2.METER_ID
+						where t.FREEZE_TIME >= #{startDate,jdbcType=TIME} AND t.FREEZE_TIME &lt; #{endDate,jdbcType=TIME}
+						and t.freeze_time &lt;= SYSDATE
+						AND T2.LEDGER_ID = #{objId}
+						) q
+						group by q.LEDGER_ID,q.freeze_time
+        order by dataTime
+	</select>
+	
+   
+   <!-- 查询分户电量 by yaojiawei -->
+   <select id="getLedgerEnergyData" parameterType="HashMap" resultType="HashMap">
+		select t.stat_date as dataTime, t.q as data 
+		from 
+		<if test="dateType == 3 || dateType == 4">
+		T_DAY_LEDGER_STAT 
+		</if>
+		<if test="dateType == 5">
+	    T_MON_LEDGER_STAT
+	    </if>
+		t where t.stat_date between #{startDate} and #{endDate} 
+		and t.ledger_id=#{objId}
+		order by t.stat_date asc
+   </select>
+   
+    <!-- 查询分户电量 （由尖峰平谷计算） by xuesai -->
+   <select id="getLedgerEnergyData2" parameterType="HashMap" resultType="HashMap">
+        SELECT T3.FREEZE_TIME dataTime
+       <if test="dateType == 3 || dateType == 4">
+            ,sum(T3.DAY_FAQ) data
+       </if>
+       <if test="dateType == 5">
+            ,sum(T3.MON_FAQ) data
+	    </if>
+        FROM 
+       <if test="dateType == 3 || dateType == 4">
+            T_DAY_LEDGER_Q_RATE
+       </if>
+       <if test="dateType == 5">
+            T_MON_LEDGER_Q_RATE
+	    </if>
+         T3 WHERE T3.LEDGER_ID = #{objId}
+        AND T3.FREEZE_TIME BETWEEN #{startDate} and #{endDate}
+        GROUP BY T3.FREEZE_TIME ORDER BY T3.FREEZE_TIME
+   </select>
+   
+	<!-- 查询时间范围内的分户电量之和  by yaojiawei-->
+	<select id="getLedgerSumEnergyData" parameterType="HashMap" resultType="java.lang.Double">
+		select sum(t.q) as data 
+		from 
+		<if test="dateType == 1">
+		T_DAY_LEDGER_STAT 
+		</if>
+		<if test="dateType == 2">
+	    T_MON_LEDGER_STAT
+	    </if>
+		t where t.stat_date between #{startDate} and #{endDate} 
+		and t.ledger_id=#{objId}
+	</select>
+	
+	
+	<!-- 查询计量点96点电量 by yaojiawei-->
+	   <select id="getPoint96EnergyData" parameterType="HashMap" resultType="HashMap">
+	select q.meter_id as METER_ID,to_date(q.freeze_time,'yyyy-MM-dd HH24')+1/24 as dataTime,
+	sum(q.faq_value) as data from
+						(select substr(to_char(t.freeze_time,'yyyy-MM-dd HH24:mi:ss'),0,13) as freeze_time,t.meter_id,t.faq_value from T_CUR_Q t
+						where t.FREEZE_TIME >= #{startDate,jdbcType=TIME} AND t.FREEZE_TIME &lt; #{endDate,jdbcType=TIME}
+						and t.freeze_time &lt;= SYSDATE
+						AND t.METER_ID = #{objId}) q
+						group by q.meter_id,q.freeze_time
+						order by dataTime
+		</select>
+	
+	
+	<!-- 查询计量点电量 -->
+	<select id="getPointEnergyData" parameterType="HashMap" resultType="HashMap">
+		select t.freeze_time as dataTime, t.faq_value as data 
+		from
+		<if test="dateType == 3 || dateType == 4">
+		T_DAY_Q 
+		</if>
+		<if test="dateType == 5">
+	    T_MON_Q
+	    </if>
+		t where t.freeze_time between #{startDate} and #{endDate} 
+		and t.meter_id =#{objId} order by t.freeze_time
+	</select>
+    <!-- 查询计量点电量(由尖峰平谷计算) -->
+    <select id="getPointEnergyData2" parameterType="HashMap" resultType="HashMap">
+        SELECT T3.FREEZE_TIME dataTime
+        <if test="dateType == 3 || dateType == 4">
+            ,sum(T3.DAY_FAQ) data
+       </if>
+       <if test="dateType == 5">
+            ,sum(T3.MON_FAQ_RATE) data
+	    </if>
+        FROM 
+       <if test="dateType == 3 || dateType == 4">
+            T_DAY_Q_RATE
+       </if>
+       <if test="dateType == 5">
+            T_MON_Q_RATE
+	    </if>
+         T3 WHERE T3.METER_ID = #{objId}
+        AND T3.FREEZE_TIME BETWEEN #{startDate} and #{endDate}
+        GROUP BY T3.FREEZE_TIME ORDER BY T3.FREEZE_TIME
+   </select>
+	
+	<!-- 查最近一点的有功功率-->
+	<select id="getRecentAP"  resultType="java.lang.Double">
+		select *
+		  from (select sum(b.ap * a.add_attr * a.pct /100) ap
+		          from T_LEDGER_METER a, T_CUR_AP b
+		         where a.meter_id = b.meter_id
+		           and a.ledger_id = #{objId}
+		           and b.freeze_time >= trunc(sysdate)
+		         group by a.ledger_id, b.freeze_time
+		         order by freeze_time desc) aa
+		 where rownum &lt; 2
+	</select>
+	
+	<!-- 查最近一点的无功功率-->
+	<select id="getRecentRP" resultType="java.lang.Double">
+		select *
+      from (select
+               sum(b.rp  * a.add_attr * a.pct /100) ap
+         from T_LEDGER_METER a, T_CUR_RP b
+         where a.meter_id = b.meter_id
+           and a.ledger_id = #{objId}
+           and b.freeze_time >= trunc(sysdate)
+         group by a.ledger_id, b.freeze_time
+         order by freeze_time desc) aa
+ 		where rownum &lt; 2
+	</select>
+	
+	<!-- 递归查询所有子分户 -->
+	<select id="queryPageRecursiveLedgerById" parameterType="HashMap" resultMap="BaseResultMap">
+		select <include refid="Base_Column_List" />
+  		from t_ledger
+  		<if test="ledgerId != -1">
+			Start With ledger_id = #{ledgerId}
+		</if>
+		<if test="ledgerId == -1">
+			Start With ledger_id in (select t.ledger_id from t_ledger t where t.parent_ledger_id=0)
+		</if>
+		Connect By Prior ledger_id = parent_ledger_id
+	</select>
+	
+	<!-- 根据meterID得到电源接线方式 -->
+	<select id="queryCommMode" parameterType="java.lang.Long" resultType="java.lang.Integer" >
+		select t2.comm_mode from t_meter t1 left join t_mped_info t2 
+		on t1.mped_id = t2.mped_id 
+		where t1.meter_id = #{meterId}
+	</select>
+	
+	<!-- 根据meterId得到ledgerId -->
+	<select id="getLedgerIdByMeterId" parameterType="java.lang.Long" resultType="java.lang.Long" >
+		SELECT LEDGER_ID FROM T_METER WHERE METER_ID = #{meterId}
+	</select>
+
+    <!-- 按时间段获得月功率因数 -->
+    <select id="getMonLedgerFactor" resultType="HashMap" parameterType="HashMap">
+        SELECT to_char(FREEZE_TIME,'yyyy-MM') as FREEZE_TIME, PF
+          FROM T_MON_LEDGER_PF
+          WHERE LEDGER_ID=#{ledgerId} AND FREEZE_TIME BETWEEN #{beginTime} AND #{endTime} ORDER BY FREEZE_TIME ASC
+    </select>
+
+    <!-- 按时间段获得日功率因数 -->
+    <select id="getDayLedgerFactor" resultType="HashMap" parameterType="HashMap">
+        SELECT to_char(FREEZE_TIME,'yyyy-MM-dd') as FREEZE_TIME, PF
+        FROM T_DAY_LEDGER_PF
+        WHERE LEDGER_ID=#{ledgerId} AND FREEZE_TIME BETWEEN #{beginTime} AND #{endTime} ORDER BY FREEZE_TIME ASC
+    </select>
+
+    <!-- 按时间段获得当天功率因数 -->
+    <select id="getMinuteLedgerFactor" resultType="HashMap" parameterType="HashMap">
+
+				SELECT T2.LEDGER_ID, T.FREEZE_TIME, SUM(T.AP * T2.add_attr * t2.pct /100) APD, SUM(T3.RP * T2.add_attr * t2.pct /100) RPD,
+				 		SUM(T.AP_A * T2.add_attr * t2.pct /100) APA, SUM(T3.RP_A * T2.add_attr * t2.pct /100) RPA,
+				 		SUM(T.AP_B * T2.add_attr * t2.pct /100) APB, SUM(T3.RP_B * T2.add_attr * t2.pct /100) RPB,
+				 		SUM(T.AP_C * T2.add_attr * t2.pct /100) APC, SUM(T3.RP_C * T2.add_attr * t2.pct /100) RPC
+				FROM   T_CUR_AP T LEFT JOIN  T_LEDGER_METER T2
+		                   ON T.METER_ID = T2.METER_ID
+		               LEFT JOIN T_CUR_RP T3 ON T.METER_ID = T3.METER_ID AND T.FREEZE_TIME = T3.FREEZE_TIME
+				WHERE  T.FREEZE_TIME >= #{beginTime,jdbcType=TIME}
+				AND    T.FREEZE_TIME &lt; #{endTime,jdbcType=TIME}
+				and t.freeze_time &lt;= SYSDATE
+				AND    T2.LEDGER_ID  = #{ledgerId}
+				 group by t2.LEDGER_ID,t.freeze_time
+				 order by t.freeze_time
+    </select>
+
+    <!-- 日最大需量分析图表数据 -->
+    <select id="queryDayMDData" parameterType="HashMap" resultType="HashMap">
+    	<if test="objType == 1">
+			WITH tcs AS (SELECT /*+ PARALLEL(tc, 4)*/ FREEZE_TIME AS FREEZE_TIME, sum(tc.AP * tlm.ADD_ATTR * tlm.PCT/100) AS sumAp
+			FROM T_CUR_AP tc
+			JOIN (SELECT t.METER_ID METER_ID, t.ADD_ATTR ADD_ATTR,t.PCT PCT FROM T_LEDGER_METER t JOIN T_METER tm ON t.mETER_ID = tm.METER_ID WHERE t.LEDGER_ID = #{pointId}) tlm
+			ON tc.METER_ID = tlm.METER_ID GROUP BY FREEZE_TIME)   						
+			SELECT to_char(truncTime,'yyyy-MM-dd') AS time,maxFad,to_char(FREEZE_TIME,'MM-dd HH24:MI') AS occurTime, DECLARE_TYPE, DECLARE_VALUE as MD_DATA 
+			FROM (SELECT tcsMax.truncTime truncTime,tcsMax.MAX maxFad,min(tcs.FREEZE_TIME) FREEZE_TIME,tdr.DECLARE_TYPE DECLARE_TYPE,tdr.DECLARE_VALUE DECLARE_VALUE 
+				FROM(SELECT trunc(tcs.FREEZE_TIME) truncTime , MAX(tcs.sumAp) MAX FROM tcs GROUP BY trunc(tcs.FREEZE_TIME))tcsMax
+			JOIN tcs ON tcsMax.MAX = tcs.sumAp AND tcsMax.truncTime = trunc(tcs.FREEZE_TIME)
+			LEFT JOIN (select sum(dr.declare_value) declare_value,dr.begin_time begin_time,dr.declare_type declare_type from t_meter tm 
+			    join t_demand_rec dr on dr.meter_id = tm.meter_id where tm.LEDGER_ID IN (
+          select l1.ledger_id from t_ledger l1,t_ledger l2
+              where l1.ledger_lft>=l2.ledger_lft and l1.ledger_rgt &lt;=l2.ledger_rgt
+              and l2.ledger_id = #{pointId}
+        )AND tm.METER_STATUS = 1 AND tm.VOLUME_TYPE = 1 AND tm.VOLUME > 0 AND dr.begin_time between #{beginTime} AND  #{endTime}  
+				 group by tm.ledger_id,dr.begin_time,dr.declare_type) tdr ON to_char(tdr.begin_time,'yyyy-MM') = to_char(tcsMax.truncTime,'yyyy-MM')
+			WHERE tcsMax.truncTime BETWEEN #{beginTime} AND  #{endTime}
+			GROUP BY tcsMax.truncTime,tcsMax.MAX,tdr.DECLARE_TYPE,tdr.DECLARE_VALUE) ORDER BY truncTime
+    	</if>
+    	<if test="objType == 2">
+			<!-- SELECT to_char(t.FREEZE_TIME,'yyyy-MM-dd') AS time, t.MAX_FAD AS maxFad, to_char(t.MAX_FAD_TIME,'MM-dd HH24:MI') AS occurTime,
+                    r.DECLARE_TYPE, r.DECLARE_VALUE as MD_DATA
+                   FROM T_DAY_D_TOTAL t left join (select * from T_DEMAND_REC where BEGIN_TIME BETWEEN #{beginTime} AND  #{endTime}) r on t.METER_ID=r.METER_ID
+            WHERE t.METER_ID=#{pointId} AND t.FREEZE_TIME BETWEEN #{beginTime} AND  #{endTime}
+            order by t.FREEZE_TIME -->
+			SELECT to_char(t.FREEZE_TIME,'yyyy-MM-dd') AS time, t.MAX_FAD AS maxFad, to_char(t.MAX_FAD_TIME,'MM-dd HH24:MI') AS occurTime,
+			r.DECLARE_TYPE, r.DECLARE_VALUE as MD_DATA
+			FROM T_DAY_D_TOTAL t left join
+			(
+			select t2.METER_ID , t1.DECLARE_TYPE,t2.VOLUME DECLARE_VALUE from T_DEMAND_REC t1
+			join ( SELECT * FROM T_METER  ) t2 on t1.METER_ID = t2.METER_ID
+			where t1 .BEGIN_TIME BETWEEN #{beginTime} AND  #{endTime}
+			) r on t.METER_ID=r.METER_ID
+			WHERE t.METER_ID=#{pointId} AND t.FREEZE_TIME BETWEEN #{beginTime} AND  #{endTime}
+			order by t.FREEZE_TIME
+    	</if>
+    </select>
+
+    <!-- 月最大需量分析图表数据 -->
+    <select id="queryMonMDData" parameterType="HashMap" resultType="HashMap">
+    	<if test="objType == 1">
+    		WITH tcs AS (SELECT /*+ PARALLEL(tc, 4)*/ FREEZE_TIME AS FREEZE_TIME, sum(tc.AP * tlm.ADD_ATTR * tlm.PCT/100) AS sumAp
+			FROM T_CUR_AP tc
+			JOIN (SELECT t.METER_ID METER_ID, t.ADD_ATTR ADD_ATTR,t.PCT PCT FROM T_LEDGER_METER t JOIN T_METER tm ON t.mETER_ID = tm.METER_ID WHERE t.LEDGER_ID = #{pointId}) tlm
+			ON tc.METER_ID = tlm.METER_ID GROUP BY FREEZE_TIME)   						
+			SELECT truncTime AS time,maxFad,to_char(FREEZE_TIME,'MM-dd HH24:MI') AS occurTime, DECLARE_TYPE, DECLARE_VALUE as MD_DATA 
+			FROM (SELECT tcsMax.truncTime truncTime,tcsMax.MAX maxFad,min(tcs.FREEZE_TIME) FREEZE_TIME,tdr.DECLARE_TYPE DECLARE_TYPE,tdr.DECLARE_VALUE DECLARE_VALUE 
+				FROM(SELECT to_char(tcs.FREEZE_TIME,'yyyy-MM') truncTime , MAX(tcs.sumAp) MAX FROM tcs GROUP BY to_char(tcs.FREEZE_TIME,'yyyy-MM'))tcsMax
+			JOIN tcs ON tcsMax.MAX = tcs.sumAp AND tcsMax.truncTime = to_char(tcs.FREEZE_TIME,'yyyy-MM')
+			LEFT JOIN (select sum(dr.declare_value) declare_value,dr.begin_time begin_time,dr.declare_type declare_type from t_meter tm 
+			    join t_demand_rec dr on dr.meter_id = tm.meter_id where tm.LEDGER_ID IN (
+          select l1.ledger_id from t_ledger l1,t_ledger l2
+              where l1.ledger_lft>=l2.ledger_lft and l1.ledger_rgt &lt;=l2.ledger_rgt
+              and l2.ledger_id = #{pointId}
+        )AND tm.METER_STATUS = 1 AND tm.VOLUME_TYPE = 1 AND tm.VOLUME > 0 AND dr.begin_time between #{beginTime} AND  #{endTime}  
+				 group by tm.ledger_id,dr.begin_time,dr.declare_type) tdr ON to_char(tdr.begin_time,'yyyy-MM') = tcsMax.truncTime
+			WHERE tcs.FREEZE_TIME BETWEEN #{beginTime} AND  #{endTime}
+			GROUP BY tcsMax.truncTime,tcsMax.MAX,tdr.DECLARE_TYPE,tdr.DECLARE_VALUE) ORDER BY truncTime
+    	</if>
+    	<if test="objType == 2">
+	        select dc.time, dc.maxFad, dc.occurTime, r.DECLARE_TYPE, r.DECLARE_VALUE as MD_DATA from
+	           (
+	            select t.meter_id, t.freeze_time as time,max(t.max_fad) as maxFad,max(t.max_fad_time) as occurTime
+	              from (select to_char(freeze_time,'yyyy-MM') as freeze_time,
+	                 max_fad, to_char(max_fad_time,'yyyy-MM-dd HH24:MI') as max_fad_time,
+	                 meter_id from T_DAY_D_TOTAL
+	                 where freeze_time BETWEEN #{beginTime} AND  #{endTime}) t
+	            where t.meter_id=#{pointId}
+	            group by t.meter_id,t.freeze_time order by t.meter_id,t.freeze_time
+	           ) dc
+	         left join t_demand_rec r on dc.meter_id=r.meter_id
+	         where dc.time=to_char(r.BEGIN_TIME,'yyyy-MM') ORDER BY TIME
+    	</if>
+    </select>
+    <select id="getDeclareVal" resultType="Double">
+          select r.DECLARE_VALUE from T_DEMAND_REC r
+            where r.METER_ID=#{pointId} and to_char(r.BEGIN_TIME,'yyyy-MM')=#{time}
+    </select>
+
+    <!-- 根据ID获取新闻 -->
+    <select id="getNewsById" parameterType="Long" resultType="HashMap">
+        select INFO_ID,INFO_TITLE,INFO_TYPE,INFO_PIC,INFO_CONTENT from T_NEWS_POLICY_INFO
+         where INFO_ID = #{infoId}
+    </select>
+
+    <!-- 根据类型获取新闻、政策分页列表 -->
+    <select id="getNewsPageList" parameterType="HashMap" resultType="HashMap">
+        select INFO_ID,INFO_TITLE,INFO_TYPE,INFO_PIC,INFO_CONTENT,CREATE_TIME from T_NEWS_POLICY_INFO
+        where INFO_TYPE = #{type}
+        order by CREATE_TIME desc
+    </select>
+
+    <!-- 根据用户Id获取事件 分页列表 -->
+    <select id="getEventPageList" parameterType="HashMap" resultMap="eventResultMap">
+        SELECT * FROM (
+        SELECT A.EVENT_RECID, A.EVENT_START_TIME,A.EVENT_END_TIME, A.EVENT_NAME, A.EVENT_ID, A.EVENT_STATUS,
+        A.OBJECT_ID, A.OBJECT_TYPE, B.LEDGER_NAME OBJECT_NAME,A.CONTENT
+        FROM   T_EVENT A left join T_LEDGER B on A.OBJECT_ID = B.LEDGER_ID
+        where A.OBJECT_TYPE = 1
+        <if test="ledgerId!=null and ledgerId != -1 and ledgerId != 0">
+            AND B.LEDGER_ID IN (SELECT t1.ledger_id from t_ledger t1,t_ledger t2
+            where t1.ledger_lft>=t2.ledger_lft and t1.ledger_rgt&lt;=t2.ledger_rgt and t2.ledger_id=#{ledgerId})
+        </if>
+        <if test="ledgerId!=null and ledgerId != -1 and ledgerId == 0">
+            AND B.LEDGER_ID IN (select t2.ledger_id from V_GROUP_LEDGER t1,t_ledger t2,t_ledger t3
+            where t1.account_id=#{accountId} and t1.ledger_id=t3.ledger_id and t2.ledger_lft>=t3.ledger_lft and t2.ledger_rgt&lt;=t3.ledger_rgt)
+        </if>
+        UNION
+        SELECT A.EVENT_RECID, A.EVENT_START_TIME,A.EVENT_END_TIME, A.EVENT_NAME, A.EVENT_ID, A.EVENT_STATUS,
+        A.OBJECT_ID, A.OBJECT_TYPE, B.METER_NAME OBJECT_NAME,A.CONTENT
+        FROM   T_EVENT A left join T_METER B on A.OBJECT_ID = B.METER_ID
+        where A.OBJECT_TYPE = 2
+        <if test="ledgerId!=null and ledgerId != -1 and ledgerId != 0">
+            AND B.ledger_id IN (SELECT t1.ledger_id from t_ledger t1,t_ledger t2
+            where t1.ledger_lft>=t2.ledger_lft and t1.ledger_rgt&lt;=t2.ledger_rgt and t2.ledger_id=#{ledgerId})
+        </if>
+        <if test="ledgerId!=null and ledgerId != -1 and ledgerId == 0">
+            AND B.ledger_id IN (select t2.ledger_id from V_GROUP_LEDGER t1,t_ledger t2,t_ledger t3
+            where t1.account_id=#{accountId} and t1.ledger_id=t3.ledger_id and t2.ledger_lft>=t3.ledger_lft and t2.ledger_rgt&lt;=t3.ledger_rgt)
+        </if>
+        ) T
+        where T.EVENT_ID in (select BOOK_ID as EVENT_ID from T_BOOK_INFO where BOOK_TYPE=1 and ACCOUNT_ID=#{accountId})
+        and T.EVENT_ID>=1100
+        ORDER BY T.EVENT_START_TIME DESC
+    </select>
+
+    <!-- 根据用户Id获取自定义消息分页列表 -->
+    <select id="messagePageList" parameterType="HashMap" resultType="HashMap">
+        select t.MESSAGE_ID, t.SEND_TIME, t.SEND_RESULT, t.MESSAGE_CONTENT, t.MESSAGE_TITLE
+        from
+           (
+                select distinct m.*
+                from T_USER_DEFINED_MESSAGE m left join T_MESSAGE_ACCOUNT a on m.MESSAGE_ID=a.MESSAGE_ID
+                where a.ACCOUNT_ID=#{accountId}
+                union
+                select distinct m.*
+                from T_BOOK_INFO b,T_MESSAGE_ACCOUNT ma,T_USER_DEFINED_MESSAGE m
+                where b.ACCOUNT_ID=#{accountId} and b.BOOK_TYPE=2 and b.BOOK_ID=1
+                       and ma.ACCOUNT_ID=-1
+           ) t
+        where 1=1
+        order by t.SEND_TIME desc
+    </select>
+
+    <!-- 根据用户Id获取报告分页列表 -->
+    <select id="reportPageList" parameterType="HashMap" resultType="HashMap">
+        select r.REPORT_ID, r.LEDGER_ID, r.REPORT_TIME, r.REPORT_MODULE, r.REPORT_CONTENT, r.CREATE_TIME
+        from T_SERVICE_REPORT r, T_BOOK_INFO b
+        where b.ACCOUNT_ID=#{accountId} and b.BOOK_TYPE=2 and b.BOOK_ID=1
+        <if test="ledgerId!=null and ledgerId != -1 and ledgerId != 0">
+            AND r.LEDGER_ID IN (SELECT t1.ledger_id from t_ledger t1,t_ledger t2
+            where t1.ledger_lft>=t2.ledger_lft and t1.ledger_rgt&lt;=t2.ledger_rgt and t2.ledger_id=#{ledgerId})
+        </if>
+        <if test="ledgerId!=null and ledgerId != -1 and ledgerId == 0">
+            AND r.LEDGER_ID IN (select t2.ledger_id from V_GROUP_LEDGER t1,t_ledger t2,t_ledger t3
+            where t1.account_id=#{accountId} and t1.ledger_id=t3.ledger_id and t2.ledger_lft>=t3.ledger_lft and t2.ledger_rgt&lt;=t3.ledger_rgt)
+        </if>
+        order by r.CREATE_TIME desc
+    </select>
+
+    <!-- 根据用户Id获取自定义消息、报告分页列表 -->
+    <select id="getMessageReportPageList" parameterType="HashMap" resultType="HashMap">
+        select t.*
+        from
+        (
+        select r.REPORT_ID as ID, r.CREATE_TIME as SEND_TIME, r.REPORT_MODULE as REPORT_MODULE,
+        r.REPORT_CONTENT as CONTENT, 1 as TYPE_TAG, '1' as TITLE
+        from T_SERVICE_REPORT r, T_BOOK_INFO b
+        where b.ACCOUNT_ID=#{accountId} and b.BOOK_TYPE=2 and b.BOOK_ID=1 and r.report_module = 1
+        <if test="ledgerId!=null and ledgerId != -1 and ledgerId != 0">
+            AND r.LEDGER_ID IN (SELECT t1.ledger_id from t_ledger t1,t_ledger t2
+            where t1.ledger_lft>=t2.ledger_lft and t1.ledger_rgt&lt;=t2.ledger_rgt and t2.ledger_id=#{ledgerId})
+        </if>
+        <if test="ledgerId!=null and ledgerId != -1 and ledgerId == 0">
+            AND r.LEDGER_ID IN (select t2.ledger_id from V_GROUP_LEDGER t1,t_ledger t2,t_ledger t3
+            where t1.account_id=#{accountId} and t1.ledger_id=t3.ledger_id and t2.ledger_lft>=t3.ledger_lft and t2.ledger_rgt&lt;=t3.ledger_rgt)
+        </if>
+        union
+        select distinct m.MESSAGE_ID as ID, m.SEND_TIME as SEND_TIME, 2 as REPORT_MODULE,
+        m.MESSAGE_CONTENT as CONTENT, 2 as TYPE_TAG, m.MESSAGE_TITLE as TITLE
+        from T_USER_DEFINED_MESSAGE m left join T_MESSAGE_ACCOUNT a on m.MESSAGE_ID=a.MESSAGE_ID
+        where a.ACCOUNT_ID=#{accountId}
+        union
+        select distinct m.MESSAGE_ID as ID, m.SEND_TIME as SEND_TIME, 2 as REPORT_MODULE,
+        m.MESSAGE_CONTENT as CONTENT, 2 as TYPE_TAG, m.MESSAGE_TITLE as TITLE
+        from T_BOOK_INFO b,T_MESSAGE_ACCOUNT ma,T_USER_DEFINED_MESSAGE m
+        where ma.MESSAGE_ID=m.MESSAGE_ID
+        and b.ACCOUNT_ID=#{accountId} and b.BOOK_TYPE=2 and b.BOOK_ID=1
+        and ma.ACCOUNT_ID=-1
+        ) t
+        where 1=1
+        order by t.SEND_TIME desc
+    </select>
+
+    <!-- 根据ID获取报告 -->
+    <select id="getReportById" parameterType="Long" resultType="HashMap">
+        select REPORT_ID,LEDGER_ID,REPORT_TIME,REPORT_MODULE,REPORT_CONTENT,CREATE_TIME from T_SERVICE_REPORT
+        where REPORT_ID = #{reportId}
+    </select>
+
+    <!-- 根据ID获取用户自定义消息 -->
+    <select id="getMessagebyId" parameterType="Long" resultType="HashMap">
+        select SEND_TIME,SEND_RESULT,MESSAGE_CONTENT,MESSAGE_TITLE from T_USER_DEFINED_MESSAGE
+        where MESSAGE_ID = #{messageId}
+    </select>
+
+    <!-- 根据accountId获取订购记录 -->
+    <select id="getBookIdByAccount" resultType="HashMap">
+        select BOOK_TYPE,BOOK_ID from T_BOOK_INFO
+        where ACCOUNT_ID = #{accountId}
+              <if test="bookType != null">
+                 AND BOOK_TYPE = #{bookType}
+              </if>
+    </select>
+
+    <!-- 根据meterId获取计量点级 -->
+    <select id="getMeterLevelById" resultType="Integer">
+        select METER_LEVEL from T_LINELOSS_METER_INFO
+        where METER_ID = #{meterId}
+    </select>
+
+    <!-- 根据父meterId获取子meterId -->
+    <select id="getChildMetersByParent" resultType="Long">
+        select METER_ID from T_LINELOSS_METER_INFO
+        where PAREMENT_METER_ID = #{meterId}
+    </select>
+
+    <!-- 得到角色为user的、所有企业用户的accountId-->
+    <select id="getAllCompAccount" resultType="Long">
+        select a.account_id
+        from t_account a left join T_ACCOUNT_ROLE ar on a.ACCOUNT_ID = ar.ACCOUNT_ID
+                          left join T_ROLE r on ar.ROLE_ID = r.ROLE_ID
+                          left join t_ledger l on a.ledger_id=l.ledger_id
+        where r.ROLE_NAME LIKE '%' || #{user} || '%' and l.analy_type=102
+    </select>
+
+    <!-- 某个企业用户从最后一次登陆时间到现在的报告数 -->
+    <select id="getReportNumByUser" resultType="Integer">
+        select count(distinct r.REPORT_ID)
+        from  T_SERVICE_REPORT r, T_BOOK_INFO b
+        where r.CREATE_TIME between #{startDate} and #{endDate}
+               and b.ACCOUNT_ID=#{userId} and b.BOOK_TYPE=2 and b.BOOK_ID=1
+        <if test="ledgerId!=null and ledgerId != -1 and ledgerId != 0">
+            AND r.LEDGER_ID IN (SELECT t1.ledger_id from t_ledger t1,t_ledger t2
+            where t1.ledger_lft>=t2.ledger_lft and t1.ledger_rgt&lt;=t2.ledger_rgt and t2.ledger_id=#{ledgerId})
+        </if>
+        <if test="ledgerId!=null and ledgerId != -1 and ledgerId == 0">
+            AND r.LEDGER_ID IN (select t2.ledger_id from V_GROUP_LEDGER t1,t_ledger t2,t_ledger t3
+            where t1.account_id=#{userId} and t1.ledger_id=t3.ledger_id and t2.ledger_lft>=t3.ledger_lft and t2.ledger_rgt&lt;=t3.ledger_rgt)
+        </if>
+    </select>
+
+    <!-- 某个企业用户从最后一次登陆时间到现在的自定义消息数 -->
+    <select id="getDefineMessageNum" resultType="Integer">
+        select count(distinct t.MESSAGE_ID)
+        from (
+                select ma.MESSAGE_ID as MESSAGE_ID, ma.ACCOUNT_ID as ACCOUNT_ID
+                from T_MESSAGE_ACCOUNT ma left join T_USER_DEFINED_MESSAGE m on ma.MESSAGE_ID=m.MESSAGE_ID
+                where m.SEND_TIME between #{startDate} and #{endDate}
+                      and ma.ACCOUNT_ID=#{userId}
+                union
+                select ma.MESSAGE_ID as MESSAGE_ID, ma.ACCOUNT_ID as ACCOUNT_ID
+                from T_BOOK_INFO b, T_MESSAGE_ACCOUNT ma, T_USER_DEFINED_MESSAGE m
+                where ma.MESSAGE_ID=m.MESSAGE_ID
+                       and b.ACCOUNT_ID=#{userId} and b.BOOK_TYPE=2 and b.BOOK_ID=1
+                       and ma.ACCOUNT_ID=-1
+                       and m.SEND_TIME between #{startDate} and #{endDate}
+              ) t
+        where 1=1
+    </select>
+
+    <!-- 某个企业用户从最后一次登陆时间到现在的新闻、政策数 -->
+    <select id="getNewsPlicyNum" resultType="Integer">
+        select count(distinct n.INFO_ID)
+        from T_BOOK_INFO b, T_NEWS_POLICY_INFO n
+        where b.ACCOUNT_ID=#{userId} and b.BOOK_TYPE=2 and (b.BOOK_ID=2 or b.BOOK_ID=3)
+              and n.INFO_ID is not null and n.CREATE_TIME between #{startDate} and #{endDate}
+    </select>
+
+    <!--  某个企业用户从最后一次登陆时间到现在的推送事件数  -->
+    <select id="getEventNum" resultType="Integer">
+        SELECT count(distinct T.EVENT_RECID) FROM (
+        SELECT A.EVENT_RECID, A.EVENT_START_TIME,A.EVENT_END_TIME, A.EVENT_NAME, A.EVENT_ID, A.EVENT_STATUS,
+        A.OBJECT_ID, A.OBJECT_TYPE, B.LEDGER_NAME OBJECT_NAME,A.CONTENT
+        FROM   T_EVENT A left join T_LEDGER B on A.OBJECT_ID = B.LEDGER_ID
+        where A.OBJECT_TYPE = 1
+        <if test="ledgerId!=null and ledgerId != -1 and ledgerId != 0">
+            AND B.LEDGER_ID IN (SELECT t1.ledger_id from t_ledger t1,t_ledger t2
+            where t1.ledger_lft>=t2.ledger_lft and t1.ledger_rgt&lt;=t2.ledger_rgt and t2.ledger_id=#{ledgerId})
+        </if>
+        <if test="ledgerId!=null and ledgerId != -1 and ledgerId == 0">
+            AND B.LEDGER_ID IN (select t2.ledger_id from V_GROUP_LEDGER t1,t_ledger t2,t_ledger t3
+            where t1.account_id=#{accountId} and t1.ledger_id=t3.ledger_id and t2.ledger_lft>=t3.ledger_lft and t2.ledger_rgt&lt;=t3.ledger_rgt)
+        </if>
+        UNION
+        SELECT A.EVENT_RECID, A.EVENT_START_TIME,A.EVENT_END_TIME, A.EVENT_NAME, A.EVENT_ID, A.EVENT_STATUS,
+        A.OBJECT_ID, A.OBJECT_TYPE, B.METER_NAME OBJECT_NAME,A.CONTENT
+        FROM   T_EVENT A left join T_METER B on A.OBJECT_ID = B.METER_ID
+        where A.OBJECT_TYPE = 2
+        <if test="ledgerId!=null and ledgerId != -1 and ledgerId != 0">
+            AND B.ledger_id IN (SELECT t1.ledger_id from t_ledger t1,t_ledger t2
+            where t1.ledger_lft>=t2.ledger_lft and t1.ledger_rgt&lt;=t2.ledger_rgt and t2.ledger_id=#{ledgerId})
+        </if>
+        <if test="ledgerId!=null and ledgerId != -1 and ledgerId == 0">
+            AND B.ledger_id IN (select t2.ledger_id from V_GROUP_LEDGER t1,t_ledger t2,t_ledger t3
+            where t1.account_id=#{accountId} and t1.ledger_id=t3.ledger_id and t2.ledger_lft>=t3.ledger_lft and t2.ledger_rgt&lt;=t3.ledger_rgt)
+        </if>
+        ) T
+        where T.EVENT_ID in (select BOOK_ID as EVENT_ID from T_BOOK_INFO where BOOK_TYPE=1 and ACCOUNT_ID=#{accountId})
+        and T.EVENT_START_TIME between #{startDate} and #{endDate}
+        and T.EVENT_ID>=1100
+    </select>
+
+    <!-- 得到用户当前等级积分数 -->
+    <select id="getUserCurScore" resultType="Integer">
+        select ACCOUNT_LEVEL
+        from t_account
+        where account_id = #{accountId}
+    </select>
+
+    <!-- 根据用户ID获取最近一次用电评估记录 -->
+    <select id="getUserLastAssessment" resultType="HashMap">
+        select score_id, account_id, score_time, total_score, section_one, section_two, section_thr, section_for
+        from t_account_score
+        where account_id = #{accountId}
+        order by score_time desc
+    </select>
+
+    <!-- 得到所有参加体检的用户数 -->
+    <select id="getAllCheckNum" resultType="Integer">
+        select count (distinct t.ACCOUNT_ID) from T_ACCOUNT_SCORE t
+        where 1=1
+    </select>
+
+    <!-- 得到击败的用户数 -->
+    <select id="getBeatCheckNum" resultType="Integer">
+        select count(distinct t1.ACCOUNT_ID)
+        from
+           (
+           select t.account_id as account_id,max(t.score_time) as score_time
+           from t_account_score t
+           where 1=1 group by t.account_id
+           ) t1
+           inner join t_account_score t2
+           on t1.account_id=t2.account_id and t1.score_time=t2.score_time
+        where t2.TOTAL_SCORE&lt;=#{score}
+    </select>
+
+    <!-- 获取分户计算模型中的计量点列表-->
+	<select id="getEMOModel1" resultType="com.linyang.energy.model.MeterBean" >
+		select distinct tm.meter_id as meterId,tm.meter_name as meterName,t.ledger_id as ledgerId from t_ledger_meter m, T_LEDGER_RELATION t,T_METER tm
+   		where t.ledger_id = #{ledgerId} and t.ledger_id = m.ledger_id and tm.meter_status = 1 and tm.meter_id = m.meter_id order by tm.meter_name asc
+	</select>
+	
+	<!-- 获取分户下挂显示计量点列表 -->
+	<select id="getEMOModel2" resultType="com.linyang.energy.model.MeterBean" >
+		select tm.meter_id as meterId,tm.meter_name as meterName,tr.ledger_id as ledgerId from t_ledger_show tr,t_meter tm 
+		where tr.meter_id = tm.meter_id and tm.meter_status = 1 and tr.ledger_id = #{ledgerId} order by tm.meter_name asc
+	</select>
+	
+	 <!-- 获取费率电量 -->
+	<select id="getRateEnergy" resultType="HashMap" >
+		select sum(t.day_faq) as DATA,t.rate_number as RATE,tl.ledger_id,tl.ledger_name as NAME
+		from t_day_q_rate t,t_meter tm,t_ledger tl
+		where t.meter_id = tm.meter_id and tm.ledger_id = tl.ledger_id
+		   and t.freeze_time = to_timestamp(#{startDate}, 'yyyy/MM/dd')
+		   and tl.ledger_id = #{objId}
+		group by t.rate_number,tl.ledger_id,tl.ledger_name
+	</select>
+	
+	<!-- 获取APP用户配置数据 -->
+	<select id="getAppPrefer" resultType="com.linyang.energy.model.AppPreferBean">
+		SELECT ACCOUNT_ID as accountId,FLAG as flag,OPTIONS as options FROM T_APP_PREFER WHERE ACCOUNT_ID = #{accountId,jdbcType=DECIMAL} and FLAG = #{type,jdbcType=DECIMAL}
+	</select>
+	
+	<!-- 新增APP用户配置数据 -->
+	<insert id="insertAppPrefer">
+		INSERT INTO T_APP_PREFER (ACCOUNT_ID,OPTIONS,FLAG)
+		VALUES
+		(#{accountId,jdbcType=DECIMAL},#{config,jdbcType=VARCHAR},#{type,jdbcType=DECIMAL})
+	</insert>
+	
+	<!-- 更新APP用户配置数据 -->
+	<update id="updateAppPrefer">
+		UPDATE T_APP_PREFER SET OPTIONS = #{config,jdbcType=VARCHAR} WHERE ACCOUNT_ID = #{accountId,jdbcType=DECIMAL} and FLAG = #{type,jdbcType=DECIMAL}
+	</update>
+    
+    <!-- 查询时间范围内的分户无功电量之和-->
+	<select id="getLedgerSumRQ" resultType="java.lang.Double">
+		select sum(t.rq) as data 
+		from T_DAY_LEDGER_STAT t where t.stat_date between #{startDate} and #{endDate} 
+		and t.ledger_id=#{objId}
+	</select>
+	
+	<!-- 查询时间范围内报警次数(事件数) -->
+	<select id="getEventNumById" resultType="Integer">
+	select count(distinct t.EVENT_RECID) from (
+		select a.event_recid, a.event_start_time, a.event_end_time, a.event_name,
+		a.event_id, a.event_status,
+		a.object_id,a.object_type, b.ledger_name object_name, a.content, c.ledger_name company_name
+		from t_event a, t_ledger b
+		left join (select ledger_name,ledger_id from t_ledger where analy_type =
+		102 )c on b.ledger_id in (select distinct l1.ledger_id from t_ledger
+		l1,t_ledger l2
+		where l1.ledger_lft>=l2.ledger_lft and l1.ledger_rgt&lt;=l2.ledger_rgt and
+		l2.ledger_id = c.ledger_id)
+		<where>
+			a.object_id = b.ledger_id
+			and a.object_type = 1
+			and a.object_id in
+			(
+			select distinct l1.ledger_id from t_ledger l1,t_ledger l2
+			where l1.ledger_lft>=l2.ledger_lft and l1.ledger_rgt&lt;=l2.ledger_rgt and
+			l2.ledger_id = #{ledgerId}
+			)
+	    	</where>
+		union
+		select a.event_recid, a.event_start_time, a.event_end_time, a.event_name,
+		a.event_id, a.event_status,
+		a.object_id,a.object_type, b.meter_name object_name, a.content, c.ledger_name company_name
+		from t_event a, t_meter b
+		left join t_ledger c on b.ledger_id = c.ledger_id
+		<where>
+			a.object_id = b.meter_id
+			and a.object_type = 2
+			and a.object_id in (
+			select distinct m.meter_id from t_meter m inner join
+			(
+			select distinct l1.ledger_id from t_ledger l1,t_ledger l2
+			where l1.ledger_lft>=l2.ledger_lft and l1.ledger_rgt&lt;=l2.ledger_rgt
+			and l2.ledger_id = #{ledgerId}
+			) a on m.ledger_id=a.ledger_id
+			)
+	    </where>
+	) t
+	<where>
+       	t.event_id>=1100
+   		<if test="beginDate != null">
+		and t.event_start_time >= #{beginDate}
+		</if>
+		<if test="endDate != null">
+		and t.event_start_time &lt;= #{endDate}
+		</if>
+    </where>
+	</select>
+	
+	<!-- 获取最高分 -->
+	<select id="getFirstScore" resultType="Integer">
+		SELECT distinct(total_score)
+		FROM (
+		select distinct total_score,
+		dense_RANK() OVER(ORDER BY total_score desc) RW
+		from (select t.score_id, t.score_time, t.total_score
+		from t_account_score t
+		where (account_id) in (select account_id
+		from t_account_score
+		group by account_id
+		having count(*) > 1)
+		order by t.total_score desc) a) b
+		where b.RW = 1
+		order by b.total_score desc
+	</select>
+	
+	<!-- 获取排名前二的分数 -->
+	<select id="getSecondScores" resultType="HashMap">
+		SELECT distinct(total_score)
+		FROM (
+		select distinct total_score,
+		dense_RANK() OVER(ORDER BY total_score desc) RW
+		from (select t.score_id, t.score_time, t.total_score
+		from t_account_score t
+		where (account_id) in (select account_id
+		from t_account_score
+		group by account_id
+		having count(*) > 1)
+		order by t.total_score desc) a) b
+		where b.RW &lt;= 2
+		order by b.total_score desc
+	</select>
+	
+	<!-- 获取排名前三的分数 -->
+	<select id="getThirdScores" resultType="HashMap">
+		SELECT distinct(total_score)
+		FROM (
+		select distinct total_score,
+		dense_RANK() OVER(ORDER BY total_score desc) RW
+		from (select t.score_id, t.score_time, t.total_score
+		from t_account_score t
+		where (account_id) in (select account_id
+		from t_account_score
+		group by account_id
+		having count(*) > 1)
+		order by t.total_score desc) a) b
+		where b.RW &lt;= 3
+		order by b.total_score desc
+	</select>
+	
+	<!-- 获取排名前十的分数 -->
+	<select id="getTenthScores" resultType="HashMap">
+		SELECT distinct(total_score)
+		FROM (
+		select distinct total_score,
+		dense_RANK() OVER(ORDER BY total_score desc) RW
+		from (select t.score_id, t.score_time, t.total_score
+		from t_account_score t
+		where (account_id) in (select account_id
+		from t_account_score
+		group by account_id
+		having count(*) > 1)
+		order by t.total_score desc) a) b
+		where b.RW &lt;= 10
+		order by b.total_score desc
+	</select>
+	
+	<!-- 获取用户最新一次体检分数 -->
+	<select id="getUserLastScores" resultType="HashMap">
+		select * from t_account_score where score_time = (select max(score_time)
+		from t_account_score where account_id = #{accountId}) and account_id = #{accountId}	
+	</select>
+	
+	<!-- 获取为企业的accountId -->
+	<select id="getAccountIdByLedger" resultType="Long">
+		select t1.account_id from t_account t1 inner join t_ledger t2 on t1.ledger_id = t2.ledger_id
+		where t2.analy_type = 102
+	</select>
+	
+	<!-- 获取实时功率因数 -->
+	<select id="getCurrentPF" resultType="Double">
+		select pf from(select * from t_cur_ledger_pf t where t.ledger_id=#{ledgerId} order by t.freeze_time desc)
+		where rownum =1 
+	</select>
+	
+	<!-- 根据ledgerId获取企业所属地 -->
+	<select id="getRegionById" resultType="String">
+		select region_name from t_region where region_id = (select t.region from t_ledger t where t.ledger_id = #{ledgerId})
+	</select>
+	
+	<!--根据用户名查询用户信息 -->
+	<select id="findUserByLoginName" resultType="com.linyang.energy.model.UserBean">
+		SELECT
+		a.LEDGER_ID AS ledgerId,a.ACCOUNT_ID AS
+		accountId,a.LOGIN_NAME
+		AS
+		loginName,a.LOGIN_PASSWORD AS loginPassword,b.ANALY_TYPE
+		AS
+		analyType
+		FROM
+		T_ACCOUNT a,T_LEDGER b
+		<where>
+			b.LEDGER_ID=a.LEDGER_ID
+			<if test="loginName != '' ">
+				AND LOGIN_NAME =#{loginName}
+			</if>
+		</where>
+	</select>
+	
+	<!-- 微信小程序端接口 -->
+	<!-- 根据终端id查询能效平台对应的计量点id -->
+	<select id="getMeterIdByTerId" resultType="Long">
+		select t.meter_id from t_meter t where t.terminal_id = #{terId} 
+	</select>
+	
+	<!-- 根据终端地址获取终端激活状态 -->
+	<select id="getTerActiveStatus" resultType="Integer">
+		select t.status from coll_platform.t_terminal_cloud t
+		where t.terminal_address = #{terminalAddress}
+	</select>
+	
+	<!-- 根据终端地址更新终端激活状态 -->
+	<update id="updateTerActiveStatus">
+		update coll_platform.t_terminal_cloud t 
+		set t.status = 1
+		where t.terminal_address = #{terminalAddress}
+	</update>
+	
+	<!-- 添加采集平台终端默认信息 -->
+	<insert id="addTerminal">
+		insert into coll_platform.t_terminal t 
+		(TERMINAL_ID,TERMINAL_ADDRESS,TERMINAL_STATUS,TERMINAL_TYPE_ID,MASTER_STATION_ID,
+			CREATE_DATE,TERMINAL_NAME,OPER_STATUS,OPER_TIME,COMMU_ID,STANDBY_STATION_ID,IS_CLOUD)
+		values
+		(#{terId},#{terAddress},1,1431051274993,2,#{createDate},
+			#{terName},1,#{operTime},2,2,1)
+	</insert>
+	
+	<!-- 添加能效终端信息 -->
+	<insert id="addEnergyTer">
+		insert into energy.t_terminal
+		(TERMINAL_ID,TERMINAL_ADDRESS,TERMINAL_STATUS,TERMINAL_NAME,SPEC_ID)
+		values
+		(#{terId},#{terAddress},1,#{terName},2)
+	</insert>
+	
+	<!-- 添加计量点信息 -->
+	<insert id="addMeter">
+		insert into t_meter t
+		(METER_ID,METER_NAME,METER_TYPE,METER_ATTR,LEDGER_ID,TERMINAL_ID,MPED_ID,TYPE_ID,VOLTAGE_LEVEL,
+			VOLUME,STARTCUR,VOLUME_TYPE,LOSS_MODULUS)
+		values
+		(#{meterId},#{meterName},1,0,#{ledgerId},#{terId},#{mpedId},1,0,0,0,0,0)
+	</insert>
+	
+	<!-- 插入计量点级别关系 -->
+	<insert id="addLinelossMeter">
+		insert into t_lineloss_meter_info
+		(METER_ID,PAREMENT_METER_ID,METER_LEVEL)
+		values
+		(#{meterId},0,1)
+	</insert>
+	
+	<!-- 插入总加组t_ledger_relation -->
+	<insert id="addLedgerRelation">
+		insert into t_ledger_relation
+		(REC_ID,LEDGER_ID,RELATION_TYPE,RELATION_ID,RELATION_NAME,ATTR_TYPE,PCT)
+		values
+		(#{recId},#{ledgerId},2,#{meterId},#{meterName},1,100)
+	</insert>
+	
+	<!-- 插入t_ledger_meter关系表 -->
+	<insert id="addLedgerMeter">
+		insert into t_ledger_meter
+		(LEDGER_ID,METER_ID,ADD_ATTR,PCT)
+		values
+		(#{ledgerId},#{meterId},1,100)
+	</insert>
+	
+	<!-- 加入表计展示表t_ledger_show -->
+	<insert id="addLedgerShow">
+		insert into t_ledger_show
+		(LEDGER_ID,METER_ID)
+		values
+		(#{ledgerId},#{meterId})
+	</insert>
+	
+	<!-- 绑定终端 -->
+	<insert id="bindTerminal">
+		insert into t_open_terminal
+		(OPEN_ID,TERMINAL_ID,LEDGER_ID,ACCOUNT_ID)
+		values
+		(#{openId},#{terId},#{ledgerId},#{accountId})
+	</insert>
+	
+	<!-- 查看该openid信息是否已存在 -->
+	<select id="getOpenNumById" resultType="Integer">
+		select count(1) from t_open_info
+		where open_id = #{openId}
+	</select>
+	
+	<!-- 插入微信信息表 -->
+	<insert id="addOpenInfo">
+		insert into t_open_info
+		(OPEN_ID, ACCOUNT_ID)
+		values
+		(#{openId}, #{accountId})
+	</insert>
+	
+	<!-- 更新微信信息表 -->
+	<update id="updateOpenInfo">
+		update t_open_info
+		set COMPANY_NAME=#{companyName},TEL=#{tel},ADDRESS=#{address}
+		where OPEN_ID = #{openId}
+	</update>
+	
+	<!-- 获取微信信息 -->
+	<select id="getOpenInfo" resultType="com.linyang.energy.model.UserTerminalBean">
+		select OPEN_ID as openId, COMPANY_NAME as companyName, 
+			TEL as tel, ADDRESS as address, ACCOUNT_ID as accountId 
+		from t_open_info
+		where OPEN_ID = #{openId}
+	</select>
+	
+	<!-- 获取终端信息列表 -->
+	<select id="getTerminalInfoList" resultType="com.linyang.energy.model.UserTerminalBean">
+		select ot.open_id as openId, t.terminal_id as terminalId, ot.ledger_id as ledgerId,
+			ot.account_id as accountId, ot.share_limit as shareLimit,t.terminal_name as terminalName,
+			 t.terminal_address as terminalAddress, a.login_password as password, mbc.pt as pt, mbc.ct as ct
+		from t_open_terminal ot
+		inner join coll_platform.t_terminal t on ot.terminal_id = t.terminal_id 
+		inner join coll_platform.t_mpoint m on t.terminal_id = m.terminal_id
+		inner join coll_platform.t_mpoint_base_config mbc on mbc.mpoint_id = m.mpoint_id
+		inner join t_account a on ot.account_id = a.account_id
+		where ot.open_id = #{openId}
+		order by t.terminal_id
+	</select>
+	
+	<!-- 检查终端名称是否重复 -->
+	<select id="checkTerName" resultType="Integer">
+		select count(1) from coll_platform.t_terminal t
+		where t.terminal_name = #{terName}
+		and t.TERMINAL_STATUS = 1
+	</select>
+	
+	<!-- 检查ledger名称是否重复 -->
+	<select id="checkLedgerName" resultType="Integer">
+		select count(1) from t_ledger t
+		where t.ledger_name = #{terName}
+	</select>
+	
+	<!-- 更改终端名称 -->
+	<update id="updateTerName">
+		update coll_platform.t_terminal
+		set terminal_name = #{terName}
+		where terminal_id = #{terId}
+	</update>
+	
+	<!-- 更改终端对应的ledger名称 -->
+	<update id="updateTerLedgerName">
+		update t_ledger t set t.ledger_name = #{terName}
+		where exists(select * from t_open_terminal ot 
+		where t.ledger_id = ot.ledger_id 
+		and ot.terminal_id = #{terId})
+	</update>
+	
+	<!-- 更改分享限制天数 -->
+	<update id="updateShareLimit">
+		update t_open_terminal
+		set share_limit = #{shareLimit}
+		where terminal_id = #{terId}
+	</update>
+	
+	<!-- 更改终端密码(能效平台用户密码) -->
+	<update id="updateTerPassword">
+		update t_account 
+		set login_password = #{password}
+		where account_id = #{accountId}
+	</update>
+	
+	<!-- 更改电压电流互感器倍率 -->
+	<update id="updatePtCt">
+		update coll_platform.t_mpoint_base_config
+		set pt = #{pt},ct=#{ct}
+		where mpoint_id = #{terId}
+	</update>
+	
+	<!-- 删除计量点 -->
+	<update id="deleteMeter">
+		update t_meter
+		set meter_status = 0
+		where ledger_id = #{ledgerId}
+	</update>
+	
+	<!-- 删除用户 -->
+	<update id="deleteUser">
+		update t_account
+		set ACCOUNT_STATUS = 2
+		where account_id = #{accountId}
+	</update>
+	
+	<!-- 删除终端 -->
+	<update id="deleteTerminal">
+		update coll_platform.t_terminal
+		set TERMINAL_STATUS = 0
+		where terminal_id = #{terId}
+	</update>
+	
+	<!-- 删除采集平台mpoint -->
+	<update id="deleteMpoint">
+		update coll_platform.t_mpoint
+		set MPOINT_STATUS = 0
+		where terminal_id = #{terId}
+	</update>
+	
+	<!-- 删除微信终端关系 -->
+	<delete id="deleteOpenTer">
+		delete from t_open_terminal where terminal_id = #{terId}
+	</delete>
+	
+	<!-- 将终端置为未激活状态 -->
+	<update id="setTerActiveStatus">
+		update coll_platform.t_terminal_cloud
+		set STATUS = 0
+		where terminal_address = #{terAddress}
+	</update>
+	
+	<!-- 获取微信绑定信息 -->
+	<select id="getOpenTerInfo" resultType="com.linyang.energy.model.UserTerminalBean">
+		select ot.OPEN_ID as openId, ot.LEDGER_ID as ledgerId, ot.ACCOUNT_ID as accountId, 
+			ot.TERMINAL_ID as terminalId, t.TERMINAL_ADDRESS as terminalAddress
+		from t_open_terminal ot 
+		inner join coll_platform.t_terminal t on ot.terminal_id = t.terminal_id
+		where ot.TERMINAL_ID = #{terId}
+	</select>
+	
+	<!-- 调用采集平台存储过程 -->
+	<select id="pCollPar" statementType="CALLABLE">
+		call coll_platform.p_coll_par(  
+         #{terId,jdbcType=DECIMAL,mode=IN},  
+         #{terAddress,jdbcType=DECIMAL,mode=IN}  
+        )
+	</select>
+	
+	<!-- 获取终端绑定的账户密码 -->
+	<select id="getPasswordByTer" resultType="String">
+		select a.login_password from t_open_terminal ot
+		inner join coll_platform.t_terminal t on ot.terminal_id = t.terminal_id
+		inner join t_account a on ot.account_id = a.account_id
+		where t.terminal_address = #{terAddress}
+	</select>
+	
+	<!-- 获取终端信息 -->
+	<select id="getTerminalInfo" resultType="com.linyang.energy.model.UserTerminalBean">
+		select ot.open_id as openId, t.terminal_id as terminalId, ot.ledger_id as ledgerId,
+			ot.account_id as accountId, ot.share_limit as shareLimit,t.terminal_name as terminalName,
+			 t.terminal_address as terminalAddress, a.login_password as password, mbc.pt as pt, mbc.ct as ct
+		from t_open_terminal ot
+		inner join coll_platform.t_terminal t on ot.terminal_id = t.terminal_id 
+		inner join coll_platform.t_mpoint m on t.terminal_id = m.terminal_id
+		inner join coll_platform.t_mpoint_base_config mbc on mbc.mpoint_id = m.mpoint_id
+		inner join t_account a on ot.account_id = a.account_id
+		where t.terminal_address = #{terAddress}
+	</select>
+	
+	<!-- 生成唯一地址，插入云终端地址表 -->
+	<insert id="createTerAddress">
+		insert into coll_platform.t_terminal_cloud(cloud_id,terminal_address,status)
+		values(#{cloudId},coll_platform.SEC_TERMINAL_ADDRESS.nextval,0)
+	</insert>
+	
+	<!-- 获取云终端地址列表 -->
+	<select id="getCloudAddressList" resultType="Long">
+		select t.TERMINAL_ADDRESS from coll_platform.t_terminal_cloud t
+		where t.cloud_id = #{cloudId}
+	</select>
+	
+	<!-- 获取云终端当前的总示值 -->
+	<select id="getFaeValue" resultType="Double">
+		select trunc(s.val,2) from 
+		(select t.fae_value val from t_cur_e_total t where t.meter_id = #{objId}
+			order by t.freeze_time desc)s where rownum = 1
+	</select>
+
+    <!-- 第三方企业获取数据：曲线数据 -->
+    <select id="getGroupUserLedgerIds" resultType="Long">
+        select distinct l.ledger_id
+		from t_account a, t_group_account g, t_group_ledger gl, t_ledger l
+		where a.account_id = g.account_id and g.group_id = gl.group_id and gl.ledger_id = l.ledger_id
+		and a.account_id = #{accountId}
+    </select>
+
+    <select id="getNeedCurApData" parameterType="HashMap" resultType="HashMap">
+        <if test="objType == 1" >
+            SELECT to_char(A.freeze_time,  'yyyy-MM-dd HH24:mi') as DATA_TIME, SUM(A.AP* t2.add_attr * t2.pct /100) as data
+            FROM T_CUR_AP A
+            LEFT JOIN  T_LEDGER_METER T2 ON A.METER_ID = T2.METER_ID
+            WHERE A.FREEZE_TIME  between #{startDate,jdbcType=TIME} and #{endDate,jdbcType=TIME}
+            AND  T2.LEDGER_ID = #{objId}
+            GROUP BY to_char(A.freeze_time,  'yyyy-MM-dd HH24:mi')
+            ORDER BY to_char(A.freeze_time,  'yyyy-MM-dd HH24:mi')
+        </if>
+        <if test="objType == 2" >
+            select to_char(t.freeze_time,  'yyyy-MM-dd HH24:mi') as DATA_TIME, t.ap as data
+            from T_CUR_AP t where t.freeze_time between #{startDate,jdbcType=TIME} and #{endDate,jdbcType=TIME}
+            and t.meter_id=#{objId}
+            order by t.freeze_time
+        </if>
+    </select>
+
+    <select id="getNeedCurRpData" parameterType="HashMap" resultType="HashMap">
+        <if test="objType == 1" >
+            SELECT to_char(A.freeze_time,  'yyyy-MM-dd HH24:mi') as DATA_TIME,  SUM(A.RP* t2.add_attr * t2.pct /100) as data
+            FROM   T_CUR_RP A
+            LEFT JOIN  T_LEDGER_METER T2 ON A.METER_ID = T2.METER_ID
+            WHERE  A.FREEZE_TIME between #{startDate,jdbcType=TIME} and #{endDate,jdbcType=TIME}
+            AND  T2.LEDGER_ID  = #{objId}
+            GROUP BY to_char(A.freeze_time,  'yyyy-MM-dd HH24:mi')
+            ORDER BY to_char(A.freeze_time,  'yyyy-MM-dd HH24:mi')
+        </if>
+        <if test="objType == 2" >
+            select to_char(t.freeze_time,  'yyyy-MM-dd HH24:mi') as DATA_TIME,t.rp as data
+            from T_CUR_RP t
+            where t.freeze_time between #{startDate,jdbcType=TIME} and #{endDate,jdbcType=TIME}
+            and t.meter_id=#{objId}
+            order by t.freeze_time
+        </if>
+    </select>
+
+    <select id="getNeedCurPfData" parameterType="HashMap" resultType="HashMap">
+        <if test="objType == 1" >
+            select to_char(t.freeze_time,  'yyyy-MM-dd HH24:mi') as DATA_TIME, t.pf as data
+            from t_cur_ledger_pf t
+            where t.freeze_time between #{startDate,jdbcType=TIME} and #{endDate,jdbcType=TIME}
+            and t.ledger_id=#{objId}
+            order by t.freeze_time
+        </if>
+        <if test="objType == 2" >
+            select to_char(t.freeze_time,  'yyyy-MM-dd HH24:mi') as DATA_TIME, round(t.pf/100,2) as data
+            from T_CUR_PF t
+            where t.freeze_time between #{startDate,jdbcType=TIME} and #{endDate,jdbcType=TIME}
+            and t.meter_id=#{objId}
+            order by t.freeze_time
+        </if>
+    </select>
+
+    <select id="getNeedCurQData" parameterType="HashMap" resultType="HashMap">
+        <if test="objType == 1" >
+            <if test="density == 3"><!-- 曲线电量 (60分钟曲线) -->
+                select q.freeze_time as DATA_TIME,
+                sum(q.faq_value) as faq_value, sum(q.frq_value) as frq_value,
+                sum(q.baq_value) as baq_value, sum(q.brq_value) as brq_value
+                from (
+                select to_char(t.freeze_time,  'yyyy-MM-dd HH24') || ':00' as freeze_time,
+                t.faq_value * t2.add_attr * t2.pct /100 as faq_value, t.frq_value * t2.add_attr * t2.pct /100 as frq_value,
+                t.baq_value * t2.add_attr * t2.pct /100 as baq_value, t.brq_value * t2.add_attr * t2.pct /100 as brq_value
+                from T_CUR_Q t LEFT JOIN T_LEDGER_METER T2 ON T.METER_ID = T2.METER_ID
+                where t.FREEZE_TIME between #{startDate,jdbcType=TIME} and #{endDate,jdbcType=TIME}
+                AND T2.LEDGER_ID = #{objId}
+                ) q
+                group by q.freeze_time
+                order by q.freeze_time
+            </if>
+            <if test="density == 2"><!-- 曲线电量 (30分钟曲线) -->
+                select q.freeze_time as DATA_TIME,
+                sum(q.faq_value) as faq_value, sum(q.frq_value) as frq_value, sum(q.baq_value) as baq_value, sum(q.brq_value) as brq_value
+                from (
+                select to_char(t.freeze_time,'yyyy-MM-dd HH24') ||
+                (case when to_number(to_char(t.freeze_time,'mi')) &lt; 30 then ':00'
+                       else ':30'
+                end) as freeze_time,
+                t.faq_value * t2.add_attr * t2.pct /100 as faq_value, t.frq_value * t2.add_attr * t2.pct /100 as frq_value,
+                t.baq_value * t2.add_attr * t2.pct /100 as baq_value, t.brq_value * t2.add_attr * t2.pct /100 as brq_value
+                from T_CUR_Q t LEFT JOIN T_LEDGER_METER T2 ON T.METER_ID = T2.METER_ID
+                where t.FREEZE_TIME between #{startDate,jdbcType=TIME} and #{endDate,jdbcType=TIME}
+                AND T2.LEDGER_ID = #{objId}
+                ) q
+                group by q.freeze_time
+                order by q.freeze_time
+            </if>
+            <if test="density == 1"><!-- 曲线电量 (15分钟曲线) -->
+                select q.freeze_time as DATA_TIME,
+                sum(q.faq_value) as faq_value, sum(q.frq_value) as frq_value, sum(q.baq_value) as baq_value, sum(q.brq_value) as brq_value
+                from (
+                select to_char(t.freeze_time,  'yyyy-MM-dd HH24:mi') as freeze_time,
+                t.faq_value * t2.add_attr * t2.pct /100 as faq_value, t.frq_value * t2.add_attr * t2.pct /100 as frq_value,
+                t.baq_value * t2.add_attr * t2.pct /100 as baq_value, t.brq_value * t2.add_attr * t2.pct /100 as brq_value
+                from T_CUR_Q t LEFT JOIN T_LEDGER_METER T2 ON T.METER_ID = T2.METER_ID
+                where t.FREEZE_TIME between #{startDate,jdbcType=TIME} and #{endDate,jdbcType=TIME}
+                AND T2.LEDGER_ID = #{objId}
+                ) q
+                group by q.freeze_time
+                order by q.freeze_time
+            </if>
+        </if>
+        <if test="objType == 2" >
+            <if test="density == 3"><!-- 曲线电量 (60分钟曲线) -->
+                select q.freeze_time as DATA_TIME, sum(q.faq_value) as faq_value, sum(q.frq_value) as frq_value, sum(q.baq_value) as baq_value, sum(q.brq_value) as brq_value
+                from
+                (
+                select to_char(t.freeze_time,'yyyy-MM-dd HH24') || ':00' as freeze_time, t.faq_value, t.frq_value, t.baq_value, t.brq_value
+                from T_CUR_Q t
+                where t.freeze_time between #{startDate,jdbcType=TIME} and #{endDate,jdbcType=TIME}
+                and t.meter_id = #{objId}
+                ) q
+                group by q.freeze_time
+                order by q.freeze_time
+            </if>
+            <if test="density == 2"><!-- 曲线电量 (30分钟曲线) -->
+                select freeze_time as DATA_TIME, sum(faq_value) as faq_value, sum(frq_value) as frq_value, sum(baq_value) as baq_value, sum(brq_value) as brq_value
+                from (
+                select t.faq_value, t.frq_value, t.baq_value, t.brq_value,
+                to_char(t.freeze_time,'yyyy-MM-dd HH24') ||
+                (case when to_number(to_char(t.freeze_time,'mi')) &lt;30 then ':00'
+                 else ':30'
+                 end) as freeze_time
+                from t_cur_q t
+                where t.freeze_time between #{startDate,jdbcType=TIME} and #{endDate,jdbcType=TIME}
+                and t.meter_id = #{objId}
+                )
+                group by freeze_time
+                order by freeze_time
+            </if>
+            <if test="density == 1"><!-- 曲线电量 (15分钟曲线) -->
+                select to_char(t.freeze_time, 'yyyy-MM-dd HH24:mi') as DATA_TIME,
+                t.faq_value as faq_value, t.frq_value as frq_value,
+                t.baq_value as baq_value, t.brq_value as brq_value
+                from T_CUR_Q t
+                where t.freeze_time between #{startDate,jdbcType=TIME} and #{endDate,jdbcType=TIME}
+                and t.meter_id=#{objId}
+                order by t.freeze_time
+            </if>
+        </if>
+    </select>
+
+    <select id="getNeedCurAngleVData" parameterType="HashMap" resultType="HashMap">
+        select to_char(t.freeze_time,  'yyyy-MM-dd HH24:mi') as DATA_TIME, t.au_ab_a as ab_a, t.au_b as b, t.au_cb_c as cb_c
+        from t_cur_v_angle_rec t
+        where t.freeze_time between #{startDate,jdbcType=TIME} and #{endDate,jdbcType=TIME}
+        and t.meter_id=#{objId}
+        order by t.freeze_time
+    </select>
+
+    <select id="getNeedCurAngleIData" parameterType="HashMap" resultType="HashMap">
+        select to_char(t.freeze_time,  'yyyy-MM-dd HH24:mi') as DATA_TIME, t.AI_A as A, t.AI_B as B, t.AI_C as C
+        from t_cur_i_angle_rec t
+        where t.freeze_time between #{startDate,jdbcType=TIME} and #{endDate,jdbcType=TIME}
+        and t.meter_id=#{objId}
+        order by t.freeze_time
+    </select>
+
+    <select id="getNeedCurDData" parameterType="HashMap" resultType="HashMap">
+        <if test="objType == 1" >
+            SELECT to_char(A.freeze_time,  'yyyy-MM-dd HH24:mi') as DATA_TIME, SUM(A.D_VALUE* t2.add_attr * t2.pct /100) as data
+            FROM   t_cur_d A
+            LEFT JOIN  T_LEDGER_METER T2 ON A.METER_ID = T2.METER_ID
+            WHERE  A.FREEZE_TIME between #{startDate,jdbcType=TIME} and #{endDate,jdbcType=TIME}
+            AND  T2.LEDGER_ID  = #{objId}
+            GROUP BY to_char(A.freeze_time,  'yyyy-MM-dd HH24:mi')
+            ORDER BY to_char(A.freeze_time,  'yyyy-MM-dd HH24:mi')
+        </if>
+        <if test="objType == 2" >
+            select to_char(t.freeze_time,  'yyyy-MM-dd HH24:mi') as DATA_TIME, t.D_VALUE as data
+            from t_cur_d t
+            where t.freeze_time between #{startDate,jdbcType=TIME} and #{endDate,jdbcType=TIME}
+            and t.meter_id=#{objId}
+            order by t.freeze_time
+        </if>
+    </select>
+
+    <select id="getNeedCurHarVData" parameterType="HashMap" resultType="HashMap">
+        select to_char(t.freeze_time,  'yyyy-MM-dd HH24:mi') as DATA_TIME, t.HAR_VA_RATE as VA_RATE, t.HAR_VA_RATE_02_21 as VA_RATE_02_21,
+        t.HAR_VB_RATE as VB_RATE, t.HAR_VB_RATE_02_21 as VB_RATE_02_21, t.HAR_VC_RATE as VC_RATE, t.HAR_VC_RATE_02_21 as VC_RATE_02_21
+        from T_CUR_HAR_V t
+        where t.freeze_time between #{startDate,jdbcType=TIME} and #{endDate,jdbcType=TIME}
+        and t.meter_id=#{objId}
+        order by t.freeze_time
+    </select>
+
+    <select id="getNeedCurHarIData" parameterType="HashMap" resultType="HashMap">
+        select to_char(t.freeze_time,  'yyyy-MM-dd HH24:mi') as DATA_TIME, t.HAR_IA_RATE as IA_RATE, t.HAR_IA_RATE_02_21 as IA_RATE_02_21,
+        t.HAR_IB_RATE as IB_RATE, t.HAR_IB_RATE_02_21 as IB_RATE_02_21, t.HAR_IC_RATE as IC_RATE, t.HAR_IC_RATE_02_21 as IC_RATE_02_21
+        from T_CUR_HAR_I t
+        where t.freeze_time between #{startDate,jdbcType=TIME} and #{endDate,jdbcType=TIME}
+        and t.meter_id=#{objId}
+        order by t.freeze_time
+    </select>
+
+    <select id="getNeedCurEData" parameterType="HashMap" resultType="HashMap">
+        select to_char(t.freeze_time,  'yyyy-MM-dd HH24:mi') as DATA_TIME,
+        (t.FAE_VALUE * mp.PT * mp.CT) as FAE_VALUE, (t.FRE_VALUE * mp.PT * mp.CT) as FRE_VALUE,
+        (t.BAE_VALUE * mp.PT * mp.CT) as BAE_VALUE, (t.BRE_VALUE * mp.PT * mp.CT) as BRE_VALUE
+        from t_cur_e_total t
+        inner join T_METER m on t.meter_id=m.meter_id
+        inner join T_MPED_INFO mp on m.MPED_ID=mp.MPED_ID
+        where t.freeze_time between #{startDate,jdbcType=TIME} and #{endDate,jdbcType=TIME}
+        and t.meter_id=#{objId}
+        order by t.freeze_time
+    </select>
+
+    <select id="getNeedCurWflowData" parameterType="HashMap" resultType="HashMap">
+        <if test="objType == 1" >
+            SELECT to_char(A.freeze_time,  'yyyy-MM-dd HH24:mi') as DATA_TIME, SUM(A.FLOW_VALUE* t2.add_attr * t2.pct /100) as data
+            FROM   T_CUR_WFLOW A
+            LEFT JOIN  T_LEDGER_METER T2 ON A.METER_ID = T2.METER_ID
+            WHERE  A.FREEZE_TIME between #{startDate,jdbcType=TIME} and #{endDate,jdbcType=TIME}
+            AND  T2.LEDGER_ID  = #{objId}
+            GROUP BY to_char(A.freeze_time,  'yyyy-MM-dd HH24:mi')
+            ORDER BY to_char(A.freeze_time,  'yyyy-MM-dd HH24:mi')
+        </if>
+        <if test="objType == 2" >
+            select to_char(t.freeze_time,  'yyyy-MM-dd HH24:mi') as DATA_TIME, t.FLOW_VALUE as data
+            from T_CUR_WFLOW t
+            where t.freeze_time between #{startDate,jdbcType=TIME} and #{endDate,jdbcType=TIME}
+            and t.meter_id=#{objId}
+            order by t.freeze_time
+        </if>
+    </select>
+
+    <select id="getNeedCurWData" parameterType="HashMap" resultType="HashMap">
+        select to_char(t.freeze_time, 'yyyy-MM-dd HH24:mi') as DATA_TIME, (t.FLOW_VALUE * mp.PT) as data
+        from T_CUR_W_TOTAL t
+        inner join T_METER m on t.meter_id=m.meter_id
+        inner join T_MPED_INFO mp on m.MPED_ID=mp.MPED_ID
+        where t.freeze_time between #{startDate,jdbcType=TIME} and #{endDate,jdbcType=TIME}
+        and t.meter_id=#{objId}
+        order by t.freeze_time
+    </select>
+
+    <!-- 第三方企业获取数据：日数据 -->
+    <select id="getNeedDayQData" parameterType="HashMap" resultType="HashMap">
+        <if test="objType == 1" >
+            select to_char(t.freeze_time,  'yyyy-MM-dd') as DATA_TIME,  sum(t.faq_value * t2.add_attr * t2.pct /100) as FAQ_VALUE,  sum(t.frq_value * t2.add_attr * t2.pct /100) as FRQ_VALUE,
+            sum(t.baq_value * t2.add_attr * t2.pct /100) as BAQ_VALUE,  sum(t.brq_value * t2.add_attr * t2.pct /100) as BRQ_VALUE
+            from t_day_q t
+            inner JOIN  T_LEDGER_METER t2 ON t.METER_ID = t2.METER_ID
+            where t.freeze_time between #{startDate,jdbcType=TIME} and #{endDate,jdbcType=TIME}
+            and t2.LEDGER_ID = #{objId}
+            group by t.freeze_time
+            order by t.freeze_time
+        </if>
+        <if test="objType == 2" >
+            select to_char(t.freeze_time,  'yyyy-MM-dd') as DATA_TIME, t.faq_value as FAQ_VALUE, t.frq_value as FRQ_VALUE, t.baq_value as BAQ_VALUE, t.brq_value as BRQ_VALUE
+            from t_day_q t
+            where t.freeze_time between #{startDate,jdbcType=TIME} and #{endDate,jdbcType=TIME}
+            and t.meter_id = #{objId}
+            order by t.freeze_time
+        </if>
+    </select>
+
+    <select id="getNeedDayQRateData" parameterType="HashMap" resultType="HashMap">
+        <if test="objType == 1" >
+            select to_char(t.freeze_time,  'yyyy-MM-dd') as DATA_TIME,  t.RATE_NUMBER as RATE_NUMBER,
+            sum(t.DAY_FAQ * t2.add_attr * t2.pct /100) as DAY_FAQ,  sum(t.DAY_FRQ * t2.add_attr * t2.pct /100) as DAY_FRQ,
+            sum(t.DAY_BAQ * t2.add_attr * t2.pct /100) as DAY_BAQ,  sum(t.DAY_BRQ * t2.add_attr * t2.pct /100) as DAY_BRQ
+            from T_DAY_Q_RATE t
+            inner JOIN  T_LEDGER_METER t2 ON t.METER_ID = t2.METER_ID
+            where t.freeze_time between #{startDate,jdbcType=TIME} and #{endDate,jdbcType=TIME}
+            and t2.LEDGER_ID = #{objId}
+            group by t.freeze_time, t.RATE_NUMBER
+            order by t.freeze_time, t.RATE_NUMBER
+        </if>
+        <if test="objType == 2" >
+            select to_char(t.freeze_time,  'yyyy-MM-dd') as DATA_TIME,  t.RATE_NUMBER as RATE_NUMBER,
+            t.DAY_FAQ as DAY_FAQ,  t.DAY_FRQ as DAY_FRQ,  t.DAY_BAQ as DAY_BAQ,  t.DAY_BRQ as DAY_BRQ
+            from T_DAY_Q_RATE t
+            where t.freeze_time between #{startDate,jdbcType=TIME} and #{endDate,jdbcType=TIME}
+            and t.meter_id = #{objId}
+            order by t.freeze_time, t.RATE_NUMBER
+        </if>
+    </select>
+
+    <select id="getNeedDayEData" parameterType="HashMap" resultType="HashMap">
+        select to_char(t.freeze_time,  'yyyy-MM-dd') as DATA_TIME,
+        (t.DAY_FAE_TOTAL * mp.PT * mp.CT) as DAY_FAE_TOTAL, (t.DAY_FRE_TOTAL * mp.PT * mp.CT) as DAY_FRE_TOTAL,
+        (t.DAY_BAE_TOTAL * mp.PT * mp.CT) as DAY_BAE_TOTAL, (t.DAY_BRE_TOTAL * mp.PT * mp.CT) as DAY_BRE_TOTAL
+        from t_day_e_total t
+        inner join T_METER m on t.meter_id=m.meter_id
+        inner join T_MPED_INFO mp on m.MPED_ID=mp.MPED_ID
+        where t.freeze_time between #{startDate,jdbcType=TIME} and #{endDate,jdbcType=TIME}
+        and t.meter_id=#{objId}
+        order by t.freeze_time
+    </select>
+
+    <select id="getNeedDayERateData" parameterType="HashMap" resultType="HashMap">
+        select to_char(t.freeze_time,  'yyyy-MM-dd') as DATA_TIME, t.RATE_NUMBER as RATE_NUMBER,
+        (t.DAY_FAE_RATE * mp.PT * mp.CT) as DAY_FAE_RATE, (t.DAY_FRE_RATE * mp.PT * mp.CT) as DAY_FRE_RATE,
+        (t.DAY_BAE_RATE * mp.PT * mp.CT) as DAY_BAE_RATE, (t.DAY_BRE_RATE * mp.PT * mp.CT) as DAY_BRE_RATE
+        from T_DAY_E_RATE t
+        inner join T_METER m on t.meter_id=m.meter_id
+        inner join T_MPED_INFO mp on m.MPED_ID=mp.MPED_ID
+        where t.freeze_time between #{startDate,jdbcType=TIME} and #{endDate,jdbcType=TIME}
+        and t.meter_id=#{objId}
+        order by t.freeze_time, t.RATE_NUMBER
+    </select>
+
+    <select id="getNeedDayHarVData" parameterType="HashMap" resultType="HashMap">
+        select to_char(t.freeze_time,  'yyyy-MM-dd') as DATA_TIME, t.HAR_NUM as HAR_NUM,
+        t.HAR_VA_MAX as HAR_VA_MAX, to_char(t.HAR_VA_MAXTIME,  'yyyy-MM-dd HH24:mi') as HAR_VA_MAXTIME,
+        t.HAR_VB_MAX as HAR_VB_MAX, to_char(t.HAR_VB_MAXTIME,  'yyyy-MM-dd HH24:mi') as HAR_VB_MAXTIME,
+        t.HAR_VC_MAX as HAR_VC_MAX, to_char(t.HAR_VC_MAXTIME,  'yyyy-MM-dd HH24:mi') as HAR_VC_MAXTIME
+        from T_DAY_HAR_V t
+        where t.freeze_time between #{startDate,jdbcType=TIME} and #{endDate,jdbcType=TIME}
+        and t.meter_id=#{objId}
+        order by t.freeze_time, t.HAR_NUM
+    </select>
+
+    <select id="getNeedDayHarIData" parameterType="HashMap" resultType="HashMap">
+        select to_char(t.freeze_time,  'yyyy-MM-dd') as DATA_TIME,
+        t.DIS_IA_MAX as DIS_IA_MAX, to_char(t.DIS_IA_MAXTIME,  'yyyy-MM-dd HH24:mi') as DIS_IA_MAXTIME,
+        t.DIS_IB_MAX as DIS_IB_MAX, to_char(t.DIS_IB_MAXTIME,  'yyyy-MM-dd HH24:mi') as DIS_IB_MAXTIME,
+        t.DIS_IC_MAX as DIS_IC_MAX, to_char(t.DIS_IC_MAXTIME,  'yyyy-MM-dd HH24:mi') as DIS_IC_MAXTIME
+        from T_DAY_DIS_I t
+        where t.freeze_time between #{startDate,jdbcType=TIME} and #{endDate,jdbcType=TIME}
+        and t.meter_id=#{objId}
+        order by t.freeze_time
+    </select>
+
+    <select id="getNeedDayDData" parameterType="HashMap" resultType="HashMap">
+        select to_char(t.freeze_time,  'yyyy-MM-dd') as DATA_TIME,
+        t.MAX_FAD as MAX_FAD, to_char(t.MAX_FAD_TIME,  'yyyy-MM-dd HH24:mi') as MAX_FAD_TIME,
+        t.MAX_FRD as MAX_FRD, to_char(t.MAX_FRD_TIME,  'yyyy-MM-dd HH24:mi') as MAX_FRD_TIME,
+        t.MAX_BAD as MAX_BAD, to_char(t.MAX_BAD_TIME,  'yyyy-MM-dd HH24:mi') as MAX_BAD_TIME,
+        t.MAX_BRD as MAX_BRD, to_char(t.MAX_BRD_TIME,  'yyyy-MM-dd HH24:mi') as MAX_BRD_TIME
+        from T_DAY_D_TOTAL t
+        where t.freeze_time between #{startDate,jdbcType=TIME} and #{endDate,jdbcType=TIME}
+        and t.meter_id=#{objId}
+        order by t.freeze_time
+    </select>
+
+    <select id="getNeedDayWData" parameterType="HashMap" resultType="HashMap">
+        <if test="objType == 1" >
+            select to_char(t.freeze_time,  'yyyy-MM-dd') as DATA_TIME,  sum(t.WFLOW_VALUE * t2.add_attr * t2.pct /100) as WFLOW_VALUE
+            from t_day_wflow_stat t
+            inner JOIN  T_LEDGER_METER t2 ON t.METER_ID = t2.METER_ID
+            where t.freeze_time between #{startDate,jdbcType=TIME} and #{endDate,jdbcType=TIME}
+            and t2.LEDGER_ID = #{objId}
+            group by t.freeze_time
+            order by t.freeze_time
+        </if>
+        <if test="objType == 2" >
+            select to_char(t.freeze_time,  'yyyy-MM-dd') as DATA_TIME, t.WFLOW_VALUE as WFLOW_VALUE
+            from t_day_wflow_stat t
+            where t.freeze_time between #{startDate,jdbcType=TIME} and #{endDate,jdbcType=TIME}
+            and t.meter_id = #{objId}
+            order by t.freeze_time
+        </if>
+    </select>
+
+    <select id="getNeedDayW2Data" parameterType="HashMap" resultType="HashMap">
+        select to_char(t.freeze_time,  'yyyy-MM-dd') as DATA_TIME, (t.WFLOW_VALUE * mp.PT) as WFLOW_VALUE
+        from T_DAY_WFLOW t
+        inner join T_METER m on t.meter_id=m.meter_id
+        inner join T_MPED_INFO mp on m.MPED_ID=mp.MPED_ID
+        where t.freeze_time between #{startDate,jdbcType=TIME} and #{endDate,jdbcType=TIME}
+        and t.meter_id = #{objId}
+        order by t.freeze_time
+    </select>
+
+    <select id="getNeedDayGData" parameterType="HashMap" resultType="HashMap">
+        <if test="objType == 1" >
+            select to_char(t.freeze_time,  'yyyy-MM-dd') as DATA_TIME,  sum(t.GFLOW_VALUE * t2.add_attr * t2.pct /100) as GFLOW_VALUE
+            from T_DAY_GFLOW_STAT t
+            inner JOIN  T_LEDGER_METER t2 ON t.METER_ID = t2.METER_ID
+            where t.freeze_time between #{startDate,jdbcType=TIME} and #{endDate,jdbcType=TIME}
+            and t2.LEDGER_ID = #{objId}
+            group by t.freeze_time
+            order by t.freeze_time
+        </if>
+        <if test="objType == 2" >
+            select to_char(t.freeze_time,  'yyyy-MM-dd') as DATA_TIME, t.GFLOW_VALUE as GFLOW_VALUE
+            from T_DAY_GFLOW_STAT t
+            where t.freeze_time between #{startDate,jdbcType=TIME} and #{endDate,jdbcType=TIME}
+            and t.meter_id = #{objId}
+            order by t.freeze_time
+        </if>
+    </select>
+
+    <select id="getNeedDayG2Data" parameterType="HashMap" resultType="HashMap">
+        select to_char(t.freeze_time,  'yyyy-MM-dd') as DATA_TIME, t.GFLOW_VALUE as GFLOW_VALUE
+        from T_DAY_GFLOW t
+        where t.freeze_time between #{startDate,jdbcType=TIME} and #{endDate,jdbcType=TIME}
+        and t.meter_id = #{objId}
+        order by t.freeze_time
+    </select>
+
+	<!-- 查询能管对象月复费率电量 -->
+	<select id="getMonERateData" resultType="HashMap">
+		SELECT T3.FREEZE_TIME TIME_FIELD, T3.MON_FAQ ELE_VALUE, T3.RATE_NUMBER
+		FROM T_MON_LEDGER_Q_RATE T3
+		JOIN T_LEDGER T1 ON T1.LEDGER_ID = T3.LEDGER_ID
+		JOIN T_RATE_SECTOR T4 ON T4.SECTOR_ID = T3.RATE_NUMBER
+		WHERE T3.LEDGER_ID =  #{ledgerId} AND T3.FREEZE_TIME between
+		#{beginDate,jdbcType=TIME} AND #{endDate,jdbcType=TIME}
+		AND T4.RATE_ID = #{rateId}
+		ORDER BY T3.FREEZE_TIME,T3.RATE_NUMBER
+	</select>
+
+	<select id="getMonEMaxRateData" resultType="Double">
+		select max(ELE_VALUE)
+		  from (
+			SELECT T3.FREEZE_TIME dataTime, sum(T3.MON_FAQ ) ELE_VALUE FROM T_MON_LEDGER_Q_RATE T3
+		JOIN T_LEDGER T1 ON T1.LEDGER_ID = T3.LEDGER_ID
+		JOIN T_RATE_SECTOR T4 ON T4.SECTOR_ID = T3.RATE_NUMBER
+		WHERE T3.FREEZE_TIME between #{beginDate,jdbcType=TIME} AND #{endDate,jdbcType=TIME}
+		 AND T3.LEDGER_ID = #{ledgerId}
+		AND T4.RATE_ID = #{rateId}
+		GROUP BY T3.FREEZE_TIME
+				 )
+	</select>
+
+	<!-- 查询测量点月复费率电量 -->
+	<select id="getMeterMonERateData" resultType="HashMap">
+		SELECT FREEZE_TIME TIME_FIELD, MON_FAQ_RATE ELE_VALUE, RATE_NUMBER FROM T_MON_Q_RATE WHERE METER_ID = #{meterId} AND FREEZE_TIME BETWEEN
+		#{beginDate,jdbcType=TIME} AND #{endDate,jdbcType=TIME}
+		ORDER BY FREEZE_TIME,RATE_NUMBER
+	</select>
+
+	<select id="getMeterMonEMaxRateData" resultType="Double">
+		SELECT MAX(ELE_VALUE) FROM (SELECT SUM(T3.MON_FAQ_RATE) ELE_VALUE, T3.FREEZE_TIME AS TIME_FIELD
+        FROM T_MON_Q_RATE T3
+        WHERE T3.METER_ID = #{meterId}
+        AND T3.FREEZE_TIME  BETWEEN #{beginDate,jdbcType=TIME} AND #{endDate,jdbcType=TIME}
+        GROUP BY FREEZE_TIME)
+	</select>
+
+	<!-- 查询测量点日复费率电量 -->
+	<select id="getMeterDayERateData" resultType="HashMap">
+		SELECT FREEZE_TIME TIME_FIELD, DAY_FAQ ELE_VALUE, RATE_NUMBER FROM T_DAY_Q_RATE WHERE METER_ID = #{meterId} AND FREEZE_TIME BETWEEN
+		#{beginDate,jdbcType=TIME} AND #{endDate,jdbcType=TIME}
+		ORDER BY FREEZE_TIME,RATE_NUMBER
+	</select>
+
+	<select id="getMeterDayEMaxRateData" resultType="Double">
+		SELECT MAX(ELE_VALUE) FROM (SELECT SUM(T3.DAY_FAQ) ELE_VALUE, T3.FREEZE_TIME AS TIME_FIELD
+        FROM T_DAY_Q_RATE T3
+        WHERE T3.METER_ID = #{meterId}
+        AND T3.FREEZE_TIME BETWEEN #{beginDate,jdbcType=TIME} AND #{endDate,jdbcType=TIME}
+        GROUP BY FREEZE_TIME)
+	</select>
+
+	<!-- 查询分户费率电量 -->
+	<select id="queryLedgerFeeCoul" resultType="HashMap">
+		SELECT T3.FREEZE_TIME TIME_FIELD, T3.DAY_FAQ ELE_VALUE, T3.RATE_NUMBER
+		FROM T_DAY_LEDGER_Q_RATE T3
+		JOIN T_LEDGER T1 ON T1.LEDGER_ID = T3.LEDGER_ID
+		JOIN T_RATE_SECTOR T4 ON T4.SECTOR_ID = T3.RATE_NUMBER
+		WHERE T3.LEDGER_ID = #{ledgerId} AND T3.FREEZE_TIME between #{beginDate} and #{endDate}
+		AND T4.RATE_ID = #{rateId}
+		ORDER BY T3.FREEZE_TIME,T3.RATE_NUMBER
+	</select>
+
+	<select id="queryLedgerMaxFeeCoul" resultType="Double">
+		select max(ELE_VALUE)
+		  from (
+			SELECT T3.FREEZE_TIME dataTime, sum(T3.DAY_FAQ ) ELE_VALUE FROM T_DAY_LEDGER_Q_RATE T3
+		JOIN T_LEDGER T1 ON T1.LEDGER_ID = T3.LEDGER_ID
+		JOIN T_RATE_SECTOR T4 ON T4.SECTOR_ID = T3.RATE_NUMBER
+		WHERE T3.FREEZE_TIME between #{beginDate} and #{endDate} AND T3.LEDGER_ID = #{ledgerId}
+		AND T4.RATE_ID = #{rateId}
+		GROUP BY T3.FREEZE_TIME
+				 )
+	</select>
+
+	<select id="queryLedgerFeeSum" resultType="HashMap">
+			 SELECT T3.FREEZE_TIME dataTime,
+			 <if test="dateType == 3 or dateType == 4">
+				 sum(T3.DAY_FAQ ) DATA FROM
+				 T_DAY_LEDGER_Q_RATE T3
+			 </if>
+			<if test="dateType == 5">
+				sum(T3.MON_FAQ) DATA FROM
+				T_MON_LEDGER_Q_RATE T3
+			</if>
+		JOIN T_LEDGER T1 ON T1.LEDGER_ID = T3.LEDGER_ID
+		JOIN T_RATE_SECTOR T4 ON T4.SECTOR_ID = T3.RATE_NUMBER
+ 		WHERE T3.LEDGER_ID = #{ledgerId} AND T3.FREEZE_TIME between #{beginTime,jdbcType=TIME} AND #{endTime,jdbcType=TIME} AND T4.RATE_ID = #{rateId}  GROUP BY T3.FREEZE_TIME ORDER BY T3.FREEZE_TIME
+	</select>
+
+	<select id="queryMeterFeeSum" resultType="HashMap">
+		SELECT T3.FREEZE_TIME dataTime,
+		<if test="dateType == 3 or dateType == 4">
+			sum(T3.DAY_FAQ ) DATA FROM
+			T_DAY_Q_RATE T3
+		</if>
+		<if test="dateType == 5">
+			sum(T3.MON_FAQ_RATE) DATA FROM
+			T_MON_Q_RATE T3
+		</if>
+		WHERE T3.METER_ID = #{meterId} AND T3.FREEZE_TIME between #{beginTime,jdbcType=TIME} AND #{endTime,jdbcType=TIME} GROUP BY T3.FREEZE_TIME ORDER BY T3.FREEZE_TIME
+	</select>
+
+	<!-- 查询APP电耗数据 -->
+	<select id="queryEnergyData" resultType="HashMap">
+		SELECT * FROM (
+			SELECT T3.LEDGER_NAME,T1.METER_NAME,T2.DATA,T2.FEEDATA,T1.METER_ID FROM T_METER T1 JOIN
+			(
+				SELECT METER_ID,AVG(EC_PW) DATA,AVG(EC_FEES) FEEDATA FROM T_EE_DATA_DAY WHERE LEDGER_ID = #{ledgerId}
+				AND DATA_DATE BETWEEN #{beginTime}
+				AND #{endTime}
+				AND EC_PW IS NOT NULL
+				GROUP BY METER_ID
+			) T2
+			ON T1.METER_ID = T2.METER_ID
+			JOIN T_LEDGER T3 ON T3.LEDGER_ID = T1.LEDGER_ID
+			ORDER BY T2.DATA DESC
+		)
+		<if test="showType != null and showType == 1">
+			WHERE ROWNUM &lt;= 10
+		</if>
+	</select>
+
+    <select id="queryParentLedger" resultType="com.linyang.energy.model.LedgerBean">
+        SELECT A.LEDGER_ID AS LEDGERID,
+			   A.LEDGER_NAME AS LEDGERNAME,
+			   A.NUMBER_OF_PEOPLE AS NUMBEROFPEOPLE,
+			   A.USE_AREA AS USEAREA,
+			   A.DEPTH AS DEPTH,
+			   A.LEDGER_LFT AS LEDGERLFT,
+			   A.LEDGER_RGT AS LEDGERRGT,
+			   A.PARENT_LEDGER_ID AS PARENTLEDGERID,
+			   A.COLLMETER_NUMBER AS COLLMETERNUMBER,
+			   A.RATE_ID AS RATEID,
+			   A.LEDGER_REMARK AS LEDGERREMARK,
+			   A.X AS X,
+			   A.Y AS Y,
+			   A.PIC_ID AS PICID,
+			   A.ANALY_TYPE AS ANALYTYPE,
+			   A.INHERIT AS INHERIT,
+			   A.USER_NO AS USERNO,
+			   A.INDUSTRY_TYPE AS INDUSTRYTYPE,
+			   A.REGION AS REGION,
+			   A.CONTACTS AS CONTACTS,
+			   A.CONTACT_INFO AS CONTACTINFO,
+			   A.ADDRESS AS ADDRESS
+        FROM T_LEDGER A WHERE A.ANALY_TYPE = 102
+        START WITH A.LEDGER_ID = #{ledgerId}
+        CONNECT BY PRIOR A.PARENT_LEDGER_ID = A.LEDGER_ID
+    </select>
+
+    <!-- 查询APP电耗数据 -->
+    <select id="queryEnergyData4Parent" resultType="HashMap">
+        SELECT * FROM (
+        SELECT T3.LEDGER_NAME,T1.METER_NAME,T2.DATA,T2.FEEDATA,T1.METER_ID FROM T_METER T1 JOIN
+        (
+        SELECT METER_ID,AVG(EC_PW) DATA,AVG(EC_FEES) FEEDATA FROM T_EE_DATA_DAY WHERE LEDGER_ID IN (
+        SELECT A.LEDGER_ID FROM T_LEDGER A WHERE A.ANALY_TYPE = 102
+        START WITH A.LEDGER_ID = #{ledgerId}
+        CONNECT BY PRIOR A.LEDGER_ID = A.PARENT_LEDGER_ID
+        )
+        AND DATA_DATE BETWEEN #{beginTime}
+        AND #{endTime}
+		AND EC_PW IS NOT NULL
+        GROUP BY METER_ID
+        ) T2
+        ON T1.METER_ID = T2.METER_ID
+        JOIN T_LEDGER T3 ON T3.LEDGER_ID = T1.LEDGER_ID
+        ORDER BY T2.DATA DESC
+        )
+        <if test="showType != null and showType == 1">
+            WHERE ROWNUM &lt;= 10
+        </if>
+    </select>
+
+
+	<!-- 查询变压器列表信息  showType(01.额定容量(kva) 02.暂停) -->
+	<select id="queryTransformerByLedgerId" resultType="HashMap">
+		SELECT T1.EQUIP_ID,T1.TRAN_NAME,T1.RUN_CAP,T1.RUN_STATUS,T1.START_DATE,T1.STOP_DATE,T1.CONS_NO FROM G_TRAN T1
+		JOIN (
+		SELECT T1.USER_NO FROM T_LEDGER T1,T_LEDGER T2
+		WHERE T1.LEDGER_LFT>=T2.LEDGER_LFT AND T1.LEDGER_RGT &lt;=T2.LEDGER_RGT AND T2.LEDGER_ID=#{ledgerId}
+		) T2 ON T1.CONS_NO = T2.USER_NO
+		<where>
+			<if test=" showType != null and showType == '02'">
+				AND T1.RUN_STATUS = '02'
+			</if>
+		</where>
+		ORDER BY T1.TRAN_NAME
+	</select>
+
+	<resultMap id="transformerBeanMapper" type="com.linyang.energy.model.TransformerBean">
+		<result property="EQUIPID"      column="EQUIPID"/>
+		<result property="TRANNAME"      column="TRANNAME"/>
+		<result property="RUNCAP"      column="RUNCAP"/>
+		<result property="RUNSTATUS"      column="RUNSTATUS"/>
+		<result property="STARTDATE"      column="STARTDATE"/>
+		<result property="STOPDATE"      column="STOPDATE"/>
+	</resultMap>
+
+
+	<!-- 查询变压器列表信息  showType(01.额定容量(kva) 02.暂停) -->
+	<select id="queryTransformerByShowType" resultMap="transformerBeanMapper">
+		SELECT T1.EQUIP_ID EQUIPID,T1.TRAN_NAME TRANNAME,T1.RUN_CAP RUNCAP,T1.RUN_STATUS RUNSTATUS,T1.START_DATE STARTDATE,T1.STOP_DATE STOPDATE,T1.CONS_NO FROM G_TRAN T1
+		JOIN (
+		SELECT T1.USER_NO FROM T_LEDGER T1,T_LEDGER T2
+		WHERE T1.LEDGER_LFT>=T2.LEDGER_LFT AND T1.LEDGER_RGT &lt;=T2.LEDGER_RGT AND T2.LEDGER_ID=#{ledgerId}
+		) T2 ON T1.CONS_NO = T2.USER_NO
+		<where>
+			<if test=" showType != null and showType == '01'">
+				AND (T1.RUN_STATUS = '02' OR T1.RUN_STATUS IS NULL)
+			</if>
+			<if test=" showType != null and showType == '02'">
+				AND (T1.RUN_STATUS = '01' OR T1.RUN_STATUS IS NULL)
+			</if>
+		</where>
+		ORDER BY T1.TRAN_NAME
+	</select>
+
+	<select id="queryTransformerData" resultType="HashMap">
+		SELECT EQUIP_ID,CONS_NO,TRAN_NAME,RUN_CAP,START_DATE,STOP_DATE,RUN_STATUS FROM G_TRAN WHERE EQUIP_ID = #{equipId}
+	</select>
+
+
+
+	<select id="queryProductionList" resultType="HashMap">
+		WITH DATA_VIEW AS (
+		SELECT METER_ID,YIELD_96,YIELD_97,YIELD_98,YIELD_OTHER,YIELD_TOTAL,DATA_DATE FROM T_DAY_EQUIP_YIELD
+		WHERE DATA_DATE = #{baseDate,jdbcType=TIME}
+		),
+		LEDGER_METER_VIEW AS (
+		SELECT T1.METER_ID , T1.METER_NAME,T2.LEDGER_NAME  FROM T_METER T1,T_LEDGER T2 ,T_LEDGER_METER T3
+		WHERE T1.METER_ID = T3.METER_ID AND T2.LEDGER_ID = T3.LEDGER_ID AND T2.LEDGER_ID IN (
+		SELECT A.LEDGER_ID FROM T_LEDGER A  WHERE A.ANALY_TYPE = 106  AND EQPTYPE_ID = 1
+		START WITH A.LEDGER_ID = #{objId}
+		CONNECT BY PRIOR A.LEDGER_ID = A.PARENT_LEDGER_ID
+		)
+		)
+		SELECT V1.METER_ID,V1.METER_NAME,V1.LEDGER_NAME,V2.YIELD_96,V2.YIELD_97,V2.YIELD_98,V2.YIELD_OTHER,V2.YIELD_TOTAL,V2.DATA_DATE FROM LEDGER_METER_VIEW V1
+		LEFT JOIN DATA_VIEW V2 ON V1.METER_ID = V2.METER_ID
+		<if test="showType != null and showType == 2">
+			WHERE ROWNUM &lt;= 10
+		</if>
+		ORDER BY V1.LEDGER_NAME
+	</select>
+
+
+	<resultMap id="capcityDeclaratBeanMapper" type="com.linyang.energy.model.CapacityDeclarationBean">
+		<result column="METERID"      property="id"/>
+		<result column="METERNAME"      property="name"/>
+		<result column="YIELD98"      property="value98"/>
+		<result column="YIELD97"      property="value97"/>
+		<result column="YIELD96"      property="value96"/>
+		<result column="YIELDOTHER"      property="valueOther"/>
+		<result column="YIELDTOTAL"      property="valueTotal"/>
+	</resultMap>
+
+	<select id="queryproductionList4APP" resultMap="capcityDeclaratBeanMapper">
+		WITH DATA_VIEW AS (
+		SELECT METER_ID,YIELD_96,YIELD_97,YIELD_98,YIELD_OTHER,YIELD_TOTAL,DATA_DATE FROM T_DAY_EQUIP_YIELD
+		WHERE DATA_DATE = #{baseDate,jdbcType=TIME}
+		),
+		LEDGER_METER_VIEW AS (
+		SELECT T1.METER_ID , T1.METER_NAME,T2.LEDGER_NAME  FROM T_METER T1,T_LEDGER T2 ,T_LEDGER_METER T3
+		WHERE T1.METER_ID = T3.METER_ID AND T2.LEDGER_ID = T3.LEDGER_ID AND T2.LEDGER_ID IN (
+		SELECT A.LEDGER_ID FROM T_LEDGER A  WHERE A.ANALY_TYPE = 106  AND EQPTYPE_ID = 1
+		START WITH A.LEDGER_ID = #{objId}
+		CONNECT BY PRIOR A.LEDGER_ID = A.PARENT_LEDGER_ID
+		)
+		)
+		SELECT V1.METER_ID METERID,V1.METER_NAME METERNAME,V1.LEDGER_NAME,V2.YIELD_96 YIELD96,V2.YIELD_97 YIELD97,V2.YIELD_98 YIELD98,
+		V2.YIELD_OTHER YIELDOTHER,V2.YIELD_TOTAL YIELDTOTAL,V2.DATA_DATE FROM LEDGER_METER_VIEW V1
+		LEFT JOIN DATA_VIEW V2 ON V1.METER_ID = V2.METER_ID
+		ORDER BY V1.LEDGER_NAME
+	</select>
+
+
+	<update id="modifyTrans">
+	UPDATE G_TRAN SET START_DATE = #{startTime,jdbcType=TIME} ,STOP_DATE  = #{stopTime,jdbcType=TIME} ,RUN_STATUS = #{runStatus}
+	WHERE EQUIP_ID = #{objId}
+	</update>
+
+	<insert id="declarePorduction">
+		merge into T_DAY_EQUIP_YIELD t
+		using (select #{meterId} as meterId,
+		              #{dataDate,jdbcType=TIME}   as dataDate,
+		              #{ledgerId}   as ledgerId,
+		              #{yield96}  as yield96,
+		              #{yield97}     as yield97,
+					  #{yield98}  as yield98,
+					  #{yieldOther} as yieldOther,
+					  #{yieldTotal} as yieldTotal,
+					  #{chgTime,jdbcType=TIME} as chgTime
+		         from dual) s
+		on (t.METER_ID = s.meterId and t.DATA_DATE = s.dataDate)
+		when matched then
+		update set YIELD_96 = s.yield96 ,YIELD_97 = s.yield97 , YIELD_98 = s.yield98 , YIELD_OTHER = s.yieldOther, YIELD_TOTAL = s.yieldTotal,
+	  	CHG_TIME = s.chgTime
+		where t.METER_ID = s.meterId and t.DATA_DATE = s.dataDate
+		when not matched then
+		insert (METER_ID, DATA_DATE, LEDGER_ID, YIELD_96, YIELD_97,YIELD_98,YIELD_OTHER,YIELD_TOTAL,CHG_TIME)
+		values (s.meterId, s.dataDate, s.ledgerId, s.yield96, s.yield97,s.yield98,s.yieldOther,s.yieldTotal,s.chgTime)
+	</insert>
+
+	<select id="queryTradeBenData" resultType="HashMap">
+		  SELECT TRADE_CODE,BEST_BEN,WEAK_BEN,AVG_BEN FROM T_TRADE_BEN_DATA T1 WHERE T1.TRADE_CODE = #{tradeCode}
+	</select>
+
+
+    <select id="queryDetailData" resultType="HashMap">
+        WITH DATE_VIEW AS (
+        SELECT #{beginTime,jdbcType=TIME} + (ROWNUM - 1) AS DATA_DATE
+        FROM DUAL CONNECT BY ROWNUM &lt;= (floor(#{endTime,jdbcType=TIME} - #{beginTime,jdbcType=TIME}) + 1)
+        ),
+        DATA_VIEW AS (
+        SELECT T1.METER_ID,T2.METER_NAME,T1.EC_PW,T1.EC_FEES,T1.DATA_DATE
+        FROM T_EE_DATA_DAY T1
+        JOIN T_METER T2 ON T1.METER_ID = T2.METER_ID
+        WHERE T1.METER_ID = #{objId}
+        AND T1.DATA_DATE BETWEEN #{beginTime,jdbcType=TIME} AND #{endTime,jdbcType=TIME}
+        )
+        SELECT T2.METER_ID,T2.METER_NAME,T2.EC_PW,T2.EC_FEES,T1.DATA_DATE
+        FROM DATE_VIEW T1 LEFT JOIN DATA_VIEW T2 ON T1.DATA_DATE = T2.DATA_DATE
+        ORDER BY T1.DATA_DATE
+    </select>
+
+	<!-- 企业"吨电耗最大值" -->
+	<select id="queryLedgerMaxPWIndustryData" resultType="HashMap">
+		SELECT O2.MAXPW,O1.LEDGER_NAME MAXPWNAME FROM (
+						SELECT AVG(T1.EC_PW) SUMPW,T3.LEDGER_NAME  FROM T_EE_DATA_DAY T1
+						JOIN (
+							SELECT A.LEDGER_ID FROM T_LEDGER A WHERE A.ANALY_TYPE = 102
+							START WITH A.LEDGER_ID = #{ledgerId}
+							CONNECT BY PRIOR A.LEDGER_ID = A.PARENT_LEDGER_ID
+						) T2 ON T2.LEDGER_ID = T1.LEDGER_ID
+						JOIN T_LEDGER T3 ON T1.LEDGER_ID = T3.LEDGER_ID
+							WHERE T1.DATA_DATE BETWEEN #{beginTime,jdbcType=TIME} AND #{endTime,jdbcType=TIME}
+						GROUP BY T3.LEDGER_NAME
+					) O1
+					JOIN (
+						SELECT MAX(PW) MAXPW FROM (
+							SELECT AVG(EC_PW) PW FROM T_EE_DATA_DAY
+							WHERE DATA_DATE BETWEEN #{beginTime,jdbcType=TIME} AND #{endTime,jdbcType=TIME}
+							GROUP BY LEDGER_ID
+						)
+					) O2 ON O2.MAXPW = O1.SUMPW
+					WHERE ROWNUM = 1
+	</select>
+
+	<!-- 企业"吨电耗最小值" -->
+	<select id="queryLedgerMinPWIndustryData" resultType="HashMap">
+		SELECT O2.MINPW,O1.LEDGER_NAME MINPWNAME FROM (
+						SELECT AVG(T1.EC_PW) SUMPW,T3.LEDGER_NAME  FROM T_EE_DATA_DAY T1
+						JOIN (
+							SELECT A.LEDGER_ID FROM T_LEDGER A WHERE A.ANALY_TYPE = 102
+							START WITH A.LEDGER_ID = #{ledgerId}
+							CONNECT BY PRIOR A.LEDGER_ID = A.PARENT_LEDGER_ID
+						) T2 ON T2.LEDGER_ID = T1.LEDGER_ID
+						JOIN T_LEDGER T3 ON T1.LEDGER_ID = T3.LEDGER_ID
+						WHERE T1.DATA_DATE BETWEEN #{beginTime,jdbcType=TIME} AND #{endTime,jdbcType=TIME}
+						GROUP BY T3.LEDGER_NAME
+					) O1
+					JOIN (
+						SELECT MIN(PW) MINPW FROM (
+							SELECT AVG(EC_PW) PW FROM T_EE_DATA_DAY
+							WHERE DATA_DATE BETWEEN #{beginTime,jdbcType=TIME} AND #{endTime,jdbcType=TIME}
+							GROUP BY LEDGER_ID
+						)
+					) O2 ON O2.MINPW = O1.SUMPW
+					WHERE ROWNUM = 1
+	</select>
+
+	<!-- 企业"吨电费最大值" -->
+	<select id="queryLedgerMaxFeeIndustryData" resultType="HashMap">
+		SELECT O2.MAXFEE,O1.LEDGER_NAME MAXFEENAME FROM (
+						SELECT AVG(T1.EC_FEES) SUMFEE,T3.LEDGER_NAME  FROM T_EE_DATA_DAY T1
+						JOIN (
+							SELECT A.LEDGER_ID FROM T_LEDGER A WHERE A.ANALY_TYPE = 102
+							START WITH A.LEDGER_ID = #{ledgerId}
+							CONNECT BY PRIOR A.LEDGER_ID = A.PARENT_LEDGER_ID
+						) T2 ON T2.LEDGER_ID = T1.LEDGER_ID
+						JOIN T_LEDGER T3 ON T1.LEDGER_ID = T3.LEDGER_ID
+						WHERE T1.DATA_DATE BETWEEN #{beginTime,jdbcType=TIME} AND #{endTime,jdbcType=TIME}
+						GROUP BY T3.LEDGER_NAME
+					) O1
+					JOIN (
+						SELECT MAX(FEE) MAXFEE FROM (
+							SELECT AVG(EC_FEES) FEE FROM T_EE_DATA_DAY
+							WHERE DATA_DATE BETWEEN #{beginTime,jdbcType=TIME} AND #{endTime,jdbcType=TIME}
+							GROUP BY LEDGER_ID
+						)
+					) O2 ON O2.MAXFEE = O1.SUMFEE
+					WHERE ROWNUM = 1
+	</select>
+
+	<!-- 企业"吨电费最小值" -->
+	<select id="queryLedgerMinFeeIndustryData" resultType="HashMap">
+		SELECT O2.MINFEE,O1.LEDGER_NAME MINFEENAME FROM (
+						SELECT AVG(T1.EC_FEES) SUMFEE,T3.LEDGER_NAME  FROM T_EE_DATA_DAY T1
+						JOIN (
+							SELECT A.LEDGER_ID FROM T_LEDGER A WHERE A.ANALY_TYPE = 102
+							START WITH A.LEDGER_ID = #{ledgerId}
+							CONNECT BY PRIOR A.LEDGER_ID = A.PARENT_LEDGER_ID
+						) T2 ON T2.LEDGER_ID = T1.LEDGER_ID
+						JOIN T_LEDGER T3 ON T1.LEDGER_ID = T3.LEDGER_ID
+						WHERE T1.DATA_DATE BETWEEN #{beginTime,jdbcType=TIME} AND #{endTime,jdbcType=TIME}
+						GROUP BY T3.LEDGER_NAME
+					) O1
+					JOIN (
+						SELECT MIN(FEE) MINFEE FROM (
+							SELECT AVG(EC_FEES) FEE FROM T_EE_DATA_DAY
+							WHERE DATA_DATE BETWEEN #{beginTime,jdbcType=TIME} AND #{endTime,jdbcType=TIME}
+							GROUP BY LEDGER_ID
+						)
+					) O2 ON O2.MINFEE = O1.SUMFEE
+					WHERE ROWNUM = 1
+	</select>
+
+	<!-- 企业平均"电耗","电费" -->
+	<select id="queryLedgerAvgIndustryData" resultType="HashMap">
+		SELECT AVG(SUMPW) AVGPW,AVG(SUMFEE) AVGFEE FROM (
+						SELECT AVG(T1.EC_PW) SUMPW,AVG(T1.EC_FEES) SUMFEE  FROM T_EE_DATA_DAY T1
+						JOIN (
+							SELECT A.LEDGER_ID FROM T_LEDGER A WHERE A.ANALY_TYPE = 102
+							START WITH A.LEDGER_ID = #{ledgerId}
+							CONNECT BY PRIOR A.LEDGER_ID = A.PARENT_LEDGER_ID
+						) T2 ON T2.LEDGER_ID = T1.LEDGER_ID
+						WHERE T1.DATA_DATE BETWEEN #{beginTime,jdbcType=TIME} AND #{endTime,jdbcType=TIME}
+						GROUP BY T1.LEDGER_ID
+					)
+	</select>
+
+	<!-- 测量点"电耗最大值" -->
+	<select id="queryMeterMaxPWIndustryData" resultType="HashMap">
+		SELECT O2.MAXPW MMAXPW,O4.LEDGER_NAME MMAXPWLEDGERNAME,O3.METER_NAME MMAXPWMETERNAME FROM (
+						SELECT AVG(T1.EC_PW) SUMPW,T1.LEDGER_ID,T1.METER_ID FROM T_EE_DATA_DAY T1
+						JOIN (
+							SELECT A.LEDGER_ID FROM T_LEDGER A WHERE A.ANALY_TYPE = 102
+							START WITH A.LEDGER_ID = #{ledgerId}
+							CONNECT BY PRIOR A.LEDGER_ID = A.PARENT_LEDGER_ID
+						) T2 ON T1.LEDGER_ID = T2.LEDGER_ID
+						WHERE T1.DATA_DATE BETWEEN #{beginTime,jdbcType=TIME} AND #{endTime,jdbcType=TIME}
+						GROUP BY T1.METER_ID,T1.LEDGER_ID
+					) O1
+					JOIN (
+						SELECT MAX(DATA) MAXPW FROM (
+							SELECT AVG(T1.EC_PW) DATA FROM T_EE_DATA_DAY T1
+							JOIN (
+								SELECT A.LEDGER_ID FROM T_LEDGER A WHERE A.ANALY_TYPE = 102
+								START WITH A.LEDGER_ID = #{ledgerId}
+								CONNECT BY PRIOR A.LEDGER_ID = A.PARENT_LEDGER_ID
+							) T2 ON T1.LEDGER_ID = T2.LEDGER_ID
+							WHERE T1.DATA_DATE BETWEEN #{beginTime,jdbcType=TIME} AND #{endTime,jdbcType=TIME}
+							GROUP BY T1.METER_ID,T1.LEDGER_ID
+						)
+					) O2 ON O1.SUMPW = O2.MAXPW
+					JOIN T_METER O3 ON O1.METER_ID = O3.METER_ID
+					JOIN T_LEDGER O4 ON O4.LEDGER_ID = O1.LEDGER_ID
+					WHERE ROWNUM = 1
+	</select>
+
+	<!-- 测量点"电耗最小值" -->
+	<select id="queryMeterMinPWIndustryData" resultType="HashMap">
+		SELECT O2.MINPW MMINPW,O4.LEDGER_NAME MMINPWLEDGERNAME,O3.METER_NAME MMINPWMETERNAME FROM (
+						SELECT AVG(T1.EC_PW) SUMPW,T1.LEDGER_ID,T1.METER_ID FROM T_EE_DATA_DAY T1
+						JOIN (
+							SELECT A.LEDGER_ID FROM T_LEDGER A WHERE A.ANALY_TYPE = 102
+							START WITH A.LEDGER_ID = #{ledgerId}
+							CONNECT BY PRIOR A.LEDGER_ID = A.PARENT_LEDGER_ID
+						) T2 ON T1.LEDGER_ID = T2.LEDGER_ID
+						WHERE T1.DATA_DATE BETWEEN #{beginTime,jdbcType=TIME} AND #{endTime,jdbcType=TIME}
+						GROUP BY T1.METER_ID,T1.LEDGER_ID
+					) O1
+					JOIN (
+						SELECT MIN(DATA) MINPW FROM (
+							SELECT AVG(T1.EC_PW) DATA FROM T_EE_DATA_DAY T1
+							JOIN (
+								SELECT A.LEDGER_ID FROM T_LEDGER A WHERE A.ANALY_TYPE = 102
+								START WITH A.LEDGER_ID = #{ledgerId}
+								CONNECT BY PRIOR A.LEDGER_ID = A.PARENT_LEDGER_ID
+							) T2 ON T1.LEDGER_ID = T2.LEDGER_ID
+							WHERE T1.DATA_DATE BETWEEN #{beginTime,jdbcType=TIME} AND #{endTime,jdbcType=TIME}
+							GROUP BY T1.METER_ID,T1.LEDGER_ID
+						)
+					) O2 ON O1.SUMPW = O2.MINPW
+					JOIN T_METER O3 ON O1.METER_ID = O3.METER_ID
+					JOIN T_LEDGER O4 ON O4.LEDGER_ID = O1.LEDGER_ID
+					WHERE ROWNUM = 1
+	</select>
+
+	<!-- 测量点"吨电费最大值" -->
+	<select id="queryMeterMaxFeeIndustryData" resultType="HashMap">
+		SELECT O2.MAXFEE MMAXFEE,O4.LEDGER_NAME MMAXFEELEDGERNAME,O3.METER_NAME MMAXFEEMETERNAME FROM (
+						SELECT AVG(T1.EC_FEES) SUMFEE,T1.LEDGER_ID,T1.METER_ID FROM T_EE_DATA_DAY T1
+						JOIN (
+							SELECT A.LEDGER_ID FROM T_LEDGER A WHERE A.ANALY_TYPE = 102
+							START WITH A.LEDGER_ID = #{ledgerId}
+							CONNECT BY PRIOR A.LEDGER_ID = A.PARENT_LEDGER_ID
+						) T2 ON T1.LEDGER_ID = T2.LEDGER_ID
+						WHERE T1.DATA_DATE BETWEEN #{beginTime,jdbcType=TIME} AND #{endTime,jdbcType=TIME}
+						GROUP BY T1.METER_ID,T1.LEDGER_ID
+					) O1
+					JOIN (
+						SELECT MAX(DATA) MAXFEE FROM (
+							SELECT AVG(T1.EC_FEES) DATA FROM T_EE_DATA_DAY T1
+							JOIN (
+								SELECT A.LEDGER_ID FROM T_LEDGER A WHERE A.ANALY_TYPE = 102
+								START WITH A.LEDGER_ID = #{ledgerId}
+								CONNECT BY PRIOR A.LEDGER_ID = A.PARENT_LEDGER_ID
+							) T2 ON T1.LEDGER_ID = T2.LEDGER_ID
+							WHERE T1.DATA_DATE BETWEEN #{beginTime,jdbcType=TIME} AND #{endTime,jdbcType=TIME}
+							GROUP BY T1.METER_ID,T1.LEDGER_ID
+						)
+					) O2 ON O1.SUMFEE = O2.MAXFEE
+					JOIN T_METER O3 ON O1.METER_ID = O3.METER_ID
+					JOIN T_LEDGER O4 ON O4.LEDGER_ID = O1.LEDGER_ID
+					WHERE ROWNUM = 1
+	</select>
+
+	<!-- 测量点"吨电费最小值" -->
+	<select id="queryMeterMinFeeIndustryData" resultType="HashMap">
+					SELECT O2.MINFEE MMINFEE,O4.LEDGER_NAME MMINFEELEDGERNAME,O3.METER_NAME MMINFEEMETERNAME FROM (
+						SELECT AVG(T1.EC_FEES) SUMFEE,T1.LEDGER_ID,T1.METER_ID FROM T_EE_DATA_DAY T1
+						JOIN (
+							SELECT A.LEDGER_ID FROM T_LEDGER A WHERE A.ANALY_TYPE = 102
+							START WITH A.LEDGER_ID = #{ledgerId}
+							CONNECT BY PRIOR A.LEDGER_ID = A.PARENT_LEDGER_ID
+						) T2 ON T1.LEDGER_ID = T2.LEDGER_ID
+						WHERE T1.DATA_DATE BETWEEN #{beginTime,jdbcType=TIME} AND #{endTime,jdbcType=TIME}
+						GROUP BY T1.METER_ID,T1.LEDGER_ID
+					) O1
+					JOIN (
+						SELECT MIN(DATA) MINFEE FROM (
+							SELECT AVG(T1.EC_FEES) DATA FROM T_EE_DATA_DAY T1
+							JOIN (
+								SELECT A.LEDGER_ID FROM T_LEDGER A WHERE A.ANALY_TYPE = 102
+								START WITH A.LEDGER_ID = #{ledgerId}
+								CONNECT BY PRIOR A.LEDGER_ID = A.PARENT_LEDGER_ID
+							) T2 ON T1.LEDGER_ID = T2.LEDGER_ID
+							WHERE T1.DATA_DATE BETWEEN #{beginTime,jdbcType=TIME} AND #{endTime,jdbcType=TIME}
+							GROUP BY T1.METER_ID,T1.LEDGER_ID
+						)
+					) O2 ON O1.SUMFEE = O2.MINFEE
+					JOIN T_METER O3 ON O1.METER_ID = O3.METER_ID
+					JOIN T_LEDGER O4 ON O4.LEDGER_ID = O1.LEDGER_ID
+					WHERE ROWNUM = 1
+	</select>
+
+	<!-- 测量点平均"电耗","电费" -->
+	<select id="queryMeterAvgIndustryData" resultType="HashMap">
+					SELECT AVG(SUMPW) MAVGPW,AVG(SUMFEE) MAVGFEE FROM (
+						SELECT AVG(T1.EC_PW) SUMPW,AVG(T1.EC_FEES) SUMFEE,T1.METER_ID FROM T_EE_DATA_DAY T1
+						JOIN (
+							SELECT A.LEDGER_ID FROM T_LEDGER A WHERE A.ANALY_TYPE = 102
+							START WITH A.LEDGER_ID = #{ledgerId}
+							CONNECT BY PRIOR A.LEDGER_ID = A.PARENT_LEDGER_ID
+						) T2 ON T1.LEDGER_ID = T2.LEDGER_ID
+						WHERE T1.DATA_DATE BETWEEN #{beginTime,jdbcType=TIME} AND #{endTime,jdbcType=TIME}
+						GROUP BY T1.METER_ID
+					)
+	</select>
+
+
+
+</mapper>

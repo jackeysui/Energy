@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.linyang.energy.mapping.recordmanager.DeviceTypeMapper" >
+	<!-- DeviceTypeBean map -->
+	<resultMap id="DeviceTypeResultMap" type="com.linyang.energy.model.DeviceTypeBean" >
+		<id     property="typeId"          column="TYPE_ID" />
+		<result property="typeName"        column="TYPE_NAME" />
+		<result property="parentTypeId"    column="PARENT_TYPE_ID" />
+		<result property="typeRemark"      column="TYPE_REMARK" />
+		<result property="lft"             column="LFT" />
+		<result property="rgt"             column="RGT" />
+	</resultMap>
+	
+	<!-- 查询基础字段 -->
+	<sql id="base_column_list" >
+		TYPE_ID, TYPE_NAME, PARENT_TYPE_ID, TYPE_REMARK, LFT, RGT	 
+	</sql>
+	
+	<!-- 查询设备集信息 -->
+	<select id="queryDeviceTypeInfo" parameterType="com.linyang.energy.model.DeviceTypeBean" resultMap="DeviceTypeResultMap">
+		SELECT <include refid="base_column_list" />
+		FROM   T_DEVICE_TYPE
+		<where>
+			<if test="parentTypeId != -1">
+				PARENT_TYPE_ID = #{parentTypeId} OR TYPE_ID = #{parentTypeId} 
+			</if>
+		</where>
+		ORDER BY TYPE_ID
+	</select>
+</mapper>

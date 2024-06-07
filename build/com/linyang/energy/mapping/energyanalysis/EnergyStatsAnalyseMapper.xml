@@ -1,0 +1,197 @@
+<?xml version="1.0" encoding="UTF-8" ?> 
+<!DOCTYPE mapper PUBLIC "-//ibatis.apache.org//DTD Mapper 3.0//EN" "http://ibatis.apache.org/dtd/ibatis-3-mapper.dtd">
+
+<mapper namespace="com.linyang.energy.mapping.energyanalysis.EnergyStatsAnalyseMapper">
+	<resultMap id="curveBeanResultMap" type="com.linyang.energy.model.RealCurveBean">
+		<result  property="meterId"          column="METER_ID" />
+		<result  property="freezeTime"       column="FREEZE_TIME" />
+		<result  property="dataValue"        column="DATA_VALUE" />
+		<result  property="typeId"           column="TYPE_ID" />
+		<result  property="typeName"         column="TYPE_NAME" />
+	</resultMap>
+	
+	<!-- 查询能耗分项统计数据 -->
+	<select id="queryStatData" parameterType="HashMap" resultMap="curveBeanResultMap">
+		<choose>
+			<!-- 曲线或日或月电能量 -->
+			<when test="statType == 1 or statType == 2 or statType == 3 or statType == 10 or statType == 11">
+				SELECT T.FREEZE_TIME, SUM(T.FAQ_VALUE) DATA_VALUE, K.TYPE_ID, P.TYPE_NAME
+				FROM   <if test="statType == 1">T_CUR_Q</if><if test="statType == 2 or statType == 10">T_DAY_Q</if><if test="statType == 3 or statType == 11">T_MON_Q</if> T, 
+				(
+				      SELECT A.METER_ID, A.TYPE_ID 
+				      FROM   T_LEDGER_DEVICE_METER A
+				      WHERE  A.LEDGER_ID = #{ledgerId}
+				      AND    EXISTS (
+				              SELECT 1 FROM T_DEVICE_TYPE B WHERE B.PARENT_TYPE_ID = #{typeId} AND A.TYPE_ID = B.TYPE_ID
+				      )
+				) K, T_DEVICE_TYPE P
+				WHERE  T.METER_ID = K.METER_ID
+				AND    K.TYPE_ID = P.TYPE_ID
+				AND    T.FREEZE_TIME >= #{beginTime,jdbcType=TIME}
+				AND    T.FREEZE_TIME &lt;= #{endTime,jdbcType=TIME}
+				GROUP BY T.FREEZE_TIME, K.TYPE_ID, P.TYPE_NAME
+			</when>
+			
+			<!-- 曲线或日或月水流量 -->
+			<when test="statType == 4 or statType == 5 or statType == 6 or statType == 12 or statType == 13">
+				SELECT T.FREEZE_TIME, SUM(T.FLOW_VALUE) DATA_VALUE, K.TYPE_ID, P.TYPE_NAME
+				FROM   <if test="statType == 4">T_CUR_WFLOW</if><if test="statType == 5 or statType == 12">T_DAY_WFLOW</if><if test="statType == 6 or statType == 13">T_MON_WFLOW</if> T, 
+				(
+				      SELECT A.METER_ID, A.TYPE_ID 
+				      FROM   T_LEDGER_DEVICE_METER A
+				      WHERE  A.LEDGER_ID = #{ledgerId}
+				      AND    EXISTS (
+				              SELECT 1 FROM T_DEVICE_TYPE B WHERE B.PARENT_TYPE_ID = #{typeId} AND A.TYPE_ID = B.TYPE_ID
+				      )
+				) K, T_DEVICE_TYPE P
+				WHERE  T.METER_ID = K.METER_ID
+				AND    K.TYPE_ID = P.TYPE_ID
+				AND    T.FREEZE_TIME >= #{beginTime,jdbcType=TIME}
+				AND    T.FREEZE_TIME &lt;= #{endTime,jdbcType=TIME}
+				GROUP BY T.FREEZE_TIME, K.TYPE_ID, P.TYPE_NAME
+			</when>
+			
+			<!-- 曲线或日或月气流量 -->
+			<when test="statType == 7 or statType == 8 or statType == 9 or statType == 14 or statType == 15">
+				SELECT T.FREEZE_TIME, SUM(T.FLOW_VALUE) DATA_VALUE, K.TYPE_ID, P.TYPE_NAME
+				FROM   <if test="statType == 7">T_CUR_GFLOW</if><if test="statType == 8 or statType == 14">T_DAY_GFLOW</if><if test="statType == 9 or statType == 15">T_MON_GFLOW</if> T, 
+				(
+				      SELECT A.METER_ID, A.TYPE_ID 
+				      FROM   T_LEDGER_DEVICE_METER A
+				      WHERE  A.LEDGER_ID = #{ledgerId}
+				      AND    EXISTS (
+				              SELECT 1 FROM T_DEVICE_TYPE B WHERE B.PARENT_TYPE_ID = #{typeId} AND A.TYPE_ID = B.TYPE_ID
+				      )
+				) K, T_DEVICE_TYPE P
+				WHERE  T.METER_ID = K.METER_ID
+				AND    K.TYPE_ID = P.TYPE_ID
+				AND    T.FREEZE_TIME >= #{beginTime,jdbcType=TIME}
+				AND    T.FREEZE_TIME &lt;= #{endTime,jdbcType=TIME}
+				GROUP BY T.FREEZE_TIME, K.TYPE_ID, P.TYPE_NAME
+			</when>
+		</choose>
+	</select>
+	
+	<!-- 查询电水气峰值 -->
+	<select id="getElecWaterGasPeak" parameterType="HashMap" resultType="HashMap">
+		<choose>
+			<!-- 电 -->
+			<when test="meterType == 1">
+				SELECT MAX(T.AP) DATA_VALUE
+				FROM   T_CUR_AP T, (
+					  SELECT A.METER_ID, A.TYPE_ID 
+				      FROM   T_LEDGER_DEVICE_METER A
+				      WHERE  A.LEDGER_ID = #{ledgerId}
+				      AND    EXISTS (
+				              SELECT 1 FROM T_DEVICE_TYPE B WHERE B.PARENT_TYPE_ID = #{typeId} AND A.TYPE_ID = B.TYPE_ID
+				      )
+				) K
+				WHERE  T.FREEZE_TIME >= #{beginTime,jdbcType=TIME}
+				AND    T.FREEZE_TIME &lt;= #{endTime,jdbcType=TIME}
+				AND    T.METER_ID = K.METER_ID
+			</when>
+			<!-- 水 -->
+			<when test="meterType == 2">
+				SELECT MAX(T.FLOW_VALUE) DATA_VALUE 
+				FROM   T_CUR_WFLOW T, (
+					  SELECT A.METER_ID, A.TYPE_ID 
+				      FROM   T_LEDGER_DEVICE_METER A
+				      WHERE  A.LEDGER_ID = #{ledgerId}
+				      AND    EXISTS (
+				              SELECT 1 FROM T_DEVICE_TYPE B WHERE B.PARENT_TYPE_ID = #{typeId} AND A.TYPE_ID = B.TYPE_ID
+				      )
+				) K
+				WHERE  T.FREEZE_TIME >= #{beginTime,jdbcType=TIME}
+				AND    T.FREEZE_TIME &lt;= #{endTime,jdbcType=TIME}
+				AND    T.METER_ID = K.METER_ID
+			</when>
+			<!-- 气 -->
+			<when test="meterType == 3">
+				SELECT MAX(T.FLOW_VALUE) DATA_VALUE 
+				FROM   T_CUR_GFLOW T, (
+					  SELECT A.METER_ID, A.TYPE_ID 
+				      FROM   T_LEDGER_DEVICE_METER A
+				      WHERE  A.LEDGER_ID = #{ledgerId}
+				      AND    EXISTS (
+				              SELECT 1 FROM T_DEVICE_TYPE B WHERE B.PARENT_TYPE_ID = #{typeId} AND A.TYPE_ID = B.TYPE_ID
+				      )
+				) K
+				WHERE  T.FREEZE_TIME >= #{beginTime,jdbcType=TIME}
+				AND    T.FREEZE_TIME &lt;= #{endTime,jdbcType=TIME}
+				AND    T.METER_ID = K.METER_ID
+			</when>
+		</choose>
+	</select>
+	
+	<!-- 查询EMO电水气TopN日数据 -->
+	<select id="getElecWaterGasTopNData" parameterType="HashMap" resultMap="curveBeanResultMap">
+		SELECT 
+			NVL(<if test="meterType == 1">A.Q</if>
+			<if test="meterType == 2">A.WATER_FLOW</if>
+			<if test="meterType == 3">A.GAS_FLOW</if>  
+			<if test="meterType == 4">A.TEMPER</if> ,0)
+			 
+			DATA_VALUE, A.STAT_DATE  FREEZE_TIME
+		  FROM T_DAY_LEDGER_STAT A
+		         WHERE A.Stat_Date >= #{beginTime,jdbcType=TIME}
+		           AND A.Stat_Date &lt;= #{endTime,jdbcType=TIME}
+		           AND a.ledger_id=#{ledgerId}
+		         ORDER BY DATA_VALUE DESC NULLS LAST 
+	</select>
+	
+    <!-- 查询DCP电水气热TopN日数据 -->
+    <select id="getMeterElecWaterGasTopN" parameterType="HashMap" resultMap="curveBeanResultMap">
+        <if test="isVirtual != 1">
+            select
+            <if test="meterType == 1">A.FAQ_VALUE</if>
+            <if test="meterType == 2">A.WFLOW_VALUE</if>
+            <if test="meterType == 3">A.GFLOW_VALUE</if>
+            <if test="meterType == 4">A.HEAT_VALUE</if>
+            as DATA_VALUE,  A.FREEZE_TIME as FREEZE_TIME
+            from
+            <if test="meterType == 1">T_DAY_Q</if>
+            <if test="meterType == 2">T_DAY_WFLOW_STAT</if>
+            <if test="meterType == 3">T_DAY_GFLOW_STAT</if>
+            <if test="meterType == 4">T_DAY_HEAT_STAT</if>
+            A
+            WHERE A.FREEZE_TIME >= #{beginTime,jdbcType=TIME}
+            AND A.FREEZE_TIME &lt;= #{endTime,jdbcType=TIME}
+            AND A.METER_ID=#{meterID}
+            ORDER BY DATA_VALUE DESC NULLS LAST
+        </if>
+        <if test="isVirtual == 1">
+            select sum(A.FAQ_VALUE) as DATA_VALUE, A.FREEZE_TIME as FREEZE_TIME
+            from T_DAY_Q A inner join T_VIRTUAL_METER_RELATION r on A.METER_ID=r.METER_ID
+            WHERE A.FREEZE_TIME >= #{beginTime,jdbcType=TIME}
+            AND A.FREEZE_TIME &lt;= #{endTime,jdbcType=TIME}
+            AND r.VIRTUAL_ID=#{meterID}
+            group by A.FREEZE_TIME
+            ORDER BY DATA_VALUE DESC NULLS LAST
+        </if>
+    </select>
+    
+	
+	<!-- 查询曲线点数 -->
+	<select id="queryCurveCount" parameterType="HashMap" resultType="int">
+		SELECT COUNT(1)
+		FROM   T_CUR_Q T,
+		(
+		      SELECT A.METER_ID, A.TYPE_ID 
+		      FROM   T_LEDGER_DEVICE_METER A
+		      WHERE  A.LEDGER_ID = #{ledgerId}
+		      AND    EXISTS (
+		              SELECT 1 FROM T_DEVICE_TYPE B WHERE B.PARENT_TYPE_ID = #{typeId} AND A.TYPE_ID = B.TYPE_ID
+		      )
+		) K, T_DEVICE_TYPE P
+		WHERE  T.METER_ID = K.METER_ID
+		AND    K.TYPE_ID = P.TYPE_ID
+		AND    T.FREEZE_TIME >= #{beginTime,jdbcType=TIME}
+		AND    T.FREEZE_TIME &lt;= #{endTime,jdbcType=TIME}
+	</select>
+	
+	<!-- 根据分项Id查询子分项 -->
+	<select id="getSubDeviceTypes" parameterType="long" resultMap="curveBeanResultMap">
+		SELECT TYPE_ID, TYPE_NAME FROM T_DEVICE_TYPE WHERE PARENT_TYPE_ID = #{typeId} 
+		ORDER BY  TYPE_ID
+	</select>
+</mapper>

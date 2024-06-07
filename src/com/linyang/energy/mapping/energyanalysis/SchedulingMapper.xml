@@ -1,0 +1,980 @@
+<?xml version="1.0" encoding="UTF-8" ?> 
+<!DOCTYPE mapper PUBLIC "-//ibatis.apache.org//DTD Mapper 3.0//EN" "http://ibatis.apache.org/dtd/ibatis-3-mapper.dtd">
+
+<mapper namespace="com.linyang.energy.mapping.energyanalysis.SchedulingMapper">
+	
+	
+	<select id="getAssembleInfo" resultType="com.linyang.energy.model.AssembleaBean">
+		SELECT ASSEMBLE_ID assembleId, SCHEDULE_ID scheduleId,ASSEMBLE_NAME assembleName,REMARK remark FROM  T_ASSEMBLE WHERE FLAG=1
+	</select>
+	<select id="getSchedulerDetail" resultType="HashMap" parameterType="long">
+		SELECT * FROM T_SCHEDULER_DETAIL WHERE SCHEDULE_ID = #{scheduleId} ORDER BY GRADE_ID ASC
+	</select>
+	
+	<select id="getEnergyUseDatas" resultType="HashMap" parameterType="HashMap">
+		SELECT M.*,N.GRADE_NAME FROM   T_SCHEDULER_DETAIL N,
+		(SELECT A.GRADE_ID,A.TYPE_ID,SUM(B.ANALY_DATA)ANALY_DATA FROM  T_PLAN_ANALY_INFO A ,T_PLAN_ANALY_DATA B ,T_ASSEMBLE C 
+		WHERE A.ID = B.ID AND C.ASSEMBLE_ID = A.ASSEMBLE_ID   AND A.ASSEMBLE_ID=#{assembleId} 
+		AND B.ANALY_DATE BETWEEN #{beginTime} AND #{endTime} GROUP BY A.GRADE_ID,A.TYPE_ID )M 
+		WHERE M.GRADE_ID = N.GRADE_ID ORDER BY M.TYPE_ID ASC ,M.GRADE_ID ASC
+	</select>
+	
+	<select id="getProductsDatas" resultType="HashMap" parameterType="HashMap">
+		SELECT M.*,N.PRODUCT_NAME,X.GRADE_NAME FROM   T_PRODUCT N,T_SCHEDULER_DETAIL X,
+		(SELECT A.GRADE_ID,A.PRODUCT_ID,SUM(B.ANALY_DATA)ANALY_DATA FROM  T_PLAN_ANALY_INFO A ,T_PLAN_ANALY_DATA B ,T_ASSEMBLE C,T_PRODUCT D 
+		WHERE A.ID = B.ID AND C.ASSEMBLE_ID = A.ASSEMBLE_ID AND A.PRODUCT_ID = D.PRODUCT_ID  AND A.ASSEMBLE_ID=#{assembleId}
+		AND B.ANALY_DATE BETWEEN #{beginTime} AND #{endTime} GROUP BY A.GRADE_ID,A.PRODUCT_ID)M
+		WHERE M.PRODUCT_ID = N.PRODUCT_ID  AND M.GRADE_ID = X.GRADE_ID ORDER BY M.PRODUCT_ID ASC ,M.GRADE_ID ASC
+	</select>
+	
+	
+	<select id="getAssembleMeterId" resultType="java.lang.Long">
+		SELECT METER_ID FROM T_METER WHERE ASSEMBLE_ID=#{assembleId} AND ROWNUM=1 ORDER BY METER_ID ASC
+	</select>
+	
+	<select id="getRateInfo" resultType="HashMap">
+		SELECT C.* FROM T_METER A,T_LEDGER B,T_RATE_SECTOR C WHERE A.LEDGER_ID = B.LEDGER_ID 
+ 		AND B.RATE_ID = C.RATE_ID  AND METER_ID=#{meterId} ORDER BY C.SECTOR_ID ASC
+	</select>
+	
+	<select id="getQStat" resultType="HashMap" parameterType="HashMap">
+		SELECT A.FREEZE_TIME TIME_FIELD,SUM(A.FAQ_VALUE) VALUE_FIELD FROM T_CUR_Q A, T_METER B WHERE A.METER_ID = B.METER_ID AND B.ASSEMBLE_ID=#{assembleId}
+		AND A.FREEZE_TIME BETWEEN #{beginTime} AND #{endTime} GROUP BY A.FREEZE_TIME ORDER BY A.FREEZE_TIME ASC
+	</select>
+	
+	<select id="getPowerFactorStat" parameterType="HashMap" resultType="PowerFactorStatBean">
+			select c.*,1 type from (
+			select a.ledger_id statId,b.ledger_name name,a.pf nowStat from  t_ledger b,
+				<if test="timeType==1"><!-- 日 -->
+				  	 T_DAY_LEDGER_PF a
+				  </if>
+				   <if test="timeType==2"><!-- 月 -->
+				  	 T_MON_LEDGER_PF a
+				  </if>
+			 where a.ledger_id = b.ledger_id 
+			       and b.parent_ledger_id=#{parentLedgerId}
+			        and a.freeze_time between #{beginTime} and #{endTime} 
+			  <![CDATA[	AND ROWNUM <=#{rownum} ]]>   ORDER BY a.pf DESC    
+			)c
+		union all
+			select c.*,2 type from (
+			select b.type_id statId,b.type_name name, a.pf nowStat from T_DEVICE_TYPE b,
+				<if test="timeType==1"><!-- 日 -->
+			  	 T_DAY_TYPE_PF a
+			  </if>
+			   <if test="timeType==2"><!-- 月 -->
+			  	 T_MON_TYPE_PF a 
+			  </if>
+			 where a.type_id = b.type_id and b.parent_type_id=1
+			     and a.freeze_time between #{beginTime} and #{endTime} 
+			   <![CDATA[	AND ROWNUM <=#{rownum} ]]>   ORDER BY a.pf DESC     
+			) c 
+	</select>
+	
+	
+	<select id="getPowerFactorStat2"  parameterType="HashMap" resultType="PowerFactorStatBean">
+		select * from (select x.*,y.ledger_name name,1 type from (
+			 select m.*,n.pf preStat,(m.nowStat - n.pf)*100/n.pf  percentage from 
+			 (select a.ledger_id statId,a.pf nowStat from 
+			 	<if test="timeType==1"><!-- 日 -->
+				  	 T_DAY_LEDGER_PF 
+			   </if>
+			    <if test="timeType==2"><!-- 月 -->
+			  		 T_MON_LEDGER_PF 
+			   </if>
+			  a where a.freeze_time between #{beginTime} and #{endTime}) m 
+			  left join (select a.ledger_id,a.pf from 
+			  	<if test="timeType==1"><!-- 日 -->
+				  	 T_DAY_LEDGER_PF 
+			   </if>
+			    <if test="timeType==2"><!-- 月 -->
+			  	 	T_MON_LEDGER_PF 
+			   </if>
+			   a where a.freeze_time between #{beginTime2} and #{endTime2})n
+			   on m.statId = n.ledger_id
+			   ) x ,t_ledger y 
+			   where x.statId = y.ledger_id
+			   and y.parent_ledger_id=#{parentLedgerId}
+			   <![CDATA[AND ROWNUM <=#{rownum} ORDER BY percentage DESC	]]> 
+		   )
+	union all
+	 select * from (
+		 select x.*,y.type_name name ,2 type from (
+			 select m.*,n.pf preStat,(m.nowStat - n.pf)*100/n.pf  percentage from 
+			 (select a.type_id statId,a.pf nowStat from 
+			 	<if test="timeType==1"><!-- 日 -->
+				  	 T_DAY_TYPE_PF 
+			   </if>
+			    <if test="timeType==2"><!-- 月 -->
+			  	 T_MON_TYPE_PF 
+			   </if>
+			  a where a.freeze_time between #{beginTime} and #{endTime}) m 
+			  left join (select a.type_id,a.pf from 
+			  	<if test="timeType==1"><!-- 日 -->
+				  	 T_DAY_TYPE_PF 
+			   </if>
+			    <if test="timeType==2"><!-- 月 -->
+			  	 	T_MON_TYPE_PF 
+			   </if>
+			   a where a.freeze_time between #{beginTime2} and #{endTime2})n
+			   on m.statId = n.type_id
+			   ) x ,T_DEVICE_TYPE y 
+			   where x.statId = y.type_id and y.parent_type_id=1
+			 <![CDATA[AND ROWNUM <=#{rownum} ORDER BY percentage DESC	]]> 
+		 )
+	</select>
+	
+	<select id="getThresholdValue" parameterType="long" resultType="java.lang.Double">
+		SELECT A.THRESHOLD_VALUE FROM T_LEDGER_THRESHOLD_RELATION A WHERE A.LEDGER_ID=#{ledgerId}
+	</select>
+	
+	<select id="getFactor"  resultType="java.lang.Double">
+		SELECT 
+		<if test="rate==0.90">
+				RATE1 
+		</if>
+		<if test="rate==0.85">
+				RATE2 
+		</if>
+		<if test="rate==0.80">
+				RATE3 
+		</if>
+		 FROM T_PF_RATE_CONTRAST WHERE PF = #{pf}
+	</select>
+	
+	<select id="getFactorQ" resultType ="FactorBean">
+		<choose>
+			<when test="oType==2">
+                <if test="isVirtual != 1">      <!-- 真实 -->
+                    SELECT SUM(FAQ_VALUE) totalFaq,SUM(FRQ_VALUE) totalFrq FROM
+                    <choose>
+                        <when test="timeType==6">
+                            T_CUR_Q
+                        </when>
+                        <when test="timeType==1">
+                            T_DAY_Q
+                        </when>
+                        <when test="timeType==2">
+                            T_MON_Q
+                        </when>
+                    </choose>
+                    A WHERE A.FREEZE_TIME BETWEEN #{beginTime}  AND #{endTime} AND A.METER_ID=#{objectId}
+                </if>
+
+                <if test="isVirtual == 1">       <!-- 虚拟 -->
+                    SELECT SUM(FAQ_VALUE) totalFaq,SUM(FRQ_VALUE) totalFrq FROM
+                    <choose>
+                        <when test="timeType==6">
+                            T_CUR_Q
+                        </when>
+                        <when test="timeType==1">
+                            T_DAY_Q
+                        </when>
+                        <when test="timeType==2">
+                            T_MON_Q
+                        </when>
+                    </choose> A inner join T_VIRTUAL_METER_RELATION r on a.meter_id=r.meter_id
+                    WHERE A.FREEZE_TIME BETWEEN #{beginTime}  AND #{endTime} AND r.VIRTUAL_ID=#{objectId}
+                </if>
+			</when>
+			<otherwise>
+				SELECT NVL(SUM(A.Q),0) totalFaq,NVL(SUM(A.RQ),0) totalFrq FROM
+				<choose>
+					<when test="timeType==2">
+						T_MON_LEDGER_STAT
+					</when>
+					<otherwise>
+						T_DAY_LEDGER_STAT
+					</otherwise>
+				</choose>
+				A WHERE A.STAT_DATE BETWEEN #{beginTime}  AND #{endTime} AND A.LEDGER_ID=#{ledgerId}
+			</otherwise>
+		</choose>
+	</select>
+	
+	<select id="getLastMonthCost" resultType="java.lang.Double">
+		SELECT Q_VALUE FROM  T_MON_LEDGER_COST WHERE LEDGER_ID = #{ledgerId} and STAT_DATE = #{time}
+	</select>
+	
+	<!-- 获取功率因数曲线 -->
+	<select id="getChartDatas" resultType="HashMap" parameterType="HashMap">
+		<if test="oType == 1">
+			SELECT FREEZE_TIME TIME,PF FACTOR FROM 
+			<if test="timeType==1"><!-- 日 -->
+				T_DAY_LEDGER_PF
+			</if>
+			<if test="timeType==2"><!-- 月 -->
+				T_MON_LEDGER_PF
+			</if>
+			<if test="timeType==6"><!-- 分 -->
+				T_CUR_LEDGER_PF
+			</if>
+			WHERE LEDGER_ID=#{ledgerId} AND FREEZE_TIME BETWEEN #{beginTime} AND #{endTime} ORDER BY FREEZE_TIME ASC
+		</if>
+		<if test="oType ==2">
+			<if test="timeType==1"><!-- 日 -->
+                <if test="isVirtual != 1">    <!-- 真实 -->
+                    select t.freeze_time AS TIME, FAQ_VALUE as faq, FRQ_VALUE AS frq
+                    from t_day_q t
+                    WHERE METER_ID = #{objectId}
+                    AND  FREEZE_TIME >= #{beginTime}
+                    AND  FREEZE_TIME &lt;= #{endTime}
+                </if>
+                <if test="isVirtual == 1">    <!-- 虚拟 -->
+                    select t.freeze_time AS TIME, sum(t.FAQ_VALUE) as faq, sum(t.FRQ_VALUE) AS frq
+                    from t_day_q t inner join T_VIRTUAL_METER_RELATION r on t.meter_id=r.meter_id
+                    WHERE r.VIRTUAL_ID = #{objectId}
+                    AND  t.FREEZE_TIME >= #{beginTime}
+                    AND  t.FREEZE_TIME &lt;= #{endTime}
+                    group by t.freeze_time
+                </if>
+			</if>
+			<if test="timeType==2"><!-- 月 -->
+                <if test="isVirtual != 1">    <!-- 真实 -->
+                    select t.freeze_time AS TIME, FAQ_VALUE as faq, FRQ_VALUE AS frq
+                    from t_mon_q t
+                    WHERE METER_ID = #{objectId}
+                    AND  FREEZE_TIME >= #{beginTime}
+                    AND  FREEZE_TIME &lt;= #{endTime}
+                </if>
+                <if test="isVirtual == 1">    <!-- 虚拟 -->
+                    select t.freeze_time AS TIME, sum(t.FAQ_VALUE) as faq, sum(t.FRQ_VALUE) AS frq
+                    from t_mon_q t inner join T_VIRTUAL_METER_RELATION r on t.meter_id=r.meter_id
+                    WHERE r.VIRTUAL_ID = #{objectId}
+                    AND  t.FREEZE_TIME >= #{beginTime}
+                    AND  t.FREEZE_TIME &lt;= #{endTime}
+                    group by t.freeze_time
+                </if>
+			</if>
+			<if test="timeType==6"><!-- 分 -->
+                <if test="isVirtual != 1">    <!-- 真实 -->
+                    SELECT FREEZE_TIME TIME, PF/100 FACTOR FROM T_CUR_PF
+                    WHERE  FREEZE_TIME >= #{beginTime}
+                    AND    FREEZE_TIME &lt;= #{endTime}
+                    AND    METER_ID = #{objectId}
+                </if>
+                <if test="isVirtual == 1">    <!-- 虚拟 -->
+                    select round(temp.FAQ_VALUE/sqrt(power(temp.FAQ_VALUE, 2) + power(temp.FRQ_VALUE, 2)), 2) as FACTOR,
+                    temp.freeze_time as TIME
+                    from
+                    (
+                       select q.freeze_time AS freeze_time, sum(q.FAQ_VALUE) as FAQ_VALUE, sum(q.FRQ_VALUE) AS FRQ_VALUE
+                       from T_VIRTUAL_METER_RELATION r inner join T_CUR_Q q on r.meter_id=q.meter_id
+                       WHERE r.VIRTUAL_ID = #{objectId}
+                       AND  q.FREEZE_TIME >= #{beginTime}
+                       AND  q.FREEZE_TIME &lt;= #{endTime}
+                       group by q.freeze_time
+                       order by q.freeze_time
+                    ) temp
+                </if>
+			</if>
+		</if>
+	</select>
+	
+	<!-- 获取有功功率曲线 -->
+	<select id="getAPChartDatas" resultType="HashMap" parameterType="HashMap">
+		<if test="oType == 1"><!-- EMO -->
+			<if test="timeType==1"><!-- 日 -->
+				SELECT T2.LEDGER_ID, A.FREEZE_TIME AS TIME, SUM(A.AP* t2.add_attr * t2.pct/100) AS AP
+					FROM   T_CUR_AP A LEFT JOIN  T_LEDGER_METER T2
+			                   ON A.METER_ID = T2.METER_ID
+					WHERE  A.FREEZE_TIME >= #{beginTime}
+					AND    A.FREEZE_TIME &lt;= #{endTime}
+					AND  T2.LEDGER_ID  = #{objectId}
+					AND substr(to_char(FREEZE_TIME,'yyyyMMddHH24miss'),9,6) = '000000'
+					GROUP BY T2.LEDGER_ID, A.FREEZE_TIME
+			</if>
+			<if test="timeType==2"><!-- 月 -->
+				SELECT T2.LEDGER_ID, A.FREEZE_TIME AS TIME, SUM(A.AP* t2.add_attr * t2.pct/100) AS AP
+					FROM   T_CUR_AP A LEFT JOIN  T_LEDGER_METER T2
+			                   ON A.METER_ID = T2.METER_ID
+					WHERE  A.FREEZE_TIME >= #{beginTime}
+					AND    A.FREEZE_TIME &lt;= #{endTime}
+					AND  T2.LEDGER_ID  = #{objectId}
+					AND substr(to_char(FREEZE_TIME,'yyyyMMddHH24miss'),7,8) = '01000000'
+					GROUP BY T2.LEDGER_ID, A.FREEZE_TIME
+			</if>
+			<if test="timeType==6"><!-- 分 -->
+				SELECT T2.LEDGER_ID, A.FREEZE_TIME AS TIME, SUM(A.AP* t2.add_attr * t2.pct/100) AS AP
+					FROM   T_CUR_AP A LEFT JOIN  T_LEDGER_METER T2
+			                   ON A.METER_ID = T2.METER_ID
+					WHERE  A.FREEZE_TIME >= #{beginTime}
+					AND    A.FREEZE_TIME &lt;= #{endTime}
+					AND  T2.LEDGER_ID  = #{objectId}
+					GROUP BY T2.LEDGER_ID, A.FREEZE_TIME
+			</if>
+		</if>
+		<if test="oType ==2"><!-- DCP -->
+			<if test="timeType==1"><!-- 日 -->
+				SELECT T.FREEZE_TIME AS TIME, AP FROM T_CUR_AP T
+				  WHERE METER_ID = #{objectId} 
+				    AND  FREEZE_TIME >= #{beginTime}
+	        		AND  FREEZE_TIME &lt;= #{endTime}
+	        		AND substr(to_char(FREEZE_TIME,'yyyyMMddHH24miss'),9,6) = '000000'
+			</if>
+			<if test="timeType==2"><!-- 月 -->
+				SELECT T.FREEZE_TIME AS TIME, AP FROM T_CUR_AP T
+				  WHERE METER_ID = #{objectId} 
+				    AND  FREEZE_TIME >= #{beginTime}
+	        		AND  FREEZE_TIME &lt;= #{endTime}
+	        		AND substr(to_char(FREEZE_TIME,'yyyyMMddHH24miss'),7,8) = '01000000'
+			</if>
+			<if test="timeType==6"><!-- 分 -->
+                <if test="isVirtual != 1">    <!-- 真实 -->
+                    SELECT T.FREEZE_TIME AS TIME, AP FROM T_CUR_AP T
+                    WHERE  FREEZE_TIME >= #{beginTime}
+                    AND    FREEZE_TIME &lt;= #{endTime}
+                    AND    METER_ID = #{objectId}
+                </if>
+                <if test="isVirtual == 1">    <!-- 虚拟 -->
+                    select t.freeze_time AS TIME, sum(t.AP) as AP
+                    from T_CUR_AP t inner join T_VIRTUAL_METER_RELATION r on t.meter_id=r.meter_id
+                    WHERE r.VIRTUAL_ID = #{objectId}
+                    AND  t.FREEZE_TIME >= #{beginTime}
+                    AND  t.FREEZE_TIME &lt;= #{endTime}
+                    group by t.freeze_time
+                </if>
+			</if>
+		</if>
+	</select>
+	
+	<!-- 获取测量点的额定功率 -->
+	<select id="getPointEPwr" resultType="Double">
+		select sum(t.threshold_value) from T_METER_THRESHOLD_RELATION t where t.THRESHOLD_ID=4 and t.meter_id=#{pointId}
+	</select>
+	
+	<!-- 取最大最小负载率 -->
+	<select id="getMaxMinLoadData" resultType="HashMap">
+		select max(t.load_max) as maxload,min(t.load_min) as minload from t_day_lf_opt t where t.meter_id=#{pointId} 
+		and t.freeze_time BETWEEN #{beginTime} AND #{endTime}
+	</select>
+	
+	<!-- 取最大负载率发生时间 -->
+	<select id="getMaxLoadTime" resultType="java.util.Date">
+		select t.load_max_time from t_day_lf_opt t where t.load_max=#{load} and t.meter_id=#{pointId} 
+		and t.freeze_time BETWEEN #{beginTime} AND #{endTime} and rownum &lt;=1
+	</select>
+	
+	<!-- 取最小负载率发生时间 -->
+	<select id="getMinLoadTime" resultType="java.util.Date">
+		select t.load_min_time from t_day_lf_opt t where t.load_min=#{load} and t.meter_id=#{pointId} 
+		and t.freeze_time BETWEEN #{beginTime} AND #{endTime} and rownum &lt;=1
+	</select>
+	
+	<!-- 取平均最大负载率 -->
+	<select id="getAvgLoadMax" resultType="Double">
+		select avg(t.load_max) from t_day_lf_opt t where t.meter_id=#{pointId} 
+		and t.freeze_time BETWEEN #{beginTime} AND #{endTime}
+	</select>
+	
+	<!-- 取负载率曲线 -->
+	<select id="getLoadData" resultType="HashMap">
+        <if test="dataSource == 1">    <!-- 曲线数据计算 -->
+            select to_char(p.freeze_time,'yyyy-MM-dd') as freezeTime, round(100 * max(p.apparent_p/m.volume), 2) as loadMax,
+                                                                         round(100 * min(p.apparent_p/m.volume), 2) as loadMin
+            from t_cur_apparent_p p inner join t_meter m on p.meter_id=m.meter_id
+            where p.meter_id=#{pointId}
+            and p.freeze_time BETWEEN #{beginTime} AND #{endTime}
+            <if test="dayList != null and dayList.size > 0">
+                and to_char(p.freeze_time - 1, 'D') not in
+                <foreach collection="dayList" item="day" open="(" separator="," close=")">
+                    #{day}
+                </foreach>
+            </if>
+            group by to_char(p.freeze_time,'yyyy-MM-dd')
+            order by to_char(p.freeze_time,'yyyy-MM-dd')
+        </if>
+        <if test="dataSource == 2">     <!-- 设备采集 -->
+            select t.freeze_time as freezeTime,t.load_max as loadMax,t.load_min as loadMin
+            from t_day_lf_opt t
+            where t.meter_id=#{pointId}
+            and t.freeze_time BETWEEN #{beginTime} AND #{endTime}
+            <if test="dayList != null and dayList.size > 0">
+                and to_char(t.freeze_time - 1, 'D') not in
+                <foreach collection="dayList" item="day" open="(" separator="," close=")">
+                    #{day}
+                </foreach>
+            </if>
+            order by t.freeze_time
+        </if>
+	</select>
+	
+	<!-- 取负载率发生时间曲线 -->
+	<select id="getLoadTimeData" resultType="HashMap">
+        <if test="dataSource == 1">    <!-- 曲线数据计算 -->
+            select temp1.freezeTime, temp1.loadMaxTime, temp2.loadMinTime
+            from
+            (
+            SELECT to_char(a.freeze_time,'yyyy-MM-dd') as freezeTime, to_char(a.freeze_time,'hh24:mi') as loadMaxTime
+            FROM (SELECT ROW_NUMBER() OVER(PARTITION BY to_char(freeze_time,'yyyy-MM-dd') ORDER BY apparent_p DESC) rn, t_cur_apparent_p.*
+                   FROM t_cur_apparent_p
+                   where meter_id=#{pointId}
+                   and freeze_time BETWEEN #{beginTime} AND #{endTime}
+                   <if test="dayList != null and dayList.size > 0">
+                          and to_char(freeze_time - 1, 'D') not in
+                          <foreach collection="dayList" item="day" open="(" separator="," close=")">
+                          #{day}
+                          </foreach>
+                   </if>
+                  ) a
+            where a.rn=1
+            ) temp1
+            inner join
+            (
+            SELECT to_char(a.freeze_time,'yyyy-MM-dd') as freezeTime, to_char(a.freeze_time,'hh24:mi') as loadMinTime
+            FROM (SELECT ROW_NUMBER() OVER(PARTITION BY to_char(freeze_time,'yyyy-MM-dd') ORDER BY apparent_p) rn, t_cur_apparent_p.*
+                   FROM t_cur_apparent_p
+                   where meter_id=#{pointId}
+                   and freeze_time BETWEEN #{beginTime} AND #{endTime}
+                   <if test="dayList != null and dayList.size > 0">
+                          and to_char(freeze_time - 1, 'D') not in
+                          <foreach collection="dayList" item="day" open="(" separator="," close=")">
+                          #{day}
+                          </foreach>
+                   </if>
+                   ) a
+            where a.rn=1
+            ) temp2
+            on temp1.freezeTime = temp2.freezeTime
+            order by temp1.freezeTime
+        </if>
+        <if test="dataSource == 2">     <!-- 设备采集 -->
+            select to_char(t.freeze_time,'yyyy-MM-dd') as freezeTime,to_char(t.load_max_time,'hh24:mi') as loadMaxTime,to_char(t.load_min_time,'hh24:mi') as loadMinTime
+            from t_day_lf_opt t
+            where t.meter_id=#{pointId}
+            and t.freeze_time BETWEEN #{beginTime} AND #{endTime}
+            <if test="dayList != null and dayList.size > 0">
+                and to_char(t.freeze_time - 1, 'D') not in
+                <foreach collection="dayList" item="day" open="(" separator="," close=")">
+                    #{day}
+                </foreach>
+            </if>
+            order by t.freeze_time
+        </if>
+	</select>
+
+    <!-- 取负载率分布曲线 -->
+    <select id="getDistribution" resultType="HashMap">
+        select to_char(p.freeze_time,'hh24:mi') as freezeTime, round(100 * max(p.apparent_p/m.volume), 2) as loadMax,
+         round(100 * min(p.apparent_p/m.volume), 2) as loadMin,  round(100 * avg(p.apparent_p/m.volume), 2) as loadAvg
+        from t_cur_apparent_p p inner join t_meter m on p.meter_id=m.meter_id
+        where p.meter_id=#{pointId}
+        and p.freeze_time BETWEEN #{beginTime} AND #{endTime}
+        <if test="dayList != null and dayList.size > 0">
+            and to_char(p.freeze_time - 1, 'D') not in
+            <foreach collection="dayList" item="day" open="(" separator="," close=")">
+                #{day}
+            </foreach>
+        </if>
+        group by to_char(p.freeze_time,'hh24:mi')
+        order by to_char(p.freeze_time,'hh24:mi')
+    </select>
+	
+	<!-- 获取测量点的额定电压-->
+	<select id="getPointEVol" resultType="Double">
+		select t.threshold_value from T_METER_THRESHOLD_RELATION t where t.THRESHOLD_ID=1 and t.meter_id=#{pointId}
+	</select>
+	
+	<!-- 获取测量点的额定电流-->
+	<select id="getPointECur" resultType="Double">
+		select t.threshold_value from T_METER_THRESHOLD_RELATION t where t.THRESHOLD_ID=3 and t.meter_id=#{pointId}
+	</select>
+	
+	<!-- 取电流不平衡最大值 -->
+	<select id="getMaxUnI" resultType="Double">
+		select max(t.iu_max) from t_day_unbf_opt t where t.meter_id=#{pointId} and t.freeze_time BETWEEN #{beginTime} AND #{endTime}
+	</select>
+	
+	<!-- 取电压不平衡最大值 -->
+	<select id="getMaxUnV" resultType="Double">
+		select max(t.vu_max) from t_day_unbf_opt t where t.meter_id=#{pointId} and t.freeze_time BETWEEN #{beginTime} AND #{endTime}
+	</select>
+	
+	<!-- 取电流不平衡最大值发生时间 -->
+	<select id="getMaxUnTimeI" resultType="java.util.Date">
+		select t.iu_max_time from t_day_unbf_opt t where t.iu_max=#{value} and t.meter_id=#{pointId} 
+		and t.freeze_time BETWEEN #{beginTime} AND #{endTime} and rownum &lt;=1
+	</select>
+	
+	<!-- 取电压不平衡最大值发生时间 -->
+	<select id="getMaxUnTimeV" resultType="java.util.Date">
+		select t.vu_max_time from t_day_unbf_opt t where t.vu_max=#{value} and t.meter_id=#{pointId} 
+		and t.freeze_time BETWEEN #{beginTime} AND #{endTime} and rownum &lt;=1
+	</select>
+	
+	<!-- 取电流不平衡度越限累计时间 -->
+	<select id="getSumUnLimitI" resultType="Long">
+		select sum(t.iu_limit) from t_day_unbf_opt t where t.meter_id=#{pointId} and t.freeze_time BETWEEN #{beginTime} AND #{endTime}
+	</select>
+	
+	<!-- 取电压不平衡度越限累计时间 -->
+	<select id="getSumUnLimitV" resultType="Long">
+		select sum(t.vu_limit) from t_day_unbf_opt t where t.meter_id=#{pointId} and t.freeze_time BETWEEN #{beginTime} AND #{endTime}
+	</select>
+	
+	<!-- 取电流不平衡曲线 -->
+	<select id="getIUMaxData" resultType="HashMap">
+		select t.freeze_time as freezeTime,t.iu_max as iuMax
+		from t_day_unbf_opt t where t.meter_id=#{pointId} and t.freeze_time BETWEEN #{beginTime} AND #{endTime} order by t.freeze_time
+	</select>
+	
+	<!-- 取电压不平衡曲线 -->
+	<select id="getVUMaxData" resultType="HashMap">
+		select t.freeze_time as freezeTime,t.vu_max as vuMax
+		from t_day_unbf_opt t where t.meter_id=#{pointId} and t.freeze_time BETWEEN #{beginTime} AND #{endTime} order by t.freeze_time
+	</select>
+	
+	<!-- 取电流不平衡最大值发生时间曲线 -->
+	<select id="getIUMaxTimeData" resultType="HashMap">
+		select to_char(t.freeze_time,'yyyy-MM-dd') as freezeTime,to_char(t.iu_max_time,'hh24:mi') as iuMaxTime
+		from t_day_unbf_opt t where t.meter_id=#{pointId} and t.freeze_time BETWEEN #{beginTime} AND #{endTime} order by t.freeze_time
+	</select>
+	
+	<!-- 取电压不平衡最大值发生时间曲线 -->
+	<select id="getVUMaxTimeData" resultType="HashMap">
+		select to_char(t.freeze_time,'yyyy-MM-dd') as freezeTime,to_char(t.vu_max_time,'hh24:mi') as vuMaxTime
+		from t_day_unbf_opt t where t.meter_id=#{pointId} and t.freeze_time BETWEEN #{beginTime} AND #{endTime} order by t.freeze_time
+	</select>
+	
+	<!-- 取电流不平衡度越限日累计时间曲线 -->
+	<select id="getIULimitData" resultType="HashMap">
+		select t.freeze_time as freezeTime,t.IU_LIMIT as iuLimit
+		from t_day_unbf_opt t where t.meter_id=#{pointId} and t.freeze_time BETWEEN #{beginTime} AND #{endTime} order by t.freeze_time
+	</select>
+	
+	<!-- 取电压不平衡度越限日累计时间曲线 -->
+	<select id="getVULimitData" resultType="HashMap">
+		select t.freeze_time as freezeTime,t.VU_LIMIT as vuLimit
+		from t_day_unbf_opt t where t.meter_id=#{pointId} and t.freeze_time BETWEEN #{beginTime} AND #{endTime} order by t.freeze_time
+	</select>
+	
+	<!-- 根据电能示值计算线损的电量 -->
+	<select id="getDayLineLossInfo" resultType="LineLossBean">
+		select m.meter_id as meterId,m.meter_name as meterName,(a.value1-b.value2)*i.pt*i.ct as coul,m.attribute_id as attributeId from
+        (select t.DAY_FAE_TOTAL as value1,t.meter_id as meterId
+          from view_day_e_total t where t.meter_id in (<foreach collection="pointIds" separator="," item="pointId"> #{pointId}</foreach>) AND t.freeze_time = #{endTime} -1 ) a,
+        (select t.DAY_FAE_TOTAL as value2,t.meter_id as meterId
+          from view_day_e_total t where t.meter_id in (<foreach collection="pointIds" separator="," item="pointId"> #{pointId}</foreach>) AND t.freeze_time = #{beginTime} -1 ) b,
+         t_meter m,t_mped_info i
+         where a.meterId=b.meterId and m.meter_id=a.meterId and m.mped_id=i.mped_id
+	</select>
+
+    <select id="getDayLineLossInfo_2" resultType="LineLossBean">
+        <if test="lossType == 1">
+			select m.meter_id as meterId,m.meter_name as meterName,(a.value1-b.value2)*i.pt*i.ct as coul
+			from
+			(select t.DAY_FAE_TOTAL as value1,t.meter_id as meterId
+			from view_day_e_total t where  t.meter_id in (<foreach collection="pointIds" separator="," item="pointId"> #{pointId}</foreach>) AND t.freeze_time = #{endTime} -1 ) a,
+			(select t.DAY_FAE_TOTAL as value2,t.meter_id as meterId
+			from view_day_e_total t where  t.meter_id in (<foreach collection="pointIds" separator="," item="pointId"> #{pointId}</foreach>) AND t.freeze_time = #{beginTime} -1 ) b,
+			t_meter m,t_mped_info i
+			where a.meterId=b.meterId and m.meter_id=a.meterId and m.mped_id=i.mped_id and m.IS_VIRTUAL=0
+			union
+
+			select m1.meter_id as meterId, m1.meter_name as meterName, sum((f.value1 - g.value2) * h.pt * h.ct) as coul
+			from
+			t_meter m1 inner join
+			(select VIRTUAL_ID, meter_id from T_VIRTUAL_METER_RELATION where VIRTUAL_ID in (<foreach collection="pointIds" separator="," item="pointId"> #{pointId}</foreach>)) e on m1.meter_id=e.VIRTUAL_ID
+			inner join
+			(select meter_id, DAY_FAE_TOTAL as value1 from view_day_e_total where freeze_time = #{endTime}-1) f on e.meter_id=f.meter_id
+			inner join
+			(select meter_id, DAY_FAE_TOTAL as value2 from view_day_e_total where freeze_time = #{beginTime}-1) g on f.meter_id=g.meter_id
+			inner join t_meter m2 on g.meter_id=m2.meter_id
+			inner join t_mped_info h on m2.mped_id=h.mped_id
+			group by m1.meter_id, m1.meter_name
+		</if>
+		<if test="lossType == 2">
+			select m.meter_id as meterId,m.meter_name as meterName,(a.value1-b.value2)*i.pt as coul
+			from
+			(select t.wflow_value as value1,t.meter_id as meterId
+			from T_DAY_WFLOW t where  t.meter_id in (
+			<foreach collection="pointIds" separator="," item="pointId"> #{pointId}</foreach>
+			) AND t.freeze_time = #{endTime} -1 ) a,
+			(select t.wflow_value as value2,t.meter_id as meterId
+			from T_DAY_WFLOW t where  t.meter_id in (
+			<foreach collection="pointIds" separator="," item="pointId"> #{pointId}</foreach>
+			) AND t.freeze_time = #{beginTime} -1 ) b,
+			t_meter m,t_mped_info i
+			where a.meterId=b.meterId and m.meter_id=a.meterId and m.mped_id=i.mped_id and m.IS_VIRTUAL=0
+			union
+			select m1.meter_id as meterId, m1.meter_name as meterName, sum((f.value1 - g.value2) * h.pt) as coul
+			from
+			t_meter m1 inner join
+			(
+			select VIRTUAL_ID, meter_id from T_VIRTUAL_METER_RELATION where VIRTUAL_ID in (
+			<foreach collection="pointIds" separator="," item="pointId"> #{pointId}</foreach>
+			)
+			) e on m1.meter_id=e.VIRTUAL_ID
+			inner join
+			(select meter_id, DAY_FAE_TOTAL as value1 from view_day_e_total where freeze_time = #{endTime} -1) f on e.meter_id=f.meter_id
+			inner join
+			(select meter_id, DAY_FAE_TOTAL as value2 from view_day_e_total where freeze_time = #{beginTime}-1) g on f.meter_id=g.meter_id
+			inner join t_meter m2 on g.meter_id=m2.meter_id
+			inner join t_mped_info h on m2.mped_id=h.mped_id
+			group by m1.meter_id, m1.meter_name
+		</if>
+    </select>
+	<select id="getDayLineLossInfo_2new" resultType="LineLossBean">
+		<if test="lossType == 1">
+
+			select m.meter_id as meterId,m.meter_name as meterName,a.value as coul
+			from (
+				SELECT meter_id, sum(FAQ_VALUE) value
+				FROM T_DAY_Q
+				where METER_ID in ( <foreach collection="pointIds" separator="," item="pointId"> #{pointId}</foreach> )
+				and FREEZE_TIME BETWEEN #{beginTime}-1 and #{endTime}-1
+				group by meter_id
+			)a, t_meter m,t_mped_info i
+			where a.meter_id=m.meter_id and m.mped_id=i.mped_id and m.IS_VIRTUAL=0
+			union
+			select m1.meter_id as meterId, m1.meter_name as meterName, g.value as coul
+			from t_meter m1
+			inner join (
+				select VIRTUAL_ID, meter_id
+				from T_VIRTUAL_METER_RELATION
+				where VIRTUAL_ID in ( <foreach collection="pointIds" separator="," item="pointId"> #{pointId}</foreach> )
+			) e on m1.meter_id=e.VIRTUAL_ID
+			inner join (
+				SELECT meter_id, sum(FAQ_VALUE) value
+				FROM T_DAY_Q
+				where METER_ID in ( <foreach collection="pointIds" separator="," item="pointId"> #{pointId}</foreach> )
+				and FREEZE_TIME BETWEEN #{beginTime}-1 and #{endTime}-1
+				group by meter_id
+			) g on e.meter_id=g.meter_id
+			inner join t_mped_info h on m1.mped_id=h.mped_id
+		</if>
+		<if test="lossType == 2">
+			select m.meter_id as meterId,m.meter_name as meterName,(a.value1-b.value2)*i.pt as coul
+			from
+			(select t.wflow_value as value1,t.meter_id as meterId
+			from T_DAY_WFLOW t where  t.meter_id in (
+			<foreach collection="pointIds" separator="," item="pointId"> #{pointId}</foreach>
+			) AND t.freeze_time = #{endTime} -1 ) a,
+			(select t.wflow_value as value2,t.meter_id as meterId
+			from T_DAY_WFLOW t where  t.meter_id in (
+			<foreach collection="pointIds" separator="," item="pointId"> #{pointId}</foreach>
+			) AND t.freeze_time = #{beginTime} -1 ) b,
+			t_meter m,t_mped_info i
+			where a.meterId=b.meterId and m.meter_id=a.meterId and m.mped_id=i.mped_id and m.IS_VIRTUAL=0
+			union
+			select m1.meter_id as meterId, m1.meter_name as meterName, sum((f.value1 - g.value2) * h.pt) as coul
+			from
+			t_meter m1 inner join
+			(
+			select VIRTUAL_ID, meter_id from T_VIRTUAL_METER_RELATION where VIRTUAL_ID in (
+			<foreach collection="pointIds" separator="," item="pointId"> #{pointId}</foreach>
+			)
+			) e on m1.meter_id=e.VIRTUAL_ID
+			inner join
+			(select meter_id, DAY_FAE_TOTAL as value1 from view_day_e_total where freeze_time = #{endTime} -1) f on e.meter_id=f.meter_id
+			inner join
+			(select meter_id, DAY_FAE_TOTAL as value2 from view_day_e_total where freeze_time = #{beginTime}-1) g on f.meter_id=g.meter_id
+			inner join t_meter m2 on g.meter_id=m2.meter_id
+			inner join t_mped_info h on m2.mped_id=h.mped_id
+			group by m1.meter_id, m1.meter_name
+		</if>
+	</select>
+
+	<!-- 根据级数获取线损表配置 -->
+	<select id="getLineLossByLevel" resultType="Long">
+		select t.meter_id from t_lineloss_meter_info t,t_meter m where t.meter_level=#{meterLevel} 
+		and t.meter_id=m.meter_id and m.ledger_id in (
+			select l1.ledger_id from t_ledger l1,t_ledger l2
+				where l1.ledger_lft>=l2.ledger_lft and l1.ledger_rgt &lt;=l2.ledger_rgt
+				and l2.ledger_id = #{ledgerId}
+		)
+	</select>
+
+    <select id="getLineLossByLevel_2" resultType="Long">
+        select t.meter_id
+        from t_lineloss_meter_info t,t_meter m
+        where t.meter_id=m.meter_id and t.meter_level=#{meterLevel} and m.METER_TYPE = #{lossType}
+        and m.ledger_id in (
+        select l1.ledger_id from t_ledger l1,t_ledger l2
+        where l1.ledger_lft>=l2.ledger_lft and l1.ledger_rgt &lt;=l2.ledger_rgt
+        and l2.ledger_id = #{ledgerId}
+        )
+        and m.meter_id not in (select distinct meter_id from T_VIRTUAL_METER_RELATION)
+        order by m.IS_VIRTUAL
+    </select>
+	
+	<!-- 获取线损表的子表配置 -->
+	<select id="getLineLossMeters" resultType="Long">
+		select t.meter_id from t_lineloss_meter_info t where t.meter_level=#{meterLevel} 
+		start with t.meter_id=#{meterId}  connect by t.parement_meter_id=prior t.meter_id
+	</select>
+
+    <select id="getVirtualLineLossMeters" resultType="Long">
+        select distinct t.meter_id from t_lineloss_meter_info t
+        where t.meter_level=#{meterLevel} and t.meter_id not in (select distinct meter_id from T_VIRTUAL_METER_RELATION)
+        start with t.meter_id in (select meter_id from T_VIRTUAL_METER_RELATION where virtual_id=#{meterId})  connect by t.parement_meter_id=prior t.meter_id
+    </select>
+	
+	<!-- 取一个线损的最大级数 -->
+	<select id="getLineMaxLevel" resultType="Integer">
+		select max(l.meter_level) from t_lineloss_meter_info l,t_meter m
+		where l.meter_id=m.meter_id and m.ledger_id in (
+			select l1.ledger_id from t_ledger l1,t_ledger l2
+				where l1.ledger_lft>=l2.ledger_lft and l1.ledger_rgt &lt;=l2.ledger_rgt
+				and l2.ledger_id = #{ledgerId}
+		) and m.meter_type = #{lossType}
+	</select>
+	
+	<!-- 获取分户下总表中“电压日不平衡度最大值”最大的电表列表 -->
+	<select id="getMaxVuMaxListOfSP" resultType="Long">
+		select distinct t.meter_id
+		  from t_day_unbf_opt t
+		 where t.vu_max =
+		       (select max(tdo.vu_max * tlm.add_attr * tlm.pct / 100)
+		          from t_day_unbf_opt tdo, t_ledger_meter tlm, t_meter tm
+		         where tdo.meter_id = tlm.meter_id
+		           and tlm.meter_id = tm.meter_id
+		           and tm.meter_status = 1
+		           and tlm.ledger_id = #{ledgerId}
+		           and tdo.freeze_time BETWEEN #{beginTime} AND #{endTime})
+		   and t.meter_id in
+		       (select distinct tdo.meter_id
+		          from t_day_unbf_opt tdo, t_ledger_meter tlm, t_meter tm
+		         where tdo.meter_id = tlm.meter_id
+		           and tlm.meter_id = tm.meter_id
+		           and tm.meter_status = 1
+		           and tlm.ledger_id = #{ledgerId}
+		           and tdo.freeze_time BETWEEN #{beginTime} AND #{endTime})
+	</select>
+	
+	<!-- 获取分户下所有表中“电压日不平衡度最大值”最大的电表列表 -->
+	<select id="getMaxVuMaxListOfAP" resultType="Long">
+		select distinct t.meter_id from t_day_unbf_opt t
+ 		where t.vu_max = (select max(tdo.vu_max) from t_day_unbf_opt tdo
+         	where tdo.meter_id in( select distinct tm.meter_id from t_meter tm where tm.meter_status= 1 and tm.ledger_id in 
+         	(select t.ledger_id from t_ledger t start with t.LEDGER_ID=#{ledgerId} connect by prior t.Ledger_Id = t.parent_ledger_id) )
+         	and tdo.freeze_time BETWEEN #{beginTime} AND #{endTime})
+         and t.meter_id in (select distinct tm.meter_id from t_meter tm where tm.meter_status= 1 and tm.ledger_id in (select t.ledger_id from t_ledger t start with t.LEDGER_ID=#{ledgerId} connect by prior t.Ledger_Id = t.parent_ledger_id))
+	</select>
+	
+	<!-- 获取分户下总表中“电流日不平衡度最大值”最大的电表列表 -->
+	<select id="getMaxIuMaxListOfSP" resultType="Long">
+		select distinct t.meter_id
+		  from t_day_unbf_opt t
+		 where t.iu_max =
+		       (select max(tdo.iu_max* tlm.add_attr * tlm.pct / 100)
+		          from t_day_unbf_opt tdo, t_ledger_meter tlm, t_meter tm
+		         where tdo.meter_id = tlm.meter_id
+		           and tlm.meter_id = tm.meter_id
+		           and tm.meter_status = 1
+		           and tlm.ledger_id = #{ledgerId}
+		           and tdo.freeze_time BETWEEN #{beginTime} AND #{endTime})
+		   and t.meter_id in
+		       (select distinct tdo.meter_id
+		          from t_day_unbf_opt tdo, t_ledger_meter tlm, t_meter tm
+		         where tdo.meter_id = tlm.meter_id
+		           and tlm.meter_id = tm.meter_id
+		           and tm.meter_status = 1
+		           and tlm.ledger_id = #{ledgerId}
+		           and tdo.freeze_time BETWEEN #{beginTime} AND #{endTime})
+	</select>
+	
+	<!-- 获取分户下所有表中“电流日不平衡度最大值”最大的电表列表 -->
+	<select id="getMaxIuMaxListOfAP" resultType="Long">
+		select distinct t.meter_id from t_day_unbf_opt t
+ 		where t.iu_max = ( select max(tdo.iu_max) from t_day_unbf_opt tdo where tdo.meter_id in( 
+         			select distinct tm.meter_id from t_meter tm where tm.meter_status= 1 and tm.ledger_id in (select t.ledger_id from t_ledger t start with t.LEDGER_ID=#{ledgerId} connect by prior t.Ledger_Id = t.parent_ledger_id) 
+         		) and tdo.freeze_time BETWEEN #{beginTime} AND #{endTime})
+        and t.meter_id in (select distinct tm.meter_id from t_meter tm where tm.meter_status= 1 and tm.ledger_id in (select t.ledger_id from t_ledger t start with t.LEDGER_ID=#{ledgerId} connect by prior t.Ledger_Id = t.parent_ledger_id))
+	</select>
+	
+	<!-- 获取分户下时间段内发生最大负载率的测量点id -->
+	<select id="getMaxAvrLoadPointId" resultType="Long">
+		select distinct tavg.meter_id
+		  from (select max(avgloadmax) loadmax
+		          from (select t.meter_id, avg(t.load_max * tlm.add_attr * tlm.pct / 100) avgloadmax
+		                  from t_day_lf_opt t
+		                  join t_ledger_meter tlm
+		                    on t.meter_id = tlm.meter_id
+		                 where tlm.ledger_id = #{ledgerId}
+		                   and t.freeze_time BETWEEN #{beginTime} AND #{endTime}
+		                 group by t.meter_id)) tmax
+		  join (select t.meter_id meter_id, avg(t.load_max * tlm.add_attr * tlm.pct / 100) avgloadmax
+		          from t_day_lf_opt t
+		          join t_ledger_meter tlm
+		            on t.meter_id = tlm.meter_id
+		         where tlm.ledger_id = #{ledgerId}
+		           and t.freeze_time BETWEEN #{beginTime} AND #{endTime}
+		         group by t.meter_id) tavg
+		    on tavg.avgloadmax = tmax.loadmax
+		 where rownum = 1
+	</select>
+	
+	<!-- 获取分户下时间段内发生最小负载率的测量点id -->
+	<select id="getMinAvrLoadPointId" resultType="Long">
+		select distinct tavg.meter_id
+		  from (select min(avgloadmin) loadmin
+		          from (select t.meter_id, avg(t.load_min * tlm.add_attr * tlm.pct / 100) avgloadmin
+		                  from t_day_lf_opt t
+		                  join t_ledger_meter tlm
+		                    on t.meter_id = tlm.meter_id
+		                 where tlm.ledger_id = #{ledgerId}
+		                   and t.freeze_time BETWEEN #{beginTime} AND #{endTime}
+		                 group by t.meter_id)) tmin
+		  join (select t.meter_id meter_id, avg(t.load_min * tlm.add_attr * tlm.pct / 100) avgloadmin
+		          from t_day_lf_opt t
+		          join t_ledger_meter tlm
+		            on t.meter_id = tlm.meter_id
+		         where tlm.ledger_id = #{ledgerId}
+		           and t.freeze_time BETWEEN #{beginTime} AND #{endTime}
+		         group by t.meter_id) tavg
+		    on tavg.avgloadmin = tmin.loadmin
+		 where rownum = 1
+	</select>
+	
+	<!-- 取分户负载率曲线 -->
+	<select id="getLedgerLoadData" resultType="HashMap">
+		WITH tcs AS (SELECT FREEZE_TIME AS FREEZE_TIME, sum(tc.AP * tlm.ADD_ATTR * tlm.pct /100) AS sumAp
+		FROM T_CUR_AP tc
+		JOIN (SELECT t.METER_ID METER_ID, t.ADD_ATTR ADD_ATTR FROM T_LEDGER_METER t JOIN T_METER tm ON t.mETER_ID = tm.METER_ID WHERE t.LEDGER_ID = #{ledgerId} AND tm.VOLUME > 0) tlm
+		ON tc.METER_ID = tlm.METER_ID GROUP BY FREEZE_TIME)	
+		select tcsMax.truncTime as freezeTime,trunc(tcsMax.max/tSumVolume.sumVolume*100,2) as loadMax,trunc(tcsMin.min/tSumVolume.sumVolume*100,2) as loadMin
+		from (SELECT trunc(tcs.FREEZE_TIME) truncTime , MAX(tcs.sumAp) max FROM tcs GROUP BY trunc(tcs.FREEZE_TIME))tcsMax
+		JOIN (SELECT trunc(tcs.FREEZE_TIME) truncTime , MIN(tcs.sumAp) min FROM tcs GROUP BY trunc(tcs.FREEZE_TIME))tcsMin ON tcsMax.truncTime = tcsMin.truncTime
+		JOIN (SELECT SUM(VOLUME * attr) sumVolume FROM(SELECT VOLUME ,tlm.ADD_ATTR attr FROM T_METER tm JOIN T_LEDGER_METER tlm ON tm.METER_ID = tlm.METER_ID
+	    WHERE tlm.LEDGER_ID =#{ledgerId} AND tm.VOLUME > 0)) tSumVolume ON 1=1
+		WHERE tcsMax.truncTime BETWEEN #{beginTime} AND  #{endTime}
+		ORDER BY freezeTime
+	</select>
+	
+	<!-- 取分户负载率发生时间曲线 -->
+	<select id="getLedgerLoadTimeData" resultType="HashMap">
+		WITH tcs AS (SELECT FREEZE_TIME AS FREEZE_TIME, sum(tc.AP * tlm.ADD_ATTR * tlm.pct/100) AS sumAp
+		FROM T_CUR_AP tc
+		JOIN (SELECT t.METER_ID METER_ID, t.ADD_ATTR ADD_ATTR FROM T_LEDGER_METER t JOIN T_METER tm ON t.mETER_ID = tm.METER_ID WHERE t.LEDGER_ID = #{ledgerId} AND tm.VOLUME > 0) tlm
+		ON tc.METER_ID = tlm.METER_ID GROUP BY FREEZE_TIME)			
+		select to_char(tcsMaxTime.truncTime,'yyyy-MM-dd') as freezeTime,to_char(tcsMaxTime.FREEZE_TIME,'hh24:mi') as loadMaxTime,to_char(tcsMinTime.FREEZE_TIME,'hh24:mi') as loadMinTime
+		from (SELECT MIN(tcs.FREEZE_TIME) FREEZE_TIME, tcsMax.truncTime truncTime FROM tcs
+          JOIN (SELECT trunc(tcs.FREEZE_TIME) truncTime , MAX(tcs.sumAp) max FROM tcs GROUP BY trunc(tcs.FREEZE_TIME))tcsMax ON tcsMax.max = tcs.sumAp AND tcsMax.truncTime = trunc(tcs.FREEZE_TIME)
+          GROUP BY tcsMax.truncTime)tcsMaxTime
+		JOIN (SELECT MIN(tcs.FREEZE_TIME) FREEZE_TIME, tcsMin.truncTime truncTime FROM tcs
+          JOIN (SELECT trunc(tcs.FREEZE_TIME) truncTime , MIN(tcs.sumAp) min FROM tcs GROUP BY trunc(tcs.FREEZE_TIME))tcsMin ON tcsMin.min = tcs.sumAp AND tcsMin.truncTime = trunc(tcs.FREEZE_TIME)
+          GROUP BY tcsMin.truncTime)tcsMinTime ON tcsMaxTime.truncTime = tcsMinTime.truncTime
+		WHERE tcsMaxTime.truncTime BETWEEN #{beginTime} AND  #{endTime}
+		ORDER BY freezeTime
+	</select>
+	
+	<!-- 获取分户的容量 -->
+	<select id="getLedgerEPwr" resultType="Double">
+		SELECT SUM(VOLUME * attr) sumVolume
+		  FROM (SELECT VOLUME, tlm.ADD_ATTR * tlm.pct/100 attr
+		          FROM T_METER tm
+		          JOIN T_LEDGER_METER tlm
+		            ON tm.METER_ID = tlm.METER_ID
+		         WHERE tlm.LEDGER_ID = #{ledgerId}
+		           AND tm.VOLUME > 0)
+	</select>
+	
+	<!-- 取分户最大最小负载率 -->
+	<select id="getLedgerMaxMinLoadData" resultType="HashMap">
+		SELECT trunc(maxSum/tSumVolume.sumVolume*100,2) maxload ,trunc(minSum/tSumVolume.sumVolume*100,2) minload FROM(
+		SELECT MAX(tcs.sumAp) maxSum ,MIN(tcs.sumAp) minSum FROM
+		(SELECT FREEZE_TIME AS FREEZE_TIME, sum(tc.AP * tlm.ADD_ATTR * tlm.pct/100) AS sumAp FROM T_CUR_AP tc
+		JOIN (SELECT t.METER_ID METER_ID, t.ADD_ATTR ADD_ATTR FROM T_LEDGER_METER t JOIN T_METER tm ON t.mETER_ID = tm.METER_ID WHERE t.LEDGER_ID = #{ledgerId} AND tm.VOLUME > 0) tlm
+		ON tc.METER_ID = tlm.METER_ID GROUP BY FREEZE_TIME) tcs WHERE tcs.FREEZE_TIME BETWEEN #{beginTime} AND #{endTime})
+		JOIN (SELECT SUM(VOLUME * attr) sumVolume FROM(SELECT VOLUME ,tlm.ADD_ATTR attr FROM T_METER tm JOIN T_LEDGER_METER tlm ON tm.METER_ID = tlm.METER_ID
+		WHERE tlm.LEDGER_ID =#{ledgerId} AND tm.VOLUME > 0)) tSumVolume ON 1=1 
+	</select>
+	
+	<!-- 取分户最大负载率发生时间 -->
+	<select id="getLedgerMaxLoadTime" resultType="java.util.Date">
+		WITH tcs AS (SELECT FREEZE_TIME AS FREEZE_TIME, sum(tc.AP * tlm.ADD_ATTR * tlm.pct/100) AS sumAp
+		FROM T_CUR_AP tc
+		JOIN (SELECT t.METER_ID METER_ID, t.ADD_ATTR ADD_ATTR FROM T_LEDGER_METER t JOIN T_METER tm ON t.mETER_ID = tm.METER_ID WHERE t.LEDGER_ID = #{ledgerId} AND tm.VOLUME > 0) tlm
+		ON tc.METER_ID = tlm.METER_ID GROUP BY FREEZE_TIME)							
+		SELECT MIN(tcs.FREEZE_TIME) FROM tcs 
+		JOIN(SELECT MAX(tcs.sumAp) maxSum FROM tcs WHERE tcs.FREEZE_TIME BETWEEN #{beginTime} AND #{endTime}
+		)tcsMax ON tcsMax.maxSum = tcs.sumAp
+	</select>
+	
+	<!-- 取分户最小负载率发生时间 -->
+	<select id="getLedgerMinLoadTime" resultType="java.util.Date">
+		WITH tcs AS (SELECT FREEZE_TIME AS FREEZE_TIME, sum(tc.AP * tlm.ADD_ATTR * tlm.pct/100) AS sumAp
+		FROM T_CUR_AP tc
+		JOIN (SELECT t.METER_ID METER_ID, t.ADD_ATTR ADD_ATTR FROM T_LEDGER_METER t JOIN T_METER tm ON t.mETER_ID = tm.METER_ID WHERE t.LEDGER_ID = #{ledgerId} AND tm.VOLUME > 0) tlm
+		ON tc.METER_ID = tlm.METER_ID GROUP BY FREEZE_TIME)							
+		SELECT MIN(tcs.FREEZE_TIME) FROM tcs 
+		JOIN(SELECT MIN(tcs.sumAp) minSum FROM tcs WHERE tcs.FREEZE_TIME BETWEEN #{beginTime} AND #{endTime}
+		)tcsMin ON tcsMin.minSum = tcs.sumAp
+	</select>
+	
+	<!-- 取分户平均最大负载率 -->
+	<select id="getLedgerAvgLoadMax" resultType="Double">
+		SELECT trunc(avgMax/tSumVolume.sumVolume*100,2) maxload FROM(SELECT AVG(tcsMax.maxSum) avgMax FROM(SELECT MAX(tcs.sumAp) maxSum ,trunc(tcs.FREEZE_TIME) truncTime FROM
+		(SELECT FREEZE_TIME AS FREEZE_TIME, sum(tc.AP * tlm.ADD_ATTR * tlm.pct/100) AS sumAp FROM T_CUR_AP tc
+		JOIN (SELECT t.METER_ID METER_ID, t.ADD_ATTR ADD_ATTR FROM T_LEDGER_METER t JOIN T_METER tm ON t.mETER_ID = tm.METER_ID WHERE t.LEDGER_ID = #{ledgerId} AND tm.VOLUME > 0) tlm
+		ON tc.METER_ID = tlm.METER_ID GROUP BY FREEZE_TIME) tcs WHERE tcs.FREEZE_TIME BETWEEN #{beginTime} AND #{endTime} GROUP BY trunc(tcs.FREEZE_TIME))tcsMax)
+		JOIN (SELECT SUM(VOLUME * attr) sumVolume FROM(SELECT VOLUME ,tlm.ADD_ATTR attr FROM T_METER tm JOIN T_LEDGER_METER tlm ON tm.METER_ID = tlm.METER_ID
+		WHERE tlm.LEDGER_ID = #{ledgerId} AND tm.VOLUME > 0)) tSumVolume ON 1=1 
+	</select>
+
+    <!-- 得到所选时间段内，达到基准功率的所有时间点 -->
+    <select id="getOverStartTimesBy" resultType="java.util.Date">
+        select temp.freeze_time
+        from
+        (
+            select t.freeze_time as freeze_time, sum(t.ap * m.add_attr * m.pct / 100) as ap
+		    from t_ledger_meter m inner join t_cur_ap t on m.meter_id = t.meter_id
+		    where m.ledger_id = #{ledgerId}
+		    and t.freeze_time between #{beginDate,jdbcType=TIME} AND #{endDate,jdbcType=TIME}
+		    group by t.freeze_time
+		    order by t.freeze_time
+        ) temp
+        where temp.ap >= #{startPower}
+        order by temp.freeze_time
+    </select>
+
+    <!-- 用电能示值曲线计算电量 -->
+    <select id="getLedgerQDataByE" resultType="Double">
+        select sum(temp.val * mp.PT * mp.CT)
+        from
+        (select e.meter_id as meter_id, (max(e.fae_value) - min(e.fae_value)) * lm.PCT * lm.ADD_ATTR/100 as val
+         from t_ledger_meter lm inner join t_cur_e_total e on lm.meter_id = e.meter_id
+         where lm.ledger_id = #{ledgerId} and e.fae_value > 0
+         and e.freeze_time between #{beginTime,jdbcType=TIME} AND #{endTime,jdbcType=TIME}
+         group by e.meter_id
+         ) temp
+         inner join T_METER m on temp.meter_id=m.meter_id
+         inner join T_MPED_INFO mp on m.MPED_ID=mp.MPED_ID
+         where 1=1
+    </select>
+
+
+    <!-- 根据级数获取线损表配置(管理员账号) -->
+    <select id="getLineLossByLevel_new" resultType="HashMap">
+		select t.meter_id,m.ledger_id,l.ledger_name from t_lineloss_meter_info t,t_meter m,t_ledger l where t.meter_level=#{meterLevel}
+		and t.meter_id=m.meter_id and m.ledger_id in (
+			select l1.ledger_id from t_ledger l1,t_ledger l2
+				where l1.ledger_lft>=l2.ledger_lft and l1.ledger_rgt &lt;=l2.ledger_rgt
+				and l2.ledger_id = #{ledgerId} and l1.analy_type = 102
+		) and l.ledger_id = m.ledger_id
+	</select>
+
+    <!-- 获取线损表的子表配置 -->
+    <select id="getLineLossMeters_new" resultType="Long">
+		select t.meter_id from t_lineloss_meter_info t where t.meter_level=#{meterLevel}
+		start with t.meter_id in (<foreach collection="meterIds" separator="," item="meterId"> #{meterId}</foreach>)  connect by t.parement_meter_id=prior t.meter_id
+	</select>
+
+    <!-- 根据电能示值计算线损的电量 -->
+    <select id="getDayLineLossInfo_new" resultType="Double">
+        SELECT SUM(COUL) FROM (
+            select m.meter_id as meterId,m.meter_name as meterName,(a.value1-b.value2)*i.pt*i.ct as coul,m.attribute_id as attributeId from
+            (select t.DAY_FAE_TOTAL as value1,t.meter_id as meterId
+            from view_day_e_total t where t.meter_id in (<foreach collection="pointIds" separator="," item="pointId"> #{pointId}</foreach>) AND t.freeze_time = #{endTime} -1 ) a,
+            (select t.DAY_FAE_TOTAL as value2,t.meter_id as meterId
+            from view_day_e_total t where t.meter_id in (<foreach collection="pointIds" separator="," item="pointId"> #{pointId}</foreach>) AND t.freeze_time = #{beginTime} -1 ) b,
+            t_meter m,t_mped_info i
+            where a.meterId=b.meterId and m.meter_id=a.meterId and m.mped_id=i.mped_id
+        )
+    </select>
+
+
+
+
+</mapper>

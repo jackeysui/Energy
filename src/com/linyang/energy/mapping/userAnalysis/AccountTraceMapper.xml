@@ -1,0 +1,284 @@
+<?xml version="1.0" encoding="UTF-8" ?> 
+<!DOCTYPE mapper PUBLIC "-//ibatis.apache.org//DTD Mapper 3.0//EN" "http://ibatis.apache.org/dtd/ibatis-3-mapper.dtd">
+
+<mapper namespace="com.linyang.energy.mapping.userAnalysis.AccountTraceMapper">
+
+	<!-- 保存用户足迹 -->
+	<insert id="addAccountTrace" parameterType="com.linyang.energy.model.AccountTraceBean" >
+		INSERT INTO T_ACCOUNT_TRACE(TRACE_ID,ACCOUNT_ID,OPERATE_TIME,MODULE_ID,OPER_ITEM_ID,OPER_CLIENT)
+		VALUES(
+			#{traceId},#{accountId},#{operateTime},#{moduleId,jdbcType=DECIMAL},#{operItemId},#{operClient}
+		)
+	</insert>
+	
+	<!-- 功能点击率分析 -->
+	<select id="clickRateAnalysis" parameterType="HashMap" resultType="HashMap">
+       select t2.oper_item_id as itemId, t2.oper_item_name as itemName, nvl(total,0) as total, 1 as type
+        from t_oper_item t2 left join
+        ( select t1.oper_item_id,count(t1.oper_item_id) as total from t_account_trace t1
+         <if test="ledgerId != ''">
+             inner join (
+             select a.account_id
+             from t_account a inner join
+             (select l1.ledger_id from t_ledger l1,t_ledger l2
+             where l1.ledger_lft>=l2.ledger_lft and l1.ledger_rgt&lt;=l2.ledger_rgt
+             and l2.ledger_id in
+             <foreach collection="list" item="ledgerId" open="(" separator="," close=")">
+                 #{ledgerId}
+             </foreach>) temp2 on a.ledger_id = temp2.ledger_id
+             ) temp1 on t1.account_id = temp1.account_id
+         </if>
+		where  t1.OPERATE_TIME between #{beginTime} and #{endTime}
+		Group by t1.oper_item_id ) t on t2.oper_item_id = t.oper_item_id
+
+        UNION
+        select t2.oper_item_id as itemId, t2.oper_item_name as itemName, nvl(total,0) as total, 2 as type from
+        t_oper_item t2 left join
+        (
+        select t1.oper_item_id,count(t1.oper_item_id) as total from t_account_trace t1
+        <if test="ledgerId != ''">
+            inner join (
+            select a.account_id
+            from t_account a inner join
+            (select l1.ledger_id from t_ledger l1,t_ledger l2
+            where l1.ledger_lft>=l2.ledger_lft and l1.ledger_rgt&lt;=l2.ledger_rgt
+            and l2.ledger_id in
+            <foreach collection="list" item="ledgerId" open="(" separator="," close=")">
+                #{ledgerId}
+            </foreach>) temp2 on a.ledger_id = temp2.ledger_id
+            ) temp1 on t1.account_id = temp1.account_id
+        </if>
+        inner join
+        (
+        select e1.account_id from
+        (select distinct t4.account_id from t_accout_login_his t4 where t4.login_date between #{7days} and #{nowDate}) e1
+        inner join
+        (select distinct t4.account_id from t_accout_login_his t4 where t4.login_date between #{14days} and #{7days}) e2 on e1.account_id=e2.account_id
+        inner join
+        (select distinct t4.account_id from t_accout_login_his t4 where t4.login_date between #{21days} and #{14days}) e3 on e1.account_id=e3.account_id
+        inner join
+        (select distinct t4.account_id from t_accout_login_his t4 where t4.login_date between #{30days} and  #{21days}) e4 on e1.account_id=e4.account_id
+        ) temp3 on t1.account_id = temp3.account_id
+        where
+        t1.OPERATE_TIME between #{beginTime} and #{endTime}
+        Group by t1.oper_item_id
+        ) t on t2.oper_item_id = t.oper_item_id
+
+        UNION
+        select t2.oper_item_id as itemId, t2.oper_item_name as itemName, nvl(total,0) as total, 3 as type from
+        t_oper_item t2 left join
+        (
+        select t1.oper_item_id,count(t1.oper_item_id) as total from t_account_trace t1
+        <if test="ledgerId != ''">
+            inner join (
+            select a.account_id
+            from t_account a inner join
+            (select l1.ledger_id from t_ledger l1,t_ledger l2
+            where l1.ledger_lft>=l2.ledger_lft and l1.ledger_rgt&lt;=l2.ledger_rgt
+            and l2.ledger_id in
+            <foreach collection="list" item="ledgerId" open="(" separator="," close=")">
+                #{ledgerId}
+            </foreach>) temp2 on a.ledger_id = temp2.ledger_id
+            ) temp1 on t1.account_id = temp1.account_id
+        </if>
+        inner join
+        (
+        select distinct account_id from
+        (select t4.account_id from t_accout_login_his t4 where t4.login_date between  #{7days} and #{nowDate}
+        union
+        select t4.account_id from t_accout_login_his t4 where t4.login_date between #{14days} and #{7days}
+        union
+        select t4.account_id from t_accout_login_his t4 where t4.login_date between #{21days} and #{14days}
+        union
+        select t4.account_id from t_accout_login_his t4 where t4.login_date between #{30days} and  #{21days})
+        ) temp3 on t1.account_id = temp3.account_id
+        where
+        t1.OPERATE_TIME between #{beginTime} and #{endTime}
+        Group by t1.oper_item_id
+        )  t on t2.oper_item_id = t.oper_item_id
+
+        UNION
+        select t2.oper_item_id as itemId, t2.oper_item_name as itemName, nvl(total,0) as total, 4 as type from
+        t_oper_item t2 left join
+        (
+        select t1.oper_item_id,count(t1.oper_item_id) as total from t_account_trace t1
+        <if test="ledgerId != ''">
+            inner join (
+            select a.account_id
+            from t_account a inner join
+            (select l1.ledger_id from t_ledger l1,t_ledger l2
+            where l1.ledger_lft>=l2.ledger_lft and l1.ledger_rgt&lt;=l2.ledger_rgt
+            and l2.ledger_id in
+            <foreach collection="list" item="ledgerId" open="(" separator="," close=")">
+                #{ledgerId}
+            </foreach>) temp2 on a.ledger_id = temp2.ledger_id
+            ) temp1 on t1.account_id = temp1.account_id
+        </if>
+        inner join
+        (
+        select distinct t6.account_id from t_account t6 where t6.CREATE_DATE between #{beginTime} and #{endTime}
+        ) temp3 on t1.account_id = temp3.account_id
+        where
+        t1.OPERATE_TIME between #{beginTime} and #{endTime}
+        Group by t1.oper_item_id
+        )  t on t2.oper_item_id = t.oper_item_id
+
+        order by total desc
+	</select>
+	
+	<!-- 用户活跃度分析 -->
+	<select id="clickActivity" parameterType="HashMap" resultType="HashMap">
+		<!-- 创建临时表防止超出in长度限制 -->
+		with temp as(select 0 id from t_ledger
+		<foreach collection="array" item="ledgerId">
+			 union all 
+			 select #{ledgerId} id from t_ledger
+		 </foreach>
+		)
+		select count(t2.account_id) as count, 1 as type from t_account t2
+		where t2.account_id in (select t4.account_id from t_accout_login_his t4 where t4.login_date between #{7days} and #{nowDate})
+   		and t2.account_id in (select t4.account_id from t_accout_login_his t4 where t4.login_date between #{14days} and #{7days})
+   		and t2.account_id in (select t4.account_id from t_accout_login_his t4 where t4.login_date between #{21days} and #{14days})
+   		and t2.account_id in (select t4.account_id from t_accout_login_his t4 where t4.login_date between #{30days} and  #{21days})
+   		and t2.ledger_id in
+   		<!-- 临时表 --> 
+   		(select id from temp)
+	    and t2.account_status =1 
+		    UNION
+		select count(t2.account_id) as count, 2 as type from t_account t2  
+		where t2.account_id in (select t4.account_id from t_accout_login_his t4 where
+		  t4.login_date between  #{7days} and #{nowDate} or  t4.login_date between #{14days} and #{7days}
+		  or t4.login_date between #{21days} and #{14days}  or  t4.login_date between #{30days} and  #{21days} ) 
+		  and t2.ledger_id in 
+		   <!-- 临时表 --> 
+   		(select id from temp)
+		  and t2.account_status =1 
+		   
+		   UNION
+		 select count(*) as count,3 as type
+  		 from t_ledger t1,t_account t2
+  		where t1.ledger_id = t2.ledger_id and t1.ledger_id in 
+		 <!-- 临时表 --> 
+   		(select id from temp)
+	   and  t2.account_id not in  (select distinct t3.account_id  from t_accout_login_his t3 
+	   where t3.login_date between #{30days} and sysdate) 
+		   and t2.account_status =1 
+		    UNION
+		 select count( distinct (t3.account_id) ) as count, 4 as type from t_ledger t1 
+		 left join t_account t2 on t1.ledger_id = t2.ledger_id
+		 left join t_accout_login_his t3  on t2.account_id = t3.account_id 
+		 where t1.ledger_id in 
+		 <!-- 临时表 --> 
+   		(select id from temp)
+		 and t2.account_status in (0,2) and t2.modify_time between #{beginTime} and #{endTime}
+		  
+		   UNION
+		select count(t3.account_id) as count, 5 as type from t_ledger t1 
+		 left join t_account t2 on t1.ledger_id = t2.ledger_id
+		 left join t_accout_login_his t3  on t2.account_id = t3.account_id 
+		 where t1.ledger_id in 
+		 <!-- 临时表 --> 
+   		(select id from temp)
+		 and t3.login_date between #{beginTime} and #{endTime}
+		  
+		 UNION
+		 select count(t3.account_id) as count, 6 as type from t_ledger t1 
+		 left join t_account t2 on t1.ledger_id = t2.ledger_id
+		 left join t_accout_login_his t3  on t2.account_id = t3.account_id 
+		 where t1.ledger_id in 
+		 <!-- 临时表 --> 
+   		(select id from temp)
+		 and t3.login_date between #{beginTime} and #{endTime}
+		 and t3.login_software_type = 1
+		  
+		  UNION
+		 select count(t3.account_id) as count, 7 as type from t_ledger t1 
+		 left join t_account t2 on t1.ledger_id = t2.ledger_id
+		 left join t_accout_login_his t3  on t2.account_id = t3.account_id 
+		 where t1.ledger_id in 
+		 <!-- 临时表 --> 
+   		(select id from temp)
+		 and t3.login_date between #{beginTime} and #{endTime}
+		 and t3.login_software_type = 3
+		  
+		  UNION
+		 select count(t3.account_id) as count, 8 as type from t_ledger t1 
+		 left join t_account t2 on t1.ledger_id = t2.ledger_id
+		 left join t_accout_login_his t3  on t2.account_id = t3.account_id 
+		 where t1.ledger_id in 
+		 <!-- 临时表 --> 
+   		(select id from temp)
+		 and t3.login_date between #{beginTime} and #{endTime}
+		 and t3.login_software_type = 2
+		  
+		   UNION
+		 select count(distinct t2.account_id) as count, 9 as type from t_ledger t1 
+		 left join t_account t2 on t1.ledger_id = t2.ledger_id
+		 left join t_accout_login_his t3  on t2.account_id = t3.account_id 
+		 where t1.ledger_id in 
+		 <!-- 临时表 --> 
+   		(select id from temp)
+		 and t2.CREATE_DATE between #{beginTime} and #{endTime}
+		    and t2.account_status =1
+
+           UNION
+         select count(t3.account_id) as count, 10 as type from t_ledger t1
+         left join t_account t2 on t1.ledger_id = t2.ledger_id
+         left join t_accout_login_his t3  on t2.account_id = t3.account_id
+         where t1.ledger_id in
+         <!-- 临时表 --> 
+   		(select id from temp)
+         and t3.login_date between #{beginTime} and #{endTime}
+         and t3.login_software_type = 4
+	</select>
+	
+	<!-- 获取用户登录次数 -->
+	<select id="getAccountLoginNum" resultType="HashMap">
+		select a.accountId,count(*) as tnum from 
+		(select t.account_id as accountId,count(*)from T_ACCOUT_LOGIN_HIS t
+		where t.login_software_type=1 and t.login_date between #{beginTime} and #{endTime}
+		group by t.account_id
+		union
+		select t.account_id as accountId,count(*) from T_ACCOUT_LOGIN_HIS t
+		where (t.login_software_type=2 or t.login_software_type=3)
+		and t.login_date between #{beginTime} and #{endTime}
+		group by t.account_id) a
+		group by a.accountId
+	</select>
+	
+	<!-- 获取用户点击次数 -->
+	<select id="getAccountTraceNum" resultType="HashMap">
+		select a.account_id as accountId,count(*) as tnum from 
+		(select t.account_id,count(*) from t_account_trace t
+		where t.operate_time between #{beginTime} and #{endTime}
+		group by t.account_id,t.module_id,t.oper_item_id,t.oper_client) a
+		group by a.account_id
+	</select>
+	
+	<!-- 更新用户等级 -->
+	<update id="updateAccountLevel">
+		update t_account set account_level=account_level+#{num} where account_id=#{accountId}
+	</update>
+	
+	<select id="getAllLedgerId" resultType="Long">
+		select l1.ledger_id from t_ledger l1,t_ledger l2
+		where l1.ledger_lft>=l2.ledger_lft and l1.ledger_rgt&lt;=l2.ledger_rgt
+		and l2.ledger_id in
+		<foreach collection="list" item="ledgerId" open="(" separator="," close=")">
+			 #{ledgerId}
+		 </foreach>
+	</select>
+
+    <!-- 获取用户常用功能（按使用倒序） -->
+    <select id="getMostAccountTrace" resultType="HashMap">
+        select m.module_id, m.module_name, m.module_parent_id as parent_id
+        from t_module m right join (
+                 select at.module_id as module_id, count(at.trace_id) as num
+                 from t_account_trace at where at.account_id = #{accountId} group by at.module_id
+                 ) t on m.module_id=t.module_id
+        where m.isvisible=1
+        and (m.istabs=1 or (m.module_parent_id=1 and m.istabs=0))
+        and m.module_id != 117 and m.module_id != 35
+        order by t.num desc
+    </select>
+</mapper>

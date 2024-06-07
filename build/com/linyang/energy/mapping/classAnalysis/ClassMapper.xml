@@ -1,0 +1,713 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.linyang.energy.mapping.classAnalysis.ClassMapper" >
+
+
+    <!-- 得到下拉de企业列表 -->
+    <select id="getCompLedgerList" resultType="HashMap">
+        select l.ledger_id, l.ledger_name
+        from t_ledger l
+        where l.analy_type = 102
+        and l.ledger_id in (SELECT t1.ledger_id from t_ledger t1,t_ledger t2
+        where t1.ledger_lft>=t2.ledger_lft and t1.ledger_rgt&lt;=t2.ledger_rgt and t2.ledger_id=#{ledgerId})
+    </select>
+
+    <!-- 根据ledgerId得到班制列表 -->
+    <select id="getLedgerClasses" resultType="HashMap">
+        select t.CLASS_ID, t.CLASS_NAME, t.CYCLE
+        from T_CLASS_CONFIG t
+        where t.ledger_id = #{ledgerId}
+    </select>
+    
+    <!-- 得到WorkshopRelationBean -->
+    <select id="getWorkshopRelationById" parameterType="Long" resultType="com.linyang.energy.model.WorkshopRelationBean" >
+    	select WORKSHOP_ID as workshopId, EMO_DCP_ID as emoDcpId, TYPE as type
+    	  FROM T_WORKSHOP_RELATION
+    	 WHERE WORKSHOP_ID = #{workshopId}
+    </select>
+
+    <!-- 根据班制ID获取下面的班组列表 -->
+    <select id="getTeamsByClassId" resultType="HashMap">
+        select t.team_id, t.team_name, h.WORKINGHOUR_ID,
+                h.on_duty_week, to_char(h.on_duty,'hh24:mi') as on_duty,
+                h.off_duty_week, to_char(h.off_duty,'hh24:mi') as off_duty
+        from T_TEAM_CONFIG t inner join T_WORKINGHOUR_RELATION h on t.team_id = h.team_id
+        where t.class_id = #{classId}
+        order by h.on_duty_week, h.on_duty
+    </select>
+
+    <select id="getTeamsByClassIdNew" resultType="HashMap">
+        select t.team_id, t.team_name, h.WORKINGHOUR_ID, to_char(h.on_duty,'yyyy-MM-dd hh24:mi') as on_duty,
+        to_char(h.off_duty,'yyyy-MM-dd hh24:mi') as off_duty
+        from T_TEAM_CONFIG t inner join T_WORKINGHOUR_RELATION h on t.team_id = h.team_id
+        where t.class_id = #{classId}
+        order by h.on_duty
+    </select>
+    
+    <!-- 根据班制ID获取下面的班组列表 -->
+    <select id="getWorkingHoursByClassId" resultType="com.linyang.energy.model.WorkingHourBean">
+        select t.team_id as teamId, t.team_name as teamName , h.on_duty_week as onDutyWeek , h.on_duty as onDuty,
+                h.off_duty_week as offDutyWeek, h.off_duty as offDuty
+        from T_TEAM_CONFIG t inner join T_WORKINGHOUR_RELATION h on t.team_id = h.team_id
+        where t.class_id = #{classId}
+        order by h.on_duty_week,h.on_duty
+    </select>
+
+    <select id="getWorkingHoursByTeamId" resultType="com.linyang.energy.model.WorkingHourBean">
+        select t.team_id as teamId, t.team_name as teamName , h.on_duty_week as onDutyWeek , h.on_duty as onDuty,
+        h.off_duty_week as offDutyWeek, h.off_duty as offDuty
+        from T_TEAM_CONFIG t inner join T_WORKINGHOUR_RELATION h on t.team_id = h.team_id
+        where t.team_id = #{teamId}
+        order by h.on_duty_week,h.on_duty
+    </select>
+
+    <!-- 根据班制ID获取teamId列表 -->
+    <select id="getTeamIdByClassId" resultType="Long">
+        select t.team_id from T_TEAM_CONFIG t where t.class_id=#{classId} and t.team_name=#{teamName} order by t.team_id
+    </select>
+
+    <!-- 插入t_class_config -->
+    <insert id="insertClassConfig" parameterType="HashMap">
+        insert into  t_class_config(class_id,ledger_id,class_name,cycle) values(#{classId},#{ledgerId},#{className},#{classType})
+    </insert>
+
+    <!-- 更新t_class_config -->
+    <update id="updateClassConfig" parameterType="HashMap">
+        update t_class_config t
+        <set>
+            <if test="className != null">
+                t.class_name = #{className},
+            </if>
+            <if test="classType != null">
+                t.cycle = #{classType},
+            </if>
+            <if test="restType != null">
+                t.rest_type = #{restType},
+            </if>
+            <if test="circleType != null">
+                t.circle_type = #{circleType},
+            </if>
+        </set>
+        where t.class_id = #{classId}
+    </update>
+
+    <!-- 删除t_class_config -->
+    <delete id="deleteClassConfig" parameterType="Long">
+        DELETE FROM t_class_config t where t.class_id = #{classId}
+    </delete>
+
+    <!-- 删除T_WORKINGHOUR_RELATION -->
+    <delete id="deleteWorkingHourRelation" parameterType="Long">
+        DELETE FROM T_WORKINGHOUR_RELATION t WHERE t.team_id in (select team_id from T_TEAM_CONFIG where class_id=#{classId})
+    </delete>
+
+    <!-- 删除t_product_output -->
+    <delete id="deleteProductOutput" parameterType="Long">
+        DELETE FROM t_product_output t WHERE t.team_id in (select team_id from T_TEAM_CONFIG where class_id=#{classId})
+    </delete>
+
+    <delete id="deleteProductOutputByShopId" parameterType="Long">
+        DELETE FROM t_product_output t WHERE t.workshop_id = #{workShopId}
+    </delete>
+
+    <!-- 删除T_TEAM_CONFIG -->
+    <delete id="deleteTeamConfig" parameterType="Long">
+        DELETE FROM T_TEAM_CONFIG t WHERE t.class_id=#{classId}
+    </delete>
+
+    <!-- 删除T_WORKSHOP_RELATION -->
+    <delete id="deleteWorkShopRelation" parameterType="Long">
+        DELETE FROM T_WORKSHOP_RELATION t where t.workshop_id in (select workshop_id from T_WORKSHOP_CONFIG where class_id=#{classId})
+    </delete>
+
+    <delete id="deleteWorkShopRelationByShopId" parameterType="Long">
+        DELETE FROM T_WORKSHOP_RELATION t where t.workshop_id = #{workShopId}
+    </delete>
+
+    <!-- 删除T_WORKSHOP_METER -->
+    <delete id="deleteWorkShopMeter" parameterType="Long">
+        DELETE FROM T_WORKSHOP_METER t where t.workshop_id in
+        (select workshop_id from T_WORKSHOP_CONFIG where class_id = #{classId})
+    </delete>
+
+    <delete id="deleteWorkShopMeterByShopId" parameterType="Long">
+        DELETE FROM T_WORKSHOP_METER t where t.workshop_id = #{workShopId}
+    </delete>
+
+    <!-- 删除T_WORKSHOP_CONFIG -->
+    <delete id="deleteWorkshopConfig" parameterType="Long">
+        DELETE FROM T_WORKSHOP_CONFIG t WHERE t.class_id=#{classId}
+    </delete>
+
+    <delete id="deleteWorkshopByShopId" parameterType="Long">
+        DELETE FROM T_WORKSHOP_CONFIG t WHERE t.workshop_id=#{workShopId}
+    </delete>
+
+    <!-- 插入T_TEAM_CONFIG -->
+    <insert id="insertTeamConfig">
+        insert into  T_TEAM_CONFIG(team_id,class_id,team_name) values(#{teamId},#{classId},#{teamName})
+    </insert>
+
+    <!-- 插入T_WORKINGHOUR_RELATION -->
+    <insert id="insertWorkHourRelation">
+        insert into  T_WORKINGHOUR_RELATION(workinghour_id,team_id,on_duty_week,off_duty_week,on_duty,off_duty)
+        values(#{workHourId},#{teamId},#{onDutyWeek},#{offDutyWeek},#{onDuty},#{offDuty})
+    </insert>
+    
+    <select id="getClassConfigById" resultType="com.linyang.energy.model.ClassConfigBean">
+    	select LEDGER_ID as ledgerId, class_id as classId, class_name as className, cycle as cycle, rest_type as restType, circle_type as circleType
+    	from T_CLASS_CONFIG 
+    	WHERE class_id = #{classId}
+    </select>
+
+    <select id="getClassConfigByTeamId" resultType="com.linyang.energy.model.ClassConfigBean">
+        select tc.LEDGER_ID as ledgerId, tc.class_id as classId, tc.class_name as className,
+                tc.cycle as cycle, tc.rest_type as restType, tc.circle_type as circleType
+        from T_CLASS_CONFIG tc inner join T_TEAM_CONFIG t on tc.class_id=t.class_id
+        WHERE t.team_id = #{teamId}
+    </select>
+
+    <!-- 根据ledgerId获取生产单元配置列表 -->
+    <select id="getWorkshopPageConfig" resultType="HashMap"  parameterType="HashMap">
+        select workshop_id, workshop_name, listagg(EMO_DCP,';') within group (order by workshop_name) as EMO_DCP
+        from(
+             select p.workshop_id, p.workshop_name, listagg(l.ledger_name,';') within group (order by  p.workshop_id,p.workshop_name) as EMO_DCP
+             from T_WORKSHOP_CONFIG p inner join T_WORKSHOP_RELATION r on p.workshop_id = r.workshop_id
+             inner join t_ledger l on r.emo_dcp_id = l.ledger_id
+             where p.ledger_id = #{ledgerId} and r.type = 1
+             group by p.workshop_id, p.workshop_name
+             union
+             select p.workshop_id, p.workshop_name, listagg(m.meter_name,';') within group (order by  p.workshop_id,p.workshop_name) as EMO_DCP
+             from T_WORKSHOP_CONFIG p inner join T_WORKSHOP_RELATION r on p.workshop_id = r.workshop_id
+             inner join t_meter m on r.emo_dcp_id = m.meter_id
+             where p.ledger_id = #{ledgerId} and r.type = 2
+             group by p.workshop_id, p.workshop_name
+        )
+        group by workshop_id, workshop_name
+        order by workshop_name
+    </select>
+
+    <!-- 根据workShopId获取生产单元配置 -->
+    <select id="getWorkShopById" resultType="HashMap">
+        select workshop_id, workshop_name, class_id from T_WORKSHOP_CONFIG where workshop_id=#{workShopId}
+    </select>
+
+    <!-- 根据workShopId获取相关的EMO、DCP -->
+    <select id="getRelationsByWorkShop" resultType="HashMap">
+        select 1 as TYPE,r.emo_dcp_id as ID,l.ledger_name as NAME
+        from T_WORKSHOP_RELATION r left join t_ledger l on r.emo_dcp_id=l.ledger_id
+        where r.workshop_id=#{workShopId} and r.type=1
+        union
+        select 2 as TYPE,r.emo_dcp_id as ID,m.meter_name as NAME
+        from T_WORKSHOP_RELATION r left join t_meter m on r.emo_dcp_id=m.meter_id
+        where r.workshop_id=#{workShopId} and r.type=2
+    </select>
+
+    <!-- 插入T_WORKSHOP_CONFIG -->
+    <insert id="insertWorkshopConfig">
+        insert into T_WORKSHOP_CONFIG(workshop_id,workshop_name,ledger_id,class_id) values(#{workShopId},#{workShopName},#{ledgerId},#{classId})
+    </insert>
+
+    <!-- 更新T_WORKSHOP_CONFIG -->
+    <update id="updateWorkshopConfig">
+        update T_WORKSHOP_CONFIG t set t.workshop_name = #{workShopName}, t.ledger_id = #{ledgerId}, t.class_id = #{classId}
+        where t.workshop_id = #{workShopId}
+    </update>
+
+    <!-- 插入T_WORKSHOP_RELATION -->
+    <insert id="insertWorkshopRelation">
+        insert into T_WORKSHOP_RELATION(workshop_id,emo_dcp_id,type) values(#{workShopId},#{id},#{type})
+    </insert>
+
+    <!-- 插入T_WORKSHOP_METER -->
+    <insert id="insertWorkshopMeterDcp">
+        insert into T_WORKSHOP_METER
+        select #{workShopId} as WORKSHOP_ID, #{meterId} as METER_ID, t.METER_TYPE as METER_TYPE, 1 as ADD_ATTR, 100 as PCT
+        from t_meter t where t.METER_ID = #{meterId}
+    </insert>
+
+    <!-- 插入T_WORKSHOP_METER -->
+    <insert id="insertWorkshopMeterEmo">
+        insert into T_WORKSHOP_METER
+        select #{workShopId} as WORKSHOP_ID,t.METER_ID as METER_ID,m.METER_TYPE as METER_TYPE,t.ADD_ATTR as ADD_ATTR,t.PCT as PCT
+        from t_ledger_meter t inner join t_meter m on t.meter_id=m.meter_id
+        where t.LEDGER_ID = #{ledgerId}
+    </insert>
+
+	<!-- 根据ledgerId得到产品配置列表 -->
+	<select id="queryProductConfigPageList" parameterType="HashMap" resultType="com.linyang.energy.model.ProductConfigBean">
+		select LEDGER_ID as ledgerId, PRODUCT_ID as productId, PRODUCT_NAME as productName, 
+		PRODUCT_UNIT as productUnit, CONVERT_RATIO as convertRatio,UNIT_CONSUMPTION as unitConsumption
+		from T_PRODUCT_CONFIG
+		where LEDGER_ID = #{ledgerId}
+		order by PRODUCT_ID
+	</select>
+	
+	<!-- 根据productId得到产品配置列表 -->
+	<select id="getProductConfigById" parameterType="Long" resultType="HashMap">
+		select LEDGER_ID, PRODUCT_ID, PRODUCT_NAME, PRODUCT_UNIT, CONVERT_RATIO,UNIT_CONSUMPTION,IS_STANDARD
+		from T_PRODUCT_CONFIG
+		where PRODUCT_ID = #{productId}
+	</select>
+	
+	<!-- 先检查产品名是否重复 -->
+    <select id="getProductConfigNum" resultType="java.lang.Integer">
+        select count(1) from T_PRODUCT_CONFIG
+        where ledger_id=#{ledgerId} and product_name = #{productName}
+    </select>
+	
+	<!-- 先检查基准产品是否存在 -->
+	<select id="getStandardProduct" resultType="java.lang.Integer">
+		select count(1) from T_PRODUCT_CONFIG
+		where IS_STANDARD = 0 and ledger_id=#{ledgerId}
+	</select>
+	
+	<!-- 插入T_PRODUCT_CONFIG -->
+	<insert id="insertProductConfig" parameterType="HashMap">
+		insert into T_PRODUCT_CONFIG(ledger_id,product_id,product_name,product_unit,convert_ratio,unit_consumption,is_standard)
+		values(#{ledgerId},#{productId},#{productName},#{productUnit},#{convertRatio},#{unitConsumption},#{isStandard})
+	</insert>
+	
+	<!-- 更新T_PRODUCT_CONFIG -->
+	<update id="updateProductConfig" parameterType="Long">
+		update T_PRODUCT_CONFIG t set t.product_name = #{productName}, t.product_unit = #{productUnit}, t.convert_ratio = #{convertRatio}, t.unit_consumption = #{unitConsumption}		
+		where t.PRODUCT_ID = #{productId}
+	</update>
+	
+	<!-- 删除前检查是否为基准产品 -->
+	<select id="getStandardById" resultType="java.lang.Integer">
+		select IS_STANDARD from T_PRODUCT_CONFIG
+		where PRODUCT_ID = #{productId}
+	</select>
+	
+	<!-- 删除T_PRODUCT_CONFIG -->
+    <delete id="deleteProductConfig" parameterType="Long">
+        delete from T_PRODUCT_CONFIG t where t.PRODUCT_ID = #{productId}
+    </delete>
+    
+    
+    <!-- 根据条件得到产量列表 -->
+    <select id="queryProductOutputPageList" parameterType="HashMap" resultType="com.linyang.energy.model.ProductOutputBean">
+    	select t.OUTPUT_ID as outputId, a.PRODUCT_NAME as productName, a.PRODUCT_UNIT as productUnit, b.WORKSHOP_NAME as workshopName, c.TEAM_NAME as teamName, to_char(t.START_TIME,'yyyy-mm-dd hh24:mi') as startTimeStr, to_char(t.END_TIME,'yyyy-mm-dd hh24:mi') as endTimeStr, t.PRODUCT_OUTPUT as productOutput
+    	from T_PRODUCT_OUTPUT t inner join T_PRODUCT_CONFIG a on t.PRODUCT_ID = a.PRODUCT_ID
+    	     inner join T_WORKSHOP_CONFIG b on t.WORKSHOP_ID = b.WORKSHOP_ID
+    	     inner join T_TEAM_CONFIG c on t.TEAM_ID = c.TEAM_ID 
+    	 <where>
+    	 		t.LEDGER_ID = #{ledgerId}
+    	 	<if test="productId != null and productId != -1 and productId != 0">
+				and t.PRODUCT_ID = #{productId}
+			</if>
+			<if test="workshopId != null and workshopId != -1 and workshopId != 0">
+				and t.WORKSHOP_ID = #{workshopId}
+			</if>
+    	 	<if test="teamId != null and teamId != -1 and teamId != 0">
+				and t.TEAM_ID = #{teamId}
+			</if>
+			<if test="startTime != null">
+				and t.START_TIME >= #{startTime}
+			</if>
+			<if test="endTime != null">
+				and t.END_TIME &lt;= #{endTime}
+			</if>
+    	 </where>
+    	 order by OUTPUT_ID
+    </select>
+    
+    <!-- 根据ledgerId获取产品id列表 -->
+    <select id="getProductListByLedgerAll" parameterType="Long" resultType="HashMap">
+        select PRODUCT_ID, PRODUCT_NAME
+        from T_PRODUCT_CONFIG
+        where LEDGER_ID = #{ledgerId}
+        order by PRODUCT_ID
+    </select>
+
+    <select id="getProductListByLedger" parameterType="Long" resultType="HashMap">
+    	select distinct tc.PRODUCT_ID, tc.PRODUCT_NAME
+		from T_PRODUCT_CONFIG tc inner join T_PRODUCT_DETAIL td on tc.PRODUCT_ID=td.PRODUCT_ID
+        inner join T_TEAM_CONFIG co on td.TEAM_ID=co.TEAM_ID
+		where tc.LEDGER_ID = #{ledgerId}
+        <if test="shopIdList != null">
+            and td.WORKSHOP_ID in
+            <foreach collection="shopIdList" item="id" open="(" separator="," close=")">
+                #{id}
+            </foreach>
+        </if>
+        <if test="classId != null and classId > 0">
+            and co.CLASS_ID = #{classId}
+        </if>
+		order by PRODUCT_ID 
+    </select>
+    
+    <!-- 根据productId获取车间列表 -->
+    <select id="getWorkshopListByProductId" parameterType="Long" resultType="HashMap">
+    	select distinct t.WORKSHOP_ID, a.WORKSHOP_NAME
+    	from T_PRODUCT_OUTPUT t inner join T_WORKSHOP_CONFIG a on t.WORKSHOP_ID = a.WORKSHOP_ID
+    	where t.PRODUCT_ID = #{productId}
+    	order by t.WORKSHOP_ID
+    </select>
+    
+    <!-- 根据productId,workshopId获取班组列表 -->
+    <select id="getTeamListByProductId" parameterType="HashMap" resultType="HashMap">
+    	select distinct t.TEAM_ID, a.TEAM_NAME
+    	from T_PRODUCT_OUTPUT t inner join T_TEAM_CONFIG a on t.TEAM_ID = a.TEAM_ID
+    	where t.PRODUCT_ID = #{productId}
+    	and t.WORKSHOP_ID = #{workshopId}
+    	order by t.TEAM_ID
+    </select>
+    
+    <!-- 根据ledgerId获取车间列表 -->
+    <select id="getWorkshopListByLedgerId" parameterType="Long" resultType="HashMap">
+    	select WORKSHOP_ID, WORKSHOP_NAME
+    	from  T_WORKSHOP_CONFIG
+    	where LEDGER_ID = #{ledgerId}
+    	order by WORKSHOP_ID
+    </select>
+    
+    <!-- 根据workshopId获取班组列表 -->
+    <select id="getTeamListByWorkshopId" parameterType="Long" resultType="HashMap">
+    	select t.TEAM_ID, t.TEAM_NAME
+    	from T_TEAM_CONFIG t
+    	where t.CLASS_ID = (select CLASS_ID from T_WORKSHOP_CONFIG where WORKSHOP_ID = #{workshopId})
+    	order by t.TEAM_ID
+    </select>
+    
+    <!-- 根据productId获取单位 -->
+    <select id="getProductUnitByProductId" parameterType="Long" resultType="java.lang.String">
+    	select PRODUCT_UNIT
+    	from T_PRODUCT_CONFIG
+    	where PRODUCT_ID = #{productId}
+    </select>
+    
+    <!-- 根据outputId获取产量信息 -->
+    <select id="getProductOutputById" parameterType="Long" resultType="HashMap">
+    	select OUTPUT_ID, WORKSHOP_ID, PRODUCT_ID, TEAM_ID, PRODUCT_OUTPUT, to_char(START_TIME,'yyyy-mm-dd hh24:mi') as START_TIME, to_char(END_TIME,'yyyy-mm-dd hh24:mi') as END_TIME
+    	from T_PRODUCT_OUTPUT
+    	where OUTPUT_ID = #{outputId}
+    </select>
+    
+    <!-- 插入T_PRODUCT_OUTPUT -->
+	<insert id="insertProductOutput" parameterType="HashMap">
+		insert into T_PRODUCT_OUTPUT(output_id,ledger_id,product_id,workshop_id,team_id,start_time,end_time,product_output)
+		values(#{outputId},#{ledgerId},#{productId},#{workshopId},#{teamId},#{startTime},#{endTime},#{productOutput})
+	</insert>
+    
+    <!-- 更新T_PRODUCT_OUTPUT -->
+	<update id="updateProductOutput" parameterType="Long">
+		update T_PRODUCT_OUTPUT t set t.product_id = #{productId}, t.workshop_id = #{workshopId}, t.team_id = #{teamId}, t.product_output = #{productOutput}, t.start_time = #{startTime}, t.end_time = #{endTime}		
+		where t.OUTPUT_ID = #{outputId}
+	</update>
+    
+    <!-- 根据outputId删除T_PRODUCT_OUTPUT -->
+    <delete id="deleteProductOutputById" parameterType="Long">
+        delete from T_PRODUCT_OUTPUT t where t.OUTPUT_ID = #{outputId}
+    </delete>
+    
+    
+    <!-- 先检查班制名是否重复 -->
+    <select id="getClassNumByLedgerAndName" resultType="java.lang.Integer">
+        select count(1) from t_class_config
+        where ledger_id = #{ledgerId} and class_name = #{className}
+        <if test="classId > 0">
+            and CLASS_ID != #{classId}
+        </if>
+    </select>
+    
+    <!-- 根据分户ID,车间Id获得产品列表 -->
+    <select id="getProductByWorkshopId" parameterType="HashMap" resultType="HashMap" >
+    	 select distinct t.product_id, t.product_name
+		   from t_product_output t
+		  where t.workshop_id in 
+		  	<foreach collection="workshopIds" item="id" open="(" separator="," close=")">
+				#{id}
+			</foreach>
+		    and t.ledger_id = #{ledgerId}
+    </select>
+    
+    <!-- 根据ClassId获取车间列表 -->
+    <select id="getWorkshopListByClassId" parameterType="Long" resultType="HashMap">
+    	select distinct WORKSHOP_ID, WORKSHOP_NAME
+    	from  T_WORKSHOP_CONFIG
+    	where class_id = #{classId}
+    	order by class_id
+    </select>
+    
+    <!-- 查询班组耗能数据分析 -->
+    <select id="queryClassEnergyData" parameterType="HashMap" resultType="Double">
+    	<!-- 电 -->
+   		<if test="meterType == 1">
+  				 select sum(t.faq_value * #{addAttr} * #{pct} / 100 )
+		      from T_CUR_Q t
+		     where t.meter_id = #{meterId}
+		       and t.freeze_time >= #{beginDate} and freeze_time &lt; #{endDate}
+   		</if>
+   		<!-- 水 -->
+   		<if test="meterType == 2">
+  				 select sum(t.wflow_value * #{addAttr} * #{pct} / 100 )
+		      from T_DAY_WFLOW_STAT t
+		     where t.meter_id = #{meterId}
+		       and t.freeze_time between #{beginDate2} and #{endDate2}
+   		</if>
+   		<!-- 气 -->
+   		<if test="meterType == 3">
+  				 select sum(t.gflow_value * #{addAttr} * #{pct} / 100 )
+		      from T_DAY_GFLOW_STAT t
+		     where t.meter_id = #{meterId}
+		       and t.freeze_time between #{beginDate2} and #{endDate2}
+   		</if>
+   		<!-- 热 -->
+   		<if test="meterType == 4">
+  				 select sum(t.heat_value * #{addAttr} * #{pct} / 100 )
+		      from T_DAY_HEAT_STAT t
+		     where t.meter_id = #{meterId}
+		       and t.freeze_time between #{beginDate2} and #{endDate2}
+   		</if>
+    </select>
+
+    <!-- 先检查车间/单位名是否重复 -->
+    <select id="getWorkshopNumBy" resultType="java.lang.Integer">
+        select count(1) from T_WORKSHOP_CONFIG
+        where ledger_id=#{ledgerId} and workshop_name = #{workShopName}
+        <if test="workShopId > 0">
+            and workshop_id != #{workShopId}
+        </if>
+    </select>
+    
+    <!-- 查看某一时间段具体的产量情况 -->
+    <select id="getProductDetail" parameterType="HashMap" resultType="HashMap">
+    	select * from (
+			select sum(product_output) as output, product_id, start_time, end_time
+				from t_product_detail
+			where workshop_id = #{workshopId}
+				<if test="productId != 0">
+					and product_id = #{productId}
+				</if>
+			   and team_id = #{teamId}
+			   and start_time &lt;= #{beginDate}
+			   and end_time >= #{endDate}
+			   group by product_id, start_time, end_time
+			   
+			union
+			
+			select sum(product_output) as output, product_id, start_time, end_time
+				from t_product_detail
+			where workshop_id = #{workshopId}
+				<if test="productId != 0">
+					and product_id = #{productId}
+				</if>
+			   and team_id = #{teamId}
+			   and start_time >= #{beginDate}
+			   and end_time &lt;= #{endDate}
+			   group by product_id, start_time, end_time
+		) where rownum = 1
+    </select>
+    
+    <!-- 根据主键得到产品对象 -->
+	<select id="queryProductConfigById" resultType="com.linyang.energy.model.ProductConfigBean">
+		select LEDGER_ID        as ledgerId,
+		       PRODUCT_ID       as productId,
+		       PRODUCT_NAME     as productName,
+		       PRODUCT_UNIT     as productUnit,
+		       CONVERT_RATIO    as convertRatio,
+		       UNIT_CONSUMPTION as unitConsumption
+		  from T_PRODUCT_CONFIG
+		 where PRODUCT_ID = #{productId}
+	</select>
+	
+	<!-- 查看这些车间下的所有产品 -->
+	<select id="queryProductConfigByWorkshopIds" resultType="com.linyang.energy.model.ProductConfigBean">
+		select distinct t1.PRODUCT_ID       as productId,
+                t1.LEDGER_ID        as ledgerId,
+                t1.PRODUCT_NAME     as productName,
+                t1.PRODUCT_UNIT     as productUnit,
+                t1.CONVERT_RATIO    as convertRatio,
+                t1.UNIT_CONSUMPTION as unitConsumption
+		  from T_PRODUCT_CONFIG t1
+		  left join T_PRODUCT_OUTPUT t2
+		    ON t1.product_id = t2.product_id
+		 where t2.workshop_id in 
+		 	<foreach collection="workshopIds" item="id" open="(" separator="," close=")">
+				#{id}
+			</foreach>
+	</select>
+	
+	<!-- 得到车间所属的测量点 -->
+	<select id="getWorkshopMetersByWorkshopId" resultType="com.linyang.energy.model.WorkshopMeterBean">
+		select workshop_id as workshopId,
+	           meter_id    as meterId,
+	           meter_type  as meterType,
+	           add_attr    as addAttr,
+	           pct         as pct
+	      from t_workshop_meter
+	     where workshop_id = #{workshopId}
+	</select>
+
+    <!-- 根据ledgerId得到生产单元ID -->
+    <select id="getWorkshopsByLedgerId" parameterType="Long" resultType="Long">
+        select t.workshop_id from T_WORKSHOP_CONFIG t where 1=1
+        <if test="ledgerId != null and ledgerId > 0">
+            and t.ledger_id = #{ledgerId}
+        </if>
+    </select>
+
+    <!-- 获取EMO下的EMO的Id拼成的String -->
+    <select id="getEmoStrByLedger" resultType="java.lang.String">
+        select l.ledger_id
+        from t_ledger l
+        where l.ledger_id in (SELECT t1.ledger_id from t_ledger t1,t_ledger t2
+                              where t1.ledger_lft>=t2.ledger_lft and t1.ledger_rgt&lt;=t2.ledger_rgt
+                              and t2.ledger_id=#{ledgerId})
+    </select>
+
+    <!-- 获取EMO下的DCP的Id拼成的String -->
+    <select id="getDcpStrByLedger" resultType="java.lang.String">
+        select distinct m.meter_id
+        from t_meter m
+        where m.ledger_id in (SELECT t1.ledger_id from t_ledger t1,t_ledger t2
+                               where t1.ledger_lft>=t2.ledger_lft and t1.ledger_rgt&lt;=t2.ledger_rgt
+                               and t2.ledger_id=#{ledgerId})
+    </select>
+
+    <!-- 根据teamId得到是“周”还是“天” -->
+    <select id="getCycleByTeamId" resultType="java.lang.Integer">
+        select tc.cycle
+        from T_TEAM_CONFIG tt inner join t_class_config tc on tt.class_id = tc.class_id
+        where tt.team_id = #{teamId}
+    </select>
+
+    <!-- 根据teamId得到班组时段们 -->
+    <select id="getTeamTimeByTeamId" resultType="HashMap">
+        select on_duty_week as begin_week, off_duty_week as end_week, to_char(on_duty,'hh24:mi') as begin_time, to_char(off_duty,'hh24:mi') as end_time
+        from T_WORKINGHOUR_RELATION
+        where team_id = #{teamId}
+        order by on_duty_week,on_duty
+    </select>
+
+    <!-- 删除T_PRODUCT_DETAIL -->
+    <delete id="deleteProductDetail" parameterType="Long">
+        delete from T_PRODUCT_DETAIL t where t.OUTPUT_ID = #{outputId}
+    </delete>
+
+    <!-- 插入T_PRODUCT_DETAIL -->
+    <insert id="insertProductDetail">
+        insert into T_PRODUCT_DETAIL(PRODUCT_ID,WORKSHOP_ID,TEAM_ID,OUTPUT_ID,START_TIME,END_TIME,PRODUCT_OUTPUT)
+        values(#{productId},#{workshopId},#{teamId},#{outputId},#{begin},#{end},#{outPut})
+    </insert>
+
+    <!-- 根据workShopId、meterId查询workShopMeter个数 -->
+    <select id="getWorkshopMeterNumByMeterId" resultType="java.lang.Integer">
+        select count(1) from T_WORKSHOP_METER
+        where WORKSHOP_ID = #{workShopId} and METER_ID = #{meterId}
+    </select>
+
+    <!-- 根据classId获取班组列表 -->
+    <select id="getTeamListByClassId" parameterType="Long" resultType="HashMap">
+        select t.TEAM_ID, t.TEAM_NAME
+        from T_TEAM_CONFIG t
+        where t.CLASS_ID = #{classId}
+        order by t.TEAM_ID
+    </select>
+
+    <!-- 根据classId获取基础时段列表 -->
+    <select id="getBasetimeListByClassId" parameterType="Long" resultType="HashMap">
+        select t.time_id, t.class_id, t.begin_day, to_char(t.begin_time,'hh24:mi') as begin_time,
+                t.end_day, to_char(t.end_time,'hh24:mi') as end_time
+        from T_CLASS_BASE_TIME t
+        where t.CLASS_ID = #{classId}
+        order by t.begin_day, t.begin_time
+    </select>
+
+    <!-- 删除T_CLASS_BASE_TIME -->
+    <delete id="deleteClassBaseTime" parameterType="Long">
+        DELETE FROM T_CLASS_BASE_TIME t where t.class_id = #{classId}
+    </delete>
+
+    <!-- 删除班制休息日相关表 -->
+    <delete id="deleteClassRestDay" parameterType="Long">
+        DELETE FROM t_class_rest_day t where t.class_id = #{classId}
+    </delete>
+
+    <delete id="deleteClassCustomHoliday" parameterType="Long">
+        DELETE FROM t_class_custom_holiday t where t.class_id = #{classId}
+    </delete>
+
+    <delete id="deleteClassWorkdayRest" parameterType="Long">
+        DELETE FROM t_class_workday_rest t where t.class_id = #{classId}
+    </delete>
+
+    <!-- 插入T_CLASS_BASE_TIME -->
+    <insert id="insertBaseTimeConfig">
+        insert into  T_CLASS_BASE_TIME(time_id,class_id,begin_day,begin_time,end_day,end_time)
+        values(#{timeId},#{classId},#{beginDay},#{beginTime},#{endDay},#{endTime})
+    </insert>
+
+    <!-- 班制的休息日是否包含法定节假日 -->
+    <select id="includeDefaultHoliday" resultType="Integer">
+        select nvl(sum(t.INCLUDE_DEFAULT_HOLIDAY),0) from t_class_rest_day t where t.class_id=#{classId}
+    </select>
+
+    <!-- 班制de判断是否自定义节假日 -->
+    <select id="judgeHoliday" resultType="Integer">
+        select count(1)
+        from t_class_custom_holiday
+        where class_id = #{classId}
+        and #{beginTime} between from_date and end_date
+    </select>
+
+    <!-- 班制de判断是否休息日 -->
+    <select id="judgeRestDay" resultType="Integer">
+        select
+        <if test="weekNumber==1">
+            sunday
+        </if>
+        <if test="weekNumber==2">
+            monday
+        </if>
+        <if test="weekNumber==3">
+            tuesday
+        </if>
+        <if test="weekNumber==4">
+            wednesday
+        </if>
+        <if test="weekNumber==5">
+            thursday
+        </if>
+        <if test="weekNumber==6">
+            friday
+        </if>
+        <if test="weekNumber==7">
+            saturday
+        </if>
+        from t_class_rest_day
+        where class_id = #{classId}
+    </select>
+
+    <!-- 根据teamId获取"自定义班组"工作时段列表 -->
+    <select id="getWorkHoursByTeam" resultType="HashMap">
+        select on_duty as begin_time, off_duty as end_time
+        from T_WORKINGHOUR_RELATION
+        where team_id = #{teamId}
+        order by on_duty
+    </select>
+
+    <!-- 按条件获取时段们 -->
+    <select id="getTeamClassLastInterval" resultType="com.linyang.energy.model.WorkingHourBean">
+        select t.team_id as teamId, h.on_duty as onDuty, h.off_duty as offDuty
+        from T_TEAM_CONFIG t inner join T_WORKINGHOUR_RELATION h on t.team_id = h.team_id
+        where t.class_id = #{classId}
+        <if test="teamLast != null">
+            and h.off_duty >= #{teamLast}
+        </if>
+        order by h.on_duty
+    </select>
+
+    <select id="getTeamClassBeforeInterval" resultType="com.linyang.energy.model.WorkingHourBean">
+        select t.team_id as teamId, h.on_duty as onDuty, h.off_duty as offDuty
+        from T_TEAM_CONFIG t inner join T_WORKINGHOUR_RELATION h on t.team_id = h.team_id
+        where t.class_id = #{classId}
+        <if test="teamLast != null">
+            and h.off_duty &lt;= #{teamLast}
+        </if>
+        order by h.on_duty
+    </select>
+
+</mapper>

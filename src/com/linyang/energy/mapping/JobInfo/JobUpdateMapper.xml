@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.linyang.energy.mapping.JobInfo.JobUpdateMapper">
+
+	  <!-- 更新任务群组信息  by gaop 2014-09-11 -->
+	<update id="updateJobStatus" parameterType="Long">
+	  update t_job_info
+	    <set>
+	            JOB_STATUS = '0'
+	    </set>
+	     where GROUP_ID = #{groupID,jdbcType=DECIMAL}
+	</update>
+</mapper>

@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.linyang.energy.mapping.authmanager.OptLogBeanMapper" >
+  <resultMap id="BaseResultMap" type="com.linyang.energy.model.OptLogBean" >
+    <id column="OPTLOG_ID" property="optlogId" jdbcType="DECIMAL" />
+    <result column="OPT_TIME" property="optTime" jdbcType="TIMESTAMP" />
+    <result column="OPT_ID" property="optId" jdbcType="DECIMAL" />
+    <result column="OPT_NAME" property="optName" jdbcType="VARCHAR" />
+    <result column="OPT_TYPE" property="optType" jdbcType="DECIMAL" />
+    <result column="OPTED_OBJECT" property="optedObject" jdbcType="DECIMAL" />
+    <result column="OPTED_NAME" property="optedName" jdbcType="VARCHAR" />
+    <result column="OBJECT_TYPE" property="objetType" jdbcType="DECIMAL" />
+    <result column="OPT_IP" property="optIp" jdbcType="VARCHAR" />
+    <result column="OPT_RESULT" property="optResult" jdbcType="DECIMAL" />
+    <result column="OPT_REMARK" property="optRemark" jdbcType="VARCHAR" />
+  </resultMap>
+  <sql id="Base_Column_List" >
+    OPTLOG_ID, OPT_TIME, OPT_ID, OPT_NAME, OPT_TYPE, OPTED_OBJECT, OPTED_NAME, OBJECT_TYPE,
+    OPT_IP, OPT_RESULT, OPT_REMARK
+  </sql>
+  <select id="getLogPageData" resultType="HashMap"  parameterType="HashMap">
+	SELECT T.OPTLOG_ID AS OPTLOGID,
+	       T.OPT_TIME  AS OPTTIME,
+	       T.OPT_ID    AS OPTID,
+	       T.OPT_NAME  AS OPTNAME,
+	       T.OPT_TYPE  AS OPTTYPE,
+	       T.OPTED_OBJECT AS OPTOBJECT,
+	       T.OPTED_NAME AS OPTEDNAME,
+	       T.OPT_IP AS OPTIP,
+	       T.OPT_RESULT AS OPTRESULT,
+	       T.OPT_REMARK AS OPTREMARK,
+	       T.OBJECT_TYPE AS OBJECTTYPE
+	  FROM T_OPT_LOG T
+	 WHERE T.OPTLOG_ID != -100
+	       <if test="optType != ''">
+			AND  T.OPT_TYPE   = #{optType}
+		   </if>
+		   <if test="objectType != ''">
+			AND  T.OBJECT_TYPE   = #{objectType}
+		   </if>
+		    <if test="optName != ''">
+			AND  T.OPT_NAME   LIKE '%' || #{optName} || '%'
+		   </if>
+           <if test="optObj != ''">
+               AND T.OPTED_NAME LIKE '%' || #{optObj} || '%'
+           </if>
+           <if test="optIp != ''">
+               AND T.OPT_IP LIKE '%' || #{optIp} || '%'
+           </if>
+		   <if test="searchName != ''">
+		   AND T.OPT_REMARK LIKE '%' || #{searchName} || '%'
+		   </if>
+		   <if test="beginTime != ''">
+			AND T.OPT_TIME BETWEEN #{beginTime} AND #{endTime}
+		   </if>
+		   
+      ORDER BY T.OPT_TIME DESC
+  </select>
+
+  <insert id="writeLog" parameterType="com.linyang.energy.model.OptLogBean" >
+     insert into T_OPT_LOG (
+	  OPTLOG_ID,
+	  OPT_TIME, 
+	  OPT_ID, 
+      OPT_NAME,
+	  OPT_TYPE, 
+	  OPTED_OBJECT, 
+      OPTED_NAME,
+	  OPT_IP, 
+      OPT_RESULT, 
+	  OPT_REMARK,
+	  OBJECT_TYPE)
+    values (
+	  #{optlogId,jdbcType=DECIMAL},
+	  #{optTime,jdbcType=TIMESTAMP},
+	  #{optId,jdbcType=DECIMAL}, 
+      #{optName,jdbcType=VARCHAR}, 
+	  #{optType,jdbcType=DECIMAL},
+	  #{optedObject,jdbcType=DECIMAL}, 
+      #{optedName,jdbcType=VARCHAR},
+	  #{optIp,jdbcType=VARCHAR}, 
+      #{optResult,jdbcType=DECIMAL}, 
+	  #{optRemark,jdbcType=VARCHAR},
+	  #{objectType,jdbcType=DECIMAL})
+  </insert>
+  <insert id="insertSelective" parameterType="com.linyang.energy.model.OptLogBean" >
+    insert into T_OPT_LOG
+    <trim prefix="(" suffix=")" suffixOverrides="," >
+      <if test="optlogId != null" >
+        OPTLOG_ID,
+      </if>
+      <if test="optTime != null" >
+        OPT_TIME,
+      </if>
+      <if test="optId != null" >
+        OPT_ID,
+      </if>
+      <if test="optName != null" >
+        OPT_NAME,
+      </if>
+      <if test="optType != null" >
+        OPT_TYPE,
+      </if>
+      <if test="optedObject != null" >
+        OPTED_OBJECT,
+      </if>
+      <if test="optedName != null" >
+        OPTED_NAME,
+      </if>
+      <if test="optIp != null" >
+        OPT_IP,
+      </if>
+      <if test="optResult != null" >
+        OPT_RESULT,
+      </if>
+      <if test="optRemark != null" >
+        OPT_REMARK,
+      </if>
+      <if test="objectType != null" >
+          OBJECT_TYPE,
+      </if>
+    </trim>
+    <trim prefix="values (" suffix=")" suffixOverrides="," >
+      <if test="optlogId != null" >
+        #{optlogId,jdbcType=DECIMAL},
+      </if>
+      <if test="optTime != null" >
+        #{optTime,jdbcType=TIMESTAMP},
+      </if>
+      <if test="optId != null" >
+        #{optId,jdbcType=DECIMAL},
+      </if>
+      <if test="optName != null" >
+        #{optName,jdbcType=VARCHAR},
+      </if>
+      <if test="optType != null" >
+        #{optType,jdbcType=DECIMAL},
+      </if>
+      <if test="optedObject != null" >
+        #{optedObject,jdbcType=DECIMAL},
+      </if>
+      <if test="optedName != null" >
+        #{optedName,jdbcType=DECIMAL},
+      </if>
+      <if test="optIp != null" >
+        #{optIp,jdbcType=VARCHAR},
+      </if>
+      <if test="optResult != null" >
+        #{optResult,jdbcType=DECIMAL},
+      </if>
+      <if test="optRemark != null" >
+        #{optRemark,jdbcType=VARCHAR},
+      </if>
+      <if test="objectType != null" >
+          #{objectType,jdbcType=DECIMAL},
+      </if>
+    </trim>
+  </insert>
+ 
+</mapper>

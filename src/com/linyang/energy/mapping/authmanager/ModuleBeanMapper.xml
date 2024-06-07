@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.linyang.energy.mapping.authmanager.ModuleBeanMapper" >
+  <resultMap id="BaseResultMap" type="com.linyang.energy.model.ModuleBean" >
+    <id column="MODULE_ID" property="moduleId" jdbcType="DECIMAL" />
+    <result column="MODULE_NAME" property="moduleName" jdbcType="VARCHAR" />
+    <result column="MODULE_ORDER" property="moduleOrder" jdbcType="DECIMAL" />
+    <result column="MODULE_URL" property="moduleUrl" jdbcType="VARCHAR" />
+    <result column="MODULE_ICON" property="moduleIcon" jdbcType="VARCHAR" />
+    <result column="ISVISIBLE" property="isvisible" jdbcType="DECIMAL" />
+    <result column="MODULE_PARENT_ID" property="moduleParentId" jdbcType="DECIMAL" />
+    <result column="ISTABS" property="istabs" jdbcType="DECIMAL" />
+  </resultMap>
+  <sql id="Base_Column_List" >
+    MODULE_ID, MODULE_NAME, MODULE_ORDER, MODULE_URL, MODULE_ICON, ISVISIBLE, MODULE_PARENT_ID,ISTABS
+  </sql>
+  <select id="selectByPrimaryKey" resultMap="BaseResultMap" parameterType="java.lang.Long" >
+    select 
+    <include refid="Base_Column_List" />
+    from T_MODULE
+    where MODULE_ID = #{moduleId,jdbcType=DECIMAL}
+  </select>
+  <delete id="deleteByPrimaryKey" parameterType="java.lang.Long" >
+    delete from T_MODULE
+    where MODULE_ID = #{moduleId,jdbcType=DECIMAL}
+  </delete>
+  <insert id="insert" parameterType="com.linyang.energy.model.ModuleBean" >
+    insert into T_MODULE (MODULE_ID, MODULE_NAME, MODULE_ORDER, 
+      MODULE_URL, MODULE_ICON, ISVISIBLE,ISTABS, 
+      MODULE_PARENT_ID)
+    values (#{moduleId,jdbcType=DECIMAL}, #{moduleName,jdbcType=VARCHAR}, #{moduleOrder,jdbcType=DECIMAL}, 
+      #{moduleUrl,jdbcType=VARCHAR}, #{moduleIcon,jdbcType=VARCHAR}, #{isvisible,jdbcType=DECIMAL}, 
+      #{moduleParentId,jdbcType=DECIMAL},#{istabs,jdbcType=DECIMAL})
+  </insert>
+  <insert id="insertSelective" parameterType="com.linyang.energy.model.ModuleBean" >
+    insert into T_MODULE
+    <trim prefix="(" suffix=")" suffixOverrides="," >
+      <if test="moduleId != null" >
+        MODULE_ID,
+      </if>
+      <if test="moduleName != null" >
+        MODULE_NAME,
+      </if>
+      <if test="moduleOrder != null" >
+        MODULE_ORDER,
+      </if>
+      <if test="moduleUrl != null" >
+        MODULE_URL,
+      </if>
+      <if test="moduleIcon != null" >
+        MODULE_ICON,
+      </if>
+      <if test="isvisible != null" >
+        ISVISIBLE,
+      </if>
+      <if test="moduleParentId != null" >
+        MODULE_PARENT_ID,
+      </if>
+    </trim>
+    <trim prefix="values (" suffix=")" suffixOverrides="," >
+      <if test="moduleId != null" >
+        #{moduleId,jdbcType=DECIMAL},
+      </if>
+      <if test="moduleName != null" >
+        #{moduleName,jdbcType=VARCHAR},
+      </if>
+      <if test="moduleOrder != null" >
+        #{moduleOrder,jdbcType=DECIMAL},
+      </if>
+      <if test="moduleUrl != null" >
+        #{moduleUrl,jdbcType=VARCHAR},
+      </if>
+      <if test="moduleIcon != null" >
+        #{moduleIcon,jdbcType=VARCHAR},
+      </if>
+      <if test="isvisible != null" >
+        #{isvisible,jdbcType=DECIMAL},
+      </if>
+      <if test="moduleParentId != null" >
+        #{moduleParentId,jdbcType=DECIMAL},
+      </if>
+    </trim>
+  </insert>
+  <update id="updateByPrimaryKeySelective" parameterType="com.linyang.energy.model.ModuleBean" >
+    update T_MODULE
+    <set >
+      <if test="moduleName != null" >
+        MODULE_NAME = #{moduleName,jdbcType=VARCHAR},
+      </if>
+      <if test="moduleOrder != null" >
+        MODULE_ORDER = #{moduleOrder,jdbcType=DECIMAL},
+      </if>
+      <if test="moduleUrl != null" >
+        MODULE_URL = #{moduleUrl,jdbcType=VARCHAR},
+      </if>
+      <if test="moduleIcon != null" >
+        MODULE_ICON = #{moduleIcon,jdbcType=VARCHAR},
+      </if>
+      <if test="isvisible != null" >
+        ISVISIBLE = #{isvisible,jdbcType=DECIMAL},
+      </if>
+      <if test="moduleParentId != null" >
+        MODULE_PARENT_ID = #{moduleParentId,jdbcType=DECIMAL},
+      </if>
+    </set>
+    where MODULE_ID = #{moduleId,jdbcType=DECIMAL}
+  </update>
+  <update id="updateByPrimaryKey" parameterType="com.linyang.energy.model.ModuleBean" >
+    update T_MODULE
+    set MODULE_NAME = #{moduleName,jdbcType=VARCHAR},
+      MODULE_ORDER = #{moduleOrder,jdbcType=DECIMAL},
+      MODULE_URL = #{moduleUrl,jdbcType=VARCHAR},
+      MODULE_ICON = #{moduleIcon,jdbcType=VARCHAR},
+      ISVISIBLE = #{isvisible,jdbcType=DECIMAL},
+      MODULE_PARENT_ID = #{moduleParentId,jdbcType=DECIMAL}
+    where MODULE_ID = #{moduleId,jdbcType=DECIMAL}
+  </update>
+  <select id="getUserModules" resultMap="BaseResultMap" resultType="HashMap" parameterType="java.lang.Long" >
+  	 SELECT A.* FROM T_MODULE A,T_ACCOUNT_ROLE B,T_ROLE_MODULE_RELATION C 
+  		WHERE A.MODULE_ID = C.MODULE_ID AND B.ROLE_ID = C.ROLE_ID AND B.ACCOUNT_ID=#{accountId} AND A.ISVISIBLE=1 AND A.ISTABS !=1 
+  		ORDER BY A.MODULE_ORDER  
+  </select>
+  <select id="getTabModules" resultMap="BaseResultMap" resultType="HashMap">
+  	 SELECT A.* FROM T_MODULE A,T_ACCOUNT_ROLE B,T_ROLE_MODULE_RELATION C 
+  		WHERE A.MODULE_ID = C.MODULE_ID AND B.ROLE_ID = C.ROLE_ID AND B.ACCOUNT_ID=#{accountId} AND A.ISVISIBLE=1 AND  A.MODULE_PARENT_ID=#{parentModuleId}
+  		ORDER BY A.MODULE_ORDER  
+  </select>
+  <!-- 获取用户下的菜单 -->
+  <select id="getModule" resultMap="BaseResultMap" resultType="HashMap" parameterType="java.lang.Long" >
+		SELECT A.*
+		  FROM T_MODULE A, T_ACCOUNT_ROLE B, T_ROLE_MODULE_RELATION C
+		 WHERE A.MODULE_ID = C.MODULE_ID
+		   AND B.ROLE_ID = C.ROLE_ID
+		   AND B.ACCOUNT_ID = #{accountId}
+		   AND A.ISVISIBLE = 1
+		 ORDER BY A.MODULE_ORDER
+  </select>
+  <!-- 根据角色Id获取角色菜单 -->
+  <select id="getModuleByRoleId" resultMap="BaseResultMap" resultType="HashMap" parameterType="java.lang.Long" >
+		  	SELECT A.*
+		      FROM T_MODULE A,  T_ROLE_MODULE_RELATION C
+		     WHERE A.MODULE_ID = C.MODULE_ID
+		       AND C.ROLE_ID = #{roleId}
+		       AND A.ISVISIBLE = 1
+		     ORDER BY A.MODULE_ORDER  
+  </select>
+</mapper>

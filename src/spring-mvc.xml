@@ -1,0 +1,267 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans" xmlns:mvc="http://www.springframework.org/schema/mvc" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:p="http://www.springframework.org/schema/p" xmlns:context="http://www.springframework.org/schema/context" xsi:schemaLocation="http://www.springframework.org/schema/beans 
+http://www.springframework.org/schema/beans/spring-beans-3.1.xsd 
+http://www.springframework.org/schema/context 
+http://www.springframework.org/schema/context/spring-context-3.1.xsd 
+http://www.springframework.org/schema/mvc 
+http://www.springframework.org/schema/mvc/spring-mvc-3.1.xsd">
+	<!-- 自动扫描controller包下的所有类，使其认为spring mvc的控制器-->
+	<context:component-scan base-package="com.linyang.energy.controller"></context:component-scan>
+	<!-- 启动Spring MVC的注解功能，完成请求和注解POJO的映射 JSON配置 Jackson --> 
+	<mvc:annotation-driven>  
+        <mvc:message-converters register-defaults="true">  
+            <bean  class="com.linyang.energy.converter.JacksonHttpMessageConverter">
+					<property name="supportedMediaTypes">
+						<list>
+							<value>application/json;charset=UTF-8</value>
+							<value>text/html;charset=UTF-8</value>
+						</list>
+					</property>
+				</bean>
+        </mvc:message-converters>  
+    </mvc:annotation-driven>  
+    
+	 <!-- Spring MVC JSON配置 FastJson 
+	 <mvc:annotation-driven> 
+	    <mvc:message-converters register-defaults="true">        
+	        <bean id="jsonConverter" class="com.linyang.energy.converter.FastJsonHttpMessageConverter"> 
+	           <property name="supportedMediaTypes">
+					<list>
+						 <value>application/json;charset=UTF-8</value>
+						<value>text/html;charset=UTF-8</value>
+					</list>
+				</property> 
+	            <property name="serializerFeature"> 
+	                <list> 
+	                    <value>WriteMapNullValue</value> 
+	                    <value>QuoteFieldNames</value> 
+	                </list> 
+	            </property> 
+	        </bean> 
+	    </mvc:message-converters> 
+	</mvc:annotation-driven> -->
+	
+	<!-- 对模型视图名称的解析，即在模型视图名称添加前后缀 -->
+	<bean class="org.springframework.web.servlet.view.InternalResourceViewResolver">
+		<property name="viewClass" value="org.springframework.web.servlet.view.JstlView"/>
+		<property name="prefix" value="/"></property>
+		<property name="suffix" value=".jsp"></property>
+	</bean>
+	
+	<!-- 国际化 -->
+	<bean id="messageSource" class="org.springframework.context.support.ResourceBundleMessageSource">
+		<property name="basenames">
+			<list>
+				<value>CommonResources</value>
+				<value>EnergyResources</value>
+			</list>
+		</property>
+	</bean>
+	
+	<!-- 国际化拦截器 -->
+ 	<bean id="localeChangeInterceptor" class="org.springframework.web.servlet.i18n.LocaleChangeInterceptor"></bean>
+ 
+ 
+	<bean id="multipartResolver" class="org.springframework.web.multipart.commons.CommonsMultipartResolver">
+		<property name="defaultEncoding">
+			<value>UTF-8</value>
+		</property>
+		<property name="maxUploadSize">
+			<value>32505856</value><!-- 上传文件大小限制为31M，31*1024*1024 -->
+		</property>
+		<property name="maxInMemorySize">
+			<value>4096</value>
+		</property>
+	</bean>
+	
+	<!-- 拦截器 不需要权限验证的地址 -->
+	<mvc:interceptors>
+		<mvc:interceptor>
+			<mvc:mapping path="/**" />
+			<!-- 登录监控 -->
+			<bean class="com.linyang.energy.login.LoginInterceptor" />
+		</mvc:interceptor>
+		<mvc:interceptor>
+			<mvc:mapping path="/**" />
+			<!-- 性能监控 -->
+			<bean class="com.linyang.energy.interceptors.StopWatchHandlerInterceptor" />
+		</mvc:interceptor>
+		<mvc:interceptor>
+			<mvc:mapping path="/**" />
+			<bean class="com.linyang.energy.interceptors.SecurityInterceptor">
+				<!-- 不需要权限验证的地址 -->
+				<property name="excludeUrls">
+					<set>
+						<value>/frameController/check.htm</value><!-- 测试 -->
+						
+						<value>/frameController/showLoginPage.htm</value>
+						<value>/frameController/login.htm</value>
+						<value>/frameController/ssoLogin.htm</value>
+						<value>/commonController/show500Page.htm</value>
+						<value>/commonController/show404Page.htm</value>
+						<value>/commonController/getDataCodeDataList.htm</value>
+						<value>/commonController/setDynamicLanguage.htm</value>
+						<value>/phoneInterface/queryHistoryData.htm</value>
+						<value>/phoneInterface/login.htm</value>
+						<value>/phoneInterface/changePassword.htm</value>
+						<value>/phoneInterface/getAllUserTeam.htm</value>
+						<value>/phoneInterface/getUserLedger.htm</value>
+						<value>/phoneInterface/queryRealtimeData.htm</value>
+						<value>/phoneInterface/getMeterListByLedgerOrMeterId.htm</value>
+						<value>/phoneInterface/getGroupUserByGroupId.htm</value>
+						<value>/phoneInterface/getAPKUrl.htm</value>
+						<value>/phoneInterface/downloadAPK.htm</value>
+						<value>/phoneInterface/cydata.htm</value>
+                        <value>/phoneInterface/eventDetail.htm</value>
+                        <value>/phoneInterface/newsDetail.htm</value>
+                        <value>/phoneInterface/getNewsPageList.htm</value>
+                        <value>/phoneInterface/getMessagePageList.htm</value>
+                        <value>/phoneInterface/reportDetail.htm</value>
+                        <value>/phoneInterface/bookRecord.htm</value>
+                        <value>/phoneInterface/messageDetail.htm</value>
+                        <value>/phoneInterface/pfAnalysis.htm</value>
+                        <value>/phoneInterface/pfPage.htm</value>
+                        <value>/phoneInterface/feeAnalysis.htm</value>
+                        <value>/phoneInterface/feePage.htm</value>
+                        <value>/phoneInterface/demandAnalysis.htm</value>
+                        <value>/phoneInterface/demandPage.htm</value>
+                        <value>/phoneInterface/lineloseAnalysis.htm</value>
+                        <value>/phoneInterface/linelosePage.htm</value>
+                        <value>/phoneInterface/levelHelp.htm</value>
+                        <value>/phoneInterface/lastAssessment.htm</value>
+                        <value>/phoneInterface/beginCheck.htm</value>
+                        <value>/phoneInterface/getAssessCache.htm</value>  
+                        <value>/phoneInterface/submitSuggestion.htm</value>
+                        <value>/common/umeditor/jsp/imageUp.jsp</value>
+                        <value>/index/checkServerStart.htm</value>
+                        <value>/index/getShowLedger.htm</value>
+                        <value>/phoneInterface/wechat_analysis.htm</value>
+
+                        <!-- 供第三方用户调用，获取数据接口 20190521 -->
+                        <value>/phoneInterface/getNeedCurData.htm</value>
+                        <value>/phoneInterface/getNeedDayData.htm</value>
+
+                        <!-- 运维APP接口 add by chengq 20151221-->
+                        <value>/servePhoneInterface/login.htm</value>
+                        <value>/servePhoneInterface/showMeterTreePage.htm</value>
+                        <value>/servePhoneInterface/showParentMeterTreePage.htm</value>
+                        <value>/servePhoneInterface/getMeterTreeData.htm</value>
+                        <value>/servePhoneInterface/getLoadingInfo.htm</value>
+                        <value>/servePhoneInterface/saveNewCompany.htm</value>
+                        <value>/servePhoneInterface/manageMeterTree.htm</value>
+                        <value>/servePhoneInterface/checkLedgerName.htm</value>
+                        
+                        <!-- 新版能效APP接口 add by chengq 20160304 -->
+                        <value>/phoneInterface/getEMOPath.htm</value>
+                        <value>/phoneInterface/getCompanyEMO.htm</value>
+                        <value>/phoneInterface/getNextEMO.htm</value>
+                        <value>/phoneInterface/getNextDCP.htm</value>
+                        <value>/phoneInterface/analysis.htm</value>
+                        <value>/phoneInterface/headData.htm</value>
+                        <value>/phoneInterface/getHeadChartData.htm</value>
+                        <value>/phoneInterface/news.htm</value>
+                        <value>/phoneInterface/newslist.htm</value>
+                        <value>/phoneInterface/focus.htm</value>
+                        <value>/phoneInterface/knowledge.htm</value>
+                        <value>/phoneInterface/knowledgelist.htm</value>
+                        <value>/phoneInterface/getAPKVersion.htm</value>
+                        <value>/phoneInterface/setFreeTime.htm</value>
+                        <value>/phoneInterface/setAppPrefer.htm</value>
+                        <value>/phoneInterface/getAppPrefer.htm</value>
+                        <value>/phoneInterface/disAppPrefer.htm</value>
+                        <value>/phoneInterface/getPatchVersion.htm</value>
+                        <value>/phoneInterface/downloadPatch.htm</value>
+                     
+                     	<!-- 微信接口add by jijl 20161116-->
+                     	<value>/easynxInterface/easynxIndex.htm</value>
+                     	<value>/easynxInterface/currentReport.htm</value>
+                     	<value>/easynxInterface/dayReport.htm</value>
+                     	<value>/easynxInterface/historyReport.htm</value>  
+                     	<value>/easynxInterface/easyAdvice.htm</value> 
+                     	<value>/easynxInterface/easynxLogin.htm</value>
+                     	<value>/easynxInterface/easynxLoginSn.htm</value>  
+                     	
+                     	<!-- 微信小程序接口add by jijl 20180510 -->
+                     	<value>/miniAppInterface/wxVerify.htm</value>
+                     	<value>/miniAppInterface/wxLogin.htm</value>
+                     	<value>/miniAppInterface/getWxQrcode.htm</value>
+                     	<value>/miniAppInterface/getResources.htm</value>
+                     	<value>/miniAppInterface/gotoQueryData.htm</value>
+                     	<value>/miniAppInterface/queryData.htm</value>
+                     	<value>/miniAppInterface/terminalBind.htm</value>
+                     	<value>/miniAppInterface/getOpenInfo.htm</value>
+                     	<value>/miniAppInterface/updateOpenInfo.htm</value>
+                     	<value>/miniAppInterface/getTerminalInfoList.htm</value>
+                     	<value>/miniAppInterface/updateTerminalInfo.htm</value>
+                     	<value>/miniAppInterface/removeBind.htm</value>
+                     	<value>/miniAppInterface/updateTerminalPassword.htm</value>
+                     	<value>/miniAppInterface/unUserLogin.htm</value>
+                     	<value>/miniAppInterface/getTerminalInfo.htm</value>
+                     	<value>/miniAppInterface/queryChatRecordForApp.htm</value>
+                     	<value>/miniAppInterface/interPositionRecord.htm</value>
+                     	<value>/miniAppInterface/gotoServiceInfo.htm</value>
+                     	<value>/miniAppInterface/gotoInfoDetail1.htm</value>
+                     	<value>/miniAppInterface/gotoInfoDetail2.htm</value>
+                     	<value>/miniAppInterface/gotoInfoDetail3.htm</value>
+                     	<value>/miniAppInterface/gotoInfoDetail4.htm</value>
+                     	<value>/miniAppInterface/gotoInfoDetail5.htm</value>
+                     	<value>/miniAppInterface/gotoMoreInfo.htm</value>
+                     	
+                     	<value>/message/insertVisitorRecord.htm</value>
+
+						<!-- 新增APP查询复费率电量接口 -->
+						<value>/phoneInterface/queryERateData.htm</value>
+
+						<!-- 新增APP能耗功能接口 -->
+						<value>/phoneInterface/queryEnergyData.htm</value>
+
+						<!-- 新增APP变压器启停管理接口 -->
+						<value>/phoneInterface/revstop.htm</value>
+						<value>/phoneInterface/queryTransData.htm</value>
+						<value>/phoneInterface/queryTransListData.htm</value>
+						<value>/phoneInterface/getTransDataById.htm</value>
+						<value>/phoneInterface/modifyTrans.htm</value>
+
+						<value>/phoneInterface/declarePage.htm</value>
+						<value>/phoneInterface/getProduction.htm</value>
+						<value>/phoneInterface/getPorductList.htm</value>
+						<value>/phoneInterface/declarePorduction.htm</value>
+
+						<value>/phoneInterface/contrastPage.htm</value>
+						<value>/phoneInterface/getContrastData.htm</value>
+						<value>/phoneInterface/queryDetailData.htm</value>
+						<value>/phoneInterface/lineloseAnalysisNew.htm</value>
+						<value>/phoneInterface/lineloseChild.htm</value>
+						<!-- 行业对标接口 -->
+						<value>/phoneInterface/industryPage.htm</value>
+						<value>/phoneInterface/queryIndustryData.htm</value>
+					</set>
+				</property>
+			</bean>
+		</mvc:interceptor>
+	</mvc:interceptors> 
+	
+	 <!-- 对静态资源文件的访问  方案一 （三选一）
+    <mvc:default-servlet-handler/>  -->  
+    
+	 <!-- 对静态资源文件的访问 方案二 （三选一） 
+	<mvc:resources mapping="/images/**" location="/images/" cache-period="31556926"/>  
+	<mvc:resources mapping="/js/**" location="/js/" cache-period="31556926"/>  
+	<mvc:resources mapping="/css/**" location="/css/" cache-period="31556926"/>  
+	-->
+	 <!-- 对静态资源文件的访问  方案三 直接在tomcat中配置效率最高）-->
+	
+	<!-- 总错误处理 
+<bean id="exceptionResolver" class="org.springframework.web.servlet.handler.SimpleMappingExceptionResolver">  
+    <property name="defaultErrorView">    
+        <value>/commonController/show500Page.htm</value>  
+    </property>  
+    <property name="defaultStatusCode">    
+        <value>500</value>  
+    </property>     
+<property name="warnLogCategory">    
+        <value>org.springframework.web.servlet.handler.SimpleMappingExceptionResolver</value>  
+    </property>     
+</bean>-->
+
+</beans>

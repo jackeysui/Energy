@@ -1,0 +1,179 @@
+<?xml version="1.0" encoding="UTF-8" ?> 
+<!DOCTYPE mapper PUBLIC "-//ibatis.apache.org//DTD Mapper 3.0//EN" "http://ibatis.apache.org/dtd/ibatis-3-mapper.dtd">
+
+<mapper namespace="com.linyang.energy.mapping.energydataquery.DayHarMapper">
+	<!-- 查询日谐波柱状图数据 -->
+	<select id="getDayHarChartDatas" parameterType="HashMap"
+		resultType="HashMap">
+		<!-- 日谐波电流柱状图 -->
+		<if test="curveType == 1">
+			SELECT HAR_NUM NUM,HAR_IA_MAX A_MAX,HAR_IB_MAX B_MAX,HAR_IC_MAX C_MAX
+			FROM T_DAY_HAR_I
+			WHERE (MOD(HAR_NUM,2)=1 or HAR_NUM = 18) AND METER_ID = #{meterId} and FREEZE_TIME >= #{Time} 
+				AND    FREEZE_TIME &lt; #{endTime}
+    	</if>
+		<!-- 日谐波电压柱状图 -->
+		<if test="curveType == 2">
+			SELECT HAR_NUM NUM,HAR_VA_MAX A_MAX,HAR_VB_MAX B_MAX,HAR_VC_MAX C_MAX
+			FROM T_DAY_HAR_V
+			WHERE (MOD(HAR_NUM,2)=1 or HAR_NUM = 18) AND METER_ID = #{meterId} and FREEZE_TIME BETWEEN #{Time} AND  #{endTime}
+    	</if>
+	</select>
+		<!-- 查询畸变柱状图数据 -->
+	<select id="getDayDisChartDatas" parameterType="HashMap"
+		resultType="HashMap">
+		<!-- 畸变电流柱状图 -->
+		<if test="curveType == 1">
+			SELECT DIS_IA_MAX A_MAX,DIS_IB_MAX B_MAX,DIS_IC_MAX C_MAX
+			FROM T_DAY_DIS_I
+			WHERE METER_ID =
+			#{meterId} and FREEZE_TIME BETWEEN #{Time} AND  #{endTime}
+    	</if>
+		<!-- 畸变电压柱状图 -->
+		<if test="curveType == 2">
+			SELECT DIS_VA_MAX A_MAX,DIS_VB_MAX B_MAX,DIS_VC_MAX C_MAX
+			FROM T_DAY_DIS_V
+			WHERE METER_ID =
+			#{meterId} and FREEZE_TIME BETWEEN #{Time} AND  #{endTime}
+    	</if>
+	</select>
+
+	<!-- 查询日谐波报表数据 -->
+	<select id="getDayHarReportDatas" parameterType="HashMap"
+		resultType="HashMap">
+		<!-- 日谐波电流报表数据 -->
+		<if test="curveType == 1">
+			SELECT HAR_NUM NUM,HAR_IA_MAX A_MAX,substr(to_char(HAR_IA_MAXTIME,'yyyy-MM-dd HH24:mi:ss'),11,9)
+			A_MAXTIME,
+			HAR_IB_MAX B_MAX,substr(to_char(HAR_IB_MAXTIME,'yyyy-MM-dd HH24:mi:ss'),11,9) B_MAXTIME,
+			HAR_IC_MAX
+			C_MAX,substr(to_char(HAR_IC_MAXTIME,'yyyy-MM-dd HH24:mi:ss'),11,9) C_MAXTIME
+			FROM T_DAY_HAR_I
+			WHERE METER_ID = #{meterId} and FREEZE_TIME BETWEEN #{Time} AND  #{endTime}
+    	</if>
+		<!-- 日谐波电压报表数据 -->
+		<if test="curveType == 2">
+			SELECT HAR_NUM NUM,HAR_VA_MAX A_MAX,substr(to_char(HAR_VA_MAXTIME,'yyyy-MM-dd HH24:mi:ss'),11,9)
+			A_MAXTIME,
+			HAR_VB_MAX B_MAX,substr(to_char(HAR_VB_MAXTIME,'yyyy-MM-dd HH24:mi:ss'),11,9) B_MAXTIME,
+			HAR_VC_MAX
+			C_MAX,substr(to_char(HAR_VC_MAXTIME,'yyyy-MM-dd HH24:mi:ss'),11,9) C_MAXTIME
+			FROM T_DAY_HAR_V
+			WHERE METER_ID = #{meterId} and FREEZE_TIME BETWEEN #{Time} AND  #{endTime}
+    	</if>
+		ORDER BY HAR_NUM
+	</select>
+
+	<!-- 查询日畸变报表数据 -->
+	<select id="getDayDisReportDatas" parameterType="HashMap"
+		resultType="HashMap">
+		<!-- 日畸变电流报表数据 -->
+		<if test="curveType == 1">
+			SELECT DIS_IA_MAX A_MAX,substr(to_char(DIS_IA_MAXTIME,'yyyy-MM-dd HH24:mi:ss'),11,9)
+			A_MAXTIME,
+			DIS_IB_MAX B_MAX,substr(to_char(DIS_IB_MAXTIME,'yyyy-MM-dd HH24:mi:ss'),11,9) B_MAXTIME,
+			DIS_IC_MAX
+			C_MAX,substr(to_char(DIS_IC_MAXTIME,'yyyy-MM-dd HH24:mi:ss'),11,9) C_MAXTIME
+			FROM T_DAY_DIS_I
+			WHERE METER_ID =
+			#{meterId} and FREEZE_TIME BETWEEN #{Time} AND  #{endTime}
+    	</if>
+		<!-- 日畸变电压报表数据 -->
+		<if test="curveType == 2">
+			SELECT DIS_VA_MAX A_MAX,substr(to_char(DIS_VA_MAXTIME,'yyyy-MM-dd HH24:mi:ss'),11,9)
+			A_MAXTIME,
+			DIS_VB_MAX B_MAX,substr(to_char(DIS_VB_MAXTIME,'yyyy-MM-dd HH24:mi:ss'),11,9) B_MAXTIME,
+			DIS_VC_MAX
+			C_MAX,substr(to_char(DIS_VC_MAXTIME,'yyyy-MM-dd HH24:mi:ss'),11,9) C_MAXTIME
+			FROM T_DAY_DIS_V
+			WHERE METER_ID =
+			#{meterId} and FREEZE_TIME BETWEEN #{Time} AND  #{endTime}
+    	</if>
+	</select>
+	<!--  
+	 * 查询计量点名字
+	  * @author 周礼
+	  * @param queryMap 查询条件集合：
+	  * 计量点Id：key:"meterId"	value:{@code long} 
+	 * @return String
+	 -->
+    <select id="getMeterName" parameterType="HashMap" resultType="String">
+    	SELECT METER_NAME FROM
+    	T_METER
+    	WHERE METER_ID = #{meterId}
+    </select>
+    
+    <!-- 根据ledger_id得到该ledger下总表的个数 -->
+    <select id="getNum" parameterType="HashMap" resultType="int">
+		select count(meter_id) from t_ledger_meter where ledger_id = #{tId}
+    </select>
+	
+	 <!-- 得到基波，谐波曲线有功功率 -->
+	<select id="getCurChartData" parameterType="HashMap" resultType="HashMap">
+		select A.METER_ID    as meter_id,
+	           A.FREEZE_TIME as freeze_time,
+	           A.HAR_AP      as val,
+	           A.HAR_AP_A    as vala,
+	           A.HAR_AP_B    as valb,
+	           A.HAR_AP_C    as valc,
+	           'HAR' AS T
+	      from T_CUR_HAR_AP A
+	     WHERE A.METER_ID = #{meterId}
+	     AND A.FREEZE_TIME >= #{Time}
+	     AND A.FREEZE_TIME &lt;#{endTime}
+	    union   
+	    select F.METER_ID    as meter_id,
+	           F.FREEZE_TIME as freeze_time, 
+	         F.FUND_AP     as val,
+	           F.FUND_AP_A   as vala,
+	           F.FUND_AP_B   as valb,
+	           F.FUND_AP_C   as valc,
+	           'FUND' AS T
+	           from T_CUR_FUND_AP F          
+	    WHERE F.METER_ID = #{meterId}
+	      AND F.FREEZE_TIME >= #{Time}
+	      AND F.FREEZE_TIME &lt;#{endTime}
+	       ORDER BY FREEZE_TIME
+	</select>
+	
+	<!-- 查询三相曲线谐波电流，电压表 -->
+	<select id="getHarIVData" parameterType="HashMap" resultType="HashMap">
+		<!-- 谐波电流曲线 -->
+		<if test="curveType == 1">
+			select METER_ID,
+			       FREEZE_TIME,
+			       HAR_NUM,
+			       HAR_IA_RATE as HAR_VA_RATE,
+			       HAR_IA_RATE_02_21 as HAR_VA_RATE_02_21,
+			       HAR_IA_RATE_22_51 as HAR_VA_RATE_22_51,
+			       HAR_IB_RATE as HAR_VB_RATE,
+			       HAR_IB_RATE_02_21 as HAR_VB_RATE_02_21,
+			       HAR_IB_RATE_22_51 as HAR_VB_RATE_22_51,
+			       HAR_IC_RATE as HAR_VC_RATE,
+			       HAR_IC_RATE_02_21 as HAR_VC_RATE_02_21,
+			       HAR_IC_RATE_22_51 as HAR_VC_RATE_22_51
+			  FROM T_CUR_HAR_I T
+		</if>
+		<!-- 谐波电压曲线 -->
+		<if test="curveType == 2">
+			select METER_ID,
+			       FREEZE_TIME,
+			       HAR_NUM,
+			       HAR_VA_RATE,
+			       HAR_VA_RATE_02_21,
+			       HAR_VA_RATE_22_51,
+			       HAR_VB_RATE,
+			       HAR_VB_RATE_02_21,
+			       HAR_VB_RATE_22_51,
+			       HAR_VC_RATE,
+			       HAR_VC_RATE_02_21,
+			       HAR_VC_RATE_22_51
+			  FROM T_CUR_HAR_V T
+		</if>
+		 WHERE T.METER_ID = #{meterId}
+		   AND T.FREEZE_TIME >= #{Time}
+		   AND T.FREEZE_TIME &lt;#{endTime} 
+      	 ORDER BY FREEZE_TIME
+	</select>
+	
+</mapper>

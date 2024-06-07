@@ -1,0 +1,582 @@
+<?xml version="1.0" encoding="UTF-8" ?> 
+<!DOCTYPE mapper PUBLIC "-//ibatis.apache.org//DTD Mapper 3.0//EN" "http://ibatis.apache.org/dtd/ibatis-3-mapper.dtd">
+
+<mapper namespace="com.linyang.energy.mapping.contrastanalysis.YearOnYearAnalysisMapper">
+	<resultMap id="curveBeanResultMap" type="com.linyang.energy.model.RealCurveBean">
+		<result  property="meterId"          column="METER_ID" />
+		<result  property="freezeTime"       column="FREEZE_TIME" />
+		<result  property="dataValue"        column="DATA_VALUE" />
+		<result  property="typeId"           column="TYPE_ID" />
+		<result  property="typeName"         column="TYPE_NAME" />
+	</resultMap>
+	
+	<!-- 查询EMO同比环比统计数据 -->
+	<select id="queryEnergyStatData" parameterType="HashMap" resultMap="curveBeanResultMap">
+		<choose>
+			<when test="statType == 1">
+				SELECT T.FREEZE_TIME+15/(24*60) as FREEZE_TIME, SUM(T.FAQ_VALUE * K.ADD_ATTR * K.PCT / 100) DATA_VALUE
+                FROM  T_CUR_Q T,
+                (
+	                SELECT A.METER_ID, A.ADD_ATTR, A.PCT
+	                FROM   T_LEDGER_METER A
+	                WHERE  A.LEDGER_ID = #{ledgerId}
+                ) K
+                WHERE  T.METER_ID = K.METER_ID
+                AND    T.FREEZE_TIME >= #{beginTime,jdbcType=TIME}
+                AND    T.FREEZE_TIME &lt;= #{endTime,jdbcType=TIME}
+                GROUP BY T.FREEZE_TIME
+                ORDER BY T.FREEZE_TIME
+			</when>
+			<when test="statType == 2 or statType == 10 or statType == 5 or statType == 12 or statType == 8 or statType == 14 or statType == 20 or statType == 21">
+				 SELECT 
+		            <if test="statType == 2 or statType == 10">T.Q</if>
+		            <if test="statType == 5 or statType == 12">T.WATER_FLOW</if>
+		            <if test="statType == 8 or statType == 14">T.GAS_FLOW</if>
+		            <if test="statType == 20 or statType == 21">T.TEMPER</if>
+	             DATA_VALUE, STAT_DATE+15/(24*60) AS FREEZE_TIME
+	            FROM T_DAY_LEDGER_STAT T
+	            WHERE t.ledger_id=#{ledgerId} and T.Stat_Date >=#{beginTime,jdbcType=TIME}
+	            AND T.Stat_Date &lt;= #{endTime,jdbcType=TIME}
+	            ORDER BY STAT_DATE
+			</when>
+			
+			<when test="statType == 3 or statType == 11 or statType == 6 or statType == 13 or statType == 9 or statType == 15 or statType == 22">
+				 SELECT 
+		            <if test="statType == 3 or statType == 11">T.Q</if>
+		            <if test="statType == 6 or statType == 13">T.WATER_FLOW</if>
+		            <if test="statType == 9 or statType == 15">T.GAS_FLOW</if>
+		            <if test="statType == 22">T.TEMPER</if>
+	             DATA_VALUE, STAT_DATE+15/(24*60) AS FREEZE_TIME
+	            FROM T_MON_LEDGER_STAT T
+	            WHERE t.ledger_id=#{ledgerId} and T.Stat_Date >=#{beginTime,jdbcType=TIME}
+	            AND T.Stat_Date &lt;= #{endTime,jdbcType=TIME}
+	            ORDER BY STAT_DATE
+			</when>
+		</choose>
+	</select>
+
+    <!-- 查询DCP同比环比统计数据 -->
+    <select id="queryMeterEnergyStatData" parameterType="HashMap" resultMap="curveBeanResultMap">
+        <choose>
+            <!-- 曲线或日或月电能量 -->
+            <when test="statType == 1 or statType == 2 or statType == 3 or statType == 10 or statType == 11">
+                <if test="isVirtual != 1">       <!-- 真实点 -->
+                    SELECT T.FREEZE_TIME+15/(24*60) as FREEZE_TIME, T.FAQ_VALUE as DATA_VALUE
+                    FROM
+                    <if test="statType == 1">T_CUR_Q</if>
+                    <if test="statType == 2 or statType == 10">T_DAY_Q</if>
+                    <if test="statType == 3 or statType == 11">T_MON_Q</if>
+                    T
+                    WHERE  T.FREEZE_TIME >= #{beginTime,jdbcType=TIME}
+                    AND    T.FREEZE_TIME &lt;= #{endTime,jdbcType=TIME}
+                    AND    T.METER_ID = #{meterID}
+                </if>
+                <if test="isVirtual == 1">       <!-- 虚拟点 -->
+                    SELECT T.FREEZE_TIME+15/(24*60) as FREEZE_TIME, sum(T.FAQ_VALUE) as DATA_VALUE
+                    FROM
+                    <if test="statType == 1">T_CUR_Q</if>
+                    <if test="statType == 2 or statType == 10">T_DAY_Q</if>
+                    <if test="statType == 3 or statType == 11">T_MON_Q</if>
+                    T inner join T_VIRTUAL_METER_RELATION r on T.METER_ID=r.METER_ID
+                    WHERE T.FREEZE_TIME >= #{beginTime,jdbcType=TIME}
+                    AND    T.FREEZE_TIME &lt;= #{endTime,jdbcType=TIME}
+                    AND    r.VIRTUAL_ID = #{meterID}
+                    group by T.FREEZE_TIME
+                </if>
+            </when>
+
+            <!-- 日或月水流量 -->
+            <when test="statType == 5 or statType == 6 or statType == 12 or statType == 13">
+                SELECT T.FREEZE_TIME+15/(24*60) as FREEZE_TIME, T.WFLOW_VALUE as DATA_VALUE
+                FROM   
+                	<if test="statType == 5 or statType == 12">T_DAY_WFLOW_STAT</if>
+                	<if test="statType == 6 or statType == 13">T_MON_WFLOW_STAT</if> 
+               	T
+                WHERE  T.FREEZE_TIME >= #{beginTime,jdbcType=TIME}
+                AND    T.FREEZE_TIME &lt;= #{endTime,jdbcType=TIME}
+                AND    T.METER_ID = #{meterID}
+            </when>
+
+            <!-- 日或月气流量 -->
+            <when test="statType == 8 or statType == 9 or statType == 14 or statType == 15">
+                SELECT T.FREEZE_TIME+15/(24*60) as FREEZE_TIME, T.GFLOW_VALUE as DATA_VALUE
+                FROM   
+                	<if test="statType == 8 or statType == 14">T_DAY_GFLOW_STAT</if>
+                	<if test="statType == 9 or statType == 15">T_MON_GFLOW_STAT</if>
+                T
+                WHERE  T.FREEZE_TIME >= #{beginTime,jdbcType=TIME}
+                AND    T.FREEZE_TIME &lt;= #{endTime,jdbcType=TIME}
+                AND    T.METER_ID = #{meterID}
+            </when>
+            
+            <!-- 日或月热流量 -->
+            <when test="statType == 20 or statType == 21 or statType == 22">
+                SELECT T.FREEZE_TIME+15/(24*60) as FREEZE_TIME, T.HEAT_VALUE as DATA_VALUE
+                FROM   
+                	<if test="statType == 20 or statType == 21">T_DAY_HEAT_STAT</if>
+                	<if test="statType == 22 ">T_MON_HEAT_STAT</if>
+                T
+                WHERE  T.FREEZE_TIME >= #{beginTime,jdbcType=TIME}
+                AND    T.FREEZE_TIME &lt;= #{endTime,jdbcType=TIME}
+                AND    T.METER_ID = #{meterID}
+            </when>
+        </choose>
+        ORDER BY T.FREEZE_TIME
+    </select>
+	
+	<!-- 查询电水气峰值 -->
+	<select id="getElecWaterGasPeak" parameterType="HashMap" resultType="HashMap">
+        <if test="baseType == 1 and meterType == 1">
+        	SELECT  MAX(data) DATA_VALUE
+			FROM (
+				SELECT A.FREEZE_TIME, SUM(A.AP * T2.add_attr * T2.pct / 100) data
+				FROM T_CUR_AP A
+				INNER JOIN (SELECT lm.METER_ID, lm.add_attr, lm.pct FROM T_LEDGER_METER lm WHERE lm.LEDGER_ID =#{baseId}) T2
+				ON A.METER_ID = T2.METER_ID
+				WHERE A.FREEZE_TIME >= #{beginTime,jdbcType=TIMESTAMP}
+				AND A.FREEZE_TIME &lt;= #{endTime,jdbcType=TIMESTAMP}
+				GROUP BY A.FREEZE_TIME)
+        </if>
+        <if test="baseType == 1 and meterType != 1 ">
+            SELECT 
+	            <if test="meterType == 2">max(T.WATER_FLOW)</if>
+	            <if test="meterType == 3">max(T.GAS_FLOW)</if>
+	            <if test="meterType == 4">max(T.TEMPER)</if>
+             DATA_VALUE
+            FROM T_DAY_LEDGER_STAT T
+            WHERE t.ledger_id=#{baseId} 
+	            AND T.Stat_Date >= #{beginTime,jdbcType=TIMESTAMP}
+	            AND T.Stat_Date &lt;= #{endTime,jdbcType=TIMESTAMP}
+        </if>
+
+        <if test="baseType == 2">
+            <if test="isVirtual != 1">
+                SELECT
+                <if test="meterType == 1"> max(t.ap) as DATA_VALUE from T_CUR_AP t</if>
+                <if test="meterType == 2"> max(t.WFLOW_VALUE) as DATA_VALUE from T_DAY_WFLOW_STAT t</if>
+                <if test="meterType == 3"> max(t.GFLOW_VALUE) as DATA_VALUE from T_DAY_GFLOW_STAT t</if>
+                <if test="meterType == 4"> max(t.HEAT_VALUE) as DATA_VALUE from T_DAY_HEAT_STAT t</if>
+                WHERE t.meter_id=#{baseId}
+	                AND t.FREEZE_TIME >= #{beginTime,jdbcType=TIMESTAMP}
+	                AND t.FREEZE_TIME &lt;= #{endTime,jdbcType=TIMESTAMP}
+            </if>
+            <if test="isVirtual == 1">
+                SELECT MAX(temp.AP) as DATA_VALUE
+                FROM
+                (
+                   SELECT sum(t.ap) as AP, t.FREEZE_TIME
+                   FROM T_CUR_AP t inner join T_VIRTUAL_METER_RELATION r on t.METER_ID=r.METER_ID
+                   WHERE r.VIRTUAL_ID=#{baseId}
+                   AND t.FREEZE_TIME >= #{beginTime,jdbcType=TIMESTAMP}
+                   AND t.FREEZE_TIME &lt;= #{endTime,jdbcType=TIMESTAMP}
+                   group by t.FREEZE_TIME
+                ) temp
+            </if>
+        </if>
+	</select>
+	
+	<!-- 查询分项占比数据(按照分项分组) -->
+	<select id="queryPartialScaleData" parameterType="HashMap" resultMap="curveBeanResultMap">
+		<choose>
+			<!-- 电水气曲线数据 -->
+			<when test="statType == 1 or statType == 4 or statType == 7">
+				SELECT <if test="statType == 1">SUM(T.FAQ_VALUE)</if><if test="statType == 4 or statType==7">SUM(T.FLOW_VALUE)</if> DATA_VALUE, K.TYPE_ID, P.TYPE_NAME
+				FROM   <if test="statType == 1">T_CUR_Q</if><if test="statType == 4">T_CUR_WFLOW</if><if test="statType == 7">T_CUR_GFLOW</if> T, 
+				(
+				      SELECT A.METER_ID, A.TYPE_ID 
+				      FROM   T_LEDGER_DEVICE_METER A
+				      WHERE  A.LEDGER_ID = #{ledgerId}
+				      AND    EXISTS (
+				              SELECT 1 FROM T_DEVICE_TYPE B WHERE B.PARENT_TYPE_ID = #{typeId} AND A.TYPE_ID = B.TYPE_ID
+				      )
+				) K, T_DEVICE_TYPE P
+				WHERE  T.METER_ID = K.METER_ID
+				AND    K.TYPE_ID = P.TYPE_ID
+				AND    T.FREEZE_TIME >= #{beginTime,jdbcType=TIME}
+				AND    T.FREEZE_TIME &lt;= #{endTime,jdbcType=TIME}
+				GROUP BY K.TYPE_ID, P.TYPE_NAME
+			</when>
+			
+			<!-- 电水气日或月数据 -->
+			<when test="statType == 2 or statType == 3 or statType == 5 or statType == 6 or statType == 8 or statType == 9 or statType == 10 or statType == 11 or statType == 12 or statType == 13 or statType == 14 or statType == 15">
+				SELECT <if test="statType == 2 or statType == 3">T.Q</if><if test="statType == 10 or statType == 11">sum(T.Q)</if>
+				<if test="statType == 5 or statType == 6 ">T.WATER_FLOW</if><if test="statType == 12 or statType == 13">sum(T.WATER_FLOW)</if>
+				<if test="statType == 8 or statType == 9 ">T.GAS_FLOW</if><if test="statType == 14 or statType == 15">sum(T.GAS_FLOW)</if> DATA_VALUE, p.TYPE_ID, P.TYPE_NAME
+					  FROM <if test="statType == 2 or statType == 10 or statType == 5 or statType == 12 or statType == 8 or statType == 14">T_DAY_LEDGER_STAT</if>
+  				<if test="statType == 3 or statType == 11 or statType == 6 or statType == 13 or statType == 9 or statType == 15">T_MON_LEDGER_STAT</if>  T,
+					       T_DEVICE_TYPE P
+					 WHERE T.Ledger_Id=20
+					   AND p.parent_type_id=1
+					   AND T.Stat_Date >= #{beginTime,jdbcType=TIME}
+					   AND T.Stat_Date &lt;= #{endTime,jdbcType=TIME}
+				<if test="statType == 10 or statType == 11 or statType == 12 or statType == 13 or statType == 14 or statType == 15">GROUP BY P.TYPE_ID,P.TYPE_NAME</if>	   
+			</when>
+		</choose>
+	</select>
+	
+	<!-- 查询能耗排名数据(按照分户分组) -->
+	<select id="queryEnergyRankingData" parameterType="HashMap" resultMap="curveBeanResultMap">
+		<choose>
+			<!-- 电水气曲线数据 -->
+			<when test="statType == 1 or statType == 4 or statType == 7 ">
+				SELECT <if test="statType == 1">SUM(T.FAQ_VALUE)</if><if test="statType == 4 or statType==7">SUM(T.FLOW_VALUE)</if> DATA_VALUE, K.LEDGER_ID TYPE_ID, P.LEDGER_NAME TYPE_NAME
+				FROM   <if test="statType == 1">T_CUR_Q</if><if test="statType == 4">T_CUR_WFLOW</if><if test="statType == 7">T_CUR_GFLOW</if> T, 
+				(
+				      SELECT A.METER_ID, A.LEDGER_ID
+				      FROM   T_LEDGER_DEVICE_METER A
+				      WHERE  A.TYPE_ID = #{typeId}
+				      AND    EXISTS (
+				              SELECT 1 FROM T_LEDGER B WHERE B.PARENT_LEDGER_ID = #{ledgerId} AND A.LEDGER_ID = B.LEDGER_ID
+				      )
+				) K, T_LEDGER P
+				WHERE  T.METER_ID = K.METER_ID
+				AND    K.LEDGER_ID = P.LEDGER_ID
+				AND    T.FREEZE_TIME >= #{beginTime,jdbcType=TIME}
+				AND    T.FREEZE_TIME &lt;= #{endTime,jdbcType=TIME}
+				GROUP BY K.LEDGER_ID, P.LEDGER_NAME
+			</when>
+			
+			<!-- 电水气日或月数据  -->
+			<when test="statType == 2 or statType == 3 or statType == 5 or statType == 6 or statType == 8 or statType == 9">
+				SELECT <if test="statType == 2 or statType == 3">sum(T.FAQ_VALUE)</if>
+				<if test="statType == 5 or statType == 6">sum(T.FLOW_VALUE)</if>
+				<if test="statType == 8 or statType == 9 ">sum(T.FLOW_VALUE)</if> DATA_VALUE,
+				 K.ledger_id TYPE_ID, P.LEDGER_NAME TYPE_NAME
+					  FROM <if test="statType == 2">T_DAY_Q</if><if test="statType == 5">T_DAY_WFLOW</if><if test="statType == 8">T_DAY_GFLOW</if>
+  				<if test="statType == 3">T_MON_Q</if><if test="statType == 6">T_MON_WFLOW</if><if test="statType == 9">T_MON_GFLOW</if>  T,
+  				T_LEDGER_DEVICE_METER K,T_LEDGER P
+			 WHERE T.METER_ID = K.METER_ID AND K.TYPE_ID = #{typeId} 
+			   AND p.parent_ledger_id= #{ledgerId}
+			   AND K.LEDGER_ID = P.LEDGER_ID 
+			   AND T.FREEZE_TIME >= #{beginTime,jdbcType=TIME}
+			   AND T.FREEZE_TIME  &lt;= #{endTime,jdbcType=TIME}
+			GROUP BY K.ledger_id,P.LEDGER_NAME
+			</when>
+		</choose>
+	</select>
+    
+    <!-- 查询能耗排名数据(按照分户分组) -->
+	<select id="queryEnergyRankingDataNew" parameterType="HashMap" resultType="HashMap">
+		<choose>
+			<when test="dataType == 1">
+				WITH ldevice AS (SELECT ld.*,lm.METER_ID,lm.ADD_ATTR m_ADD_ATTR,lm.PCT FROM (
+                SELECT t1.* FROM T_LEDGER t1,T_LEDGER t2 WHERE t1.LEDGER_LFT >= t2.LEDGER_LFT AND t1.LEDGER_RGT &lt;= t2.LEDGER_RGT AND t2.LEDGER_ID = #{ledgerId} AND t1.ANALY_TYPE = 106) ld
+                inner join T_LEDGER_METER lm ON lm.LEDGER_ID = ld.LEDGER_ID)
+
+                SELECT tb0.*,tb1.J_VALUE as J_VALUE,tb2.F_VALUE as F_VALUE,tb3.P_VALUE as P_VALUE,tb4.G_VALUE as G_VALUE FROM
+                (
+                SELECT LEDGER_ID, LEDGER_NAME, sum(eValue) as VALUE FROM
+                (
+                SELECT tld.LEDGER_ID,tld.LEDGER_NAME,dq.METER_ID,
+                CASE WHEN dq.FAQ_VALUE IS NOT NULL AND tld.m_ADD_ATTR IS NOT NULL AND tld.PCT IS NOT NULL and p.ct is not null and p.pt is not null
+                THEN dq.FAQ_VALUE* p.ct * p.pt *tld.m_ADD_ATTR*tld.PCT/100 ELSE 0 END eValue
+                FROM ldevice tld
+                LEFT JOIN (SELECT METER_ID,rate_number,MAX(day_fae_rate)-MIN(day_fae_rate) AS FAQ_VALUE FROM view_day_e_rate
+                WHERE FREEZE_TIME >= #{beginTime,jdbcType=TIME} AND FREEZE_TIME  &lt;= #{endTime,jdbcType=TIME}
+                GROUP BY METER_ID,rate_number) dq ON tld.METER_ID = dq.METER_ID
+                left join t_meter e on TLD.METER_ID = e.meter_id
+                left join t_mped_info p on p.mped_id = e.mped_id
+                ) GROUP BY LEDGER_ID, LEDGER_NAME
+                ) tb0
+                left join
+                (
+                SELECT LEDGER_ID, LEDGER_NAME, sum(eValue) as J_VALUE FROM
+                (
+                SELECT tld.LEDGER_ID,tld.LEDGER_NAME,dq.METER_ID,
+                CASE WHEN dq.FAQ_VALUE IS NOT NULL AND tld.m_ADD_ATTR IS NOT NULL AND tld.PCT IS NOT NULL and p.ct is not null and p.pt is not null
+                THEN dq.FAQ_VALUE* p.ct * p.pt *tld.m_ADD_ATTR*tld.PCT/100 ELSE 0 END eValue
+                FROM ldevice tld
+                LEFT JOIN (SELECT METER_ID,MAX(day_fae_rate)-MIN(day_fae_rate) AS FAQ_VALUE FROM view_day_e_rate
+                WHERE FREEZE_TIME >= #{beginTime,jdbcType=TIME} AND FREEZE_TIME  &lt;= #{endTime,jdbcType=TIME} and rate_number = 1
+                GROUP BY METER_ID) dq ON tld.METER_ID = dq.METER_ID
+                left join t_meter e on TLD.METER_ID = e.meter_id
+                left join t_mped_info p on p.mped_id = e.mped_id
+                ) GROUP BY LEDGER_ID, LEDGER_NAME
+                ) tb1 on tb0.LEDGER_ID = tb1.LEDGER_ID
+                left join
+                (
+                SELECT LEDGER_ID, LEDGER_NAME, sum(eValue) as F_VALUE FROM
+                (
+                SELECT tld.LEDGER_ID,tld.LEDGER_NAME,dq.METER_ID,
+                CASE WHEN dq.FAQ_VALUE IS NOT NULL AND tld.m_ADD_ATTR IS NOT NULL AND tld.PCT IS NOT NULL and p.ct is not null and p.pt is not null
+                THEN dq.FAQ_VALUE* p.ct * p.pt *tld.m_ADD_ATTR*tld.PCT/100 ELSE 0 END eValue
+                FROM ldevice tld
+                LEFT JOIN (SELECT METER_ID,MAX(day_fae_rate)-MIN(day_fae_rate) AS FAQ_VALUE FROM view_day_e_rate
+                WHERE FREEZE_TIME >= #{beginTime,jdbcType=TIME} AND FREEZE_TIME  &lt;= #{endTime,jdbcType=TIME} and rate_number = 2
+                GROUP BY METER_ID) dq ON tld.METER_ID = dq.METER_ID
+                left join t_meter e on TLD.METER_ID = e.meter_id
+                left join t_mped_info p on p.mped_id = e.mped_id
+                ) GROUP BY LEDGER_ID, LEDGER_NAME
+                ) tb2 on tb1.LEDGER_ID = tb2.LEDGER_ID
+                left join
+                (
+                SELECT LEDGER_ID, LEDGER_NAME, sum(eValue) as P_VALUE FROM
+                (
+                SELECT tld.LEDGER_ID,tld.LEDGER_NAME,dq.METER_ID,
+                CASE WHEN dq.FAQ_VALUE IS NOT NULL AND tld.m_ADD_ATTR IS NOT NULL AND tld.PCT IS NOT NULL and p.ct is not null and p.pt is not null
+                THEN dq.FAQ_VALUE* p.ct * p.pt *tld.m_ADD_ATTR*tld.PCT/100 ELSE 0 END eValue
+                FROM ldevice tld
+                LEFT JOIN (SELECT METER_ID,MAX(day_fae_rate)-MIN(day_fae_rate) AS FAQ_VALUE FROM view_day_e_rate
+                WHERE FREEZE_TIME >= #{beginTime,jdbcType=TIME} AND FREEZE_TIME  &lt;= #{endTime,jdbcType=TIME} and rate_number = 3
+                GROUP BY METER_ID) dq ON tld.METER_ID = dq.METER_ID
+                left join t_meter e on TLD.METER_ID = e.meter_id
+                left join t_mped_info p on p.mped_id = e.mped_id
+                ) GROUP BY LEDGER_ID, LEDGER_NAME
+                ) tb3 on tb2.LEDGER_ID = tb3.LEDGER_ID
+                left join
+                (
+                SELECT LEDGER_ID, LEDGER_NAME, sum(eValue) as G_VALUE FROM
+                (
+                SELECT tld.LEDGER_ID,tld.LEDGER_NAME,dq.METER_ID,
+                CASE WHEN dq.FAQ_VALUE IS NOT NULL AND tld.m_ADD_ATTR IS NOT NULL AND tld.PCT IS NOT NULL and p.ct is not null and p.pt is not null
+                THEN dq.FAQ_VALUE* p.ct * p.pt *tld.m_ADD_ATTR*tld.PCT/100 ELSE 0 END eValue
+                FROM ldevice tld
+                LEFT JOIN (SELECT METER_ID,MAX(day_fae_rate)-MIN(day_fae_rate) AS FAQ_VALUE FROM view_day_e_rate
+                WHERE FREEZE_TIME >= #{beginTime,jdbcType=TIME} AND FREEZE_TIME  &lt;= #{endTime,jdbcType=TIME} and rate_number = 4
+                GROUP BY METER_ID) dq ON tld.METER_ID = dq.METER_ID
+                left join t_meter e on TLD.METER_ID = e.meter_id
+                left join t_mped_info p on p.mped_id = e.mped_id
+                ) GROUP BY LEDGER_ID, LEDGER_NAME
+                ) tb4 on tb3.LEDGER_ID = tb4.LEDGER_ID
+                where 1=1
+                <if test="sortType == 0">ORDER BY VALUE DESC</if>
+                <if test="sortType == 1">ORDER BY J_VALUE DESC,VALUE DESC</if>
+                <if test="sortType == 2">ORDER BY F_VALUE DESC,VALUE DESC</if>
+                <if test="sortType == 3">ORDER BY P_VALUE DESC,VALUE DESC</if>
+                <if test="sortType == 4">ORDER BY G_VALUE DESC,VALUE DESC</if>
+
+			</when>
+            <when test="dataType == 2">
+				WITH ldevice AS (SELECT ld.*,lm.METER_ID,lm.ADD_ATTR m_ADD_ATTR,lm.PCT FROM (
+                SELECT t1.* FROM T_LEDGER t1,T_LEDGER t2 WHERE t1.LEDGER_LFT >= t2.LEDGER_LFT AND t1.LEDGER_RGT &lt;= t2.LEDGER_RGT AND t2.LEDGER_ID = #{ledgerId} AND t1.ANALY_TYPE = 106) ld
+                 LEFT JOIN T_LEDGER_METER lm ON lm.LEDGER_ID = ld.LEDGER_ID)
+
+                SELECT * FROM ( SELECT LEDGER_ID, LEDGER_NAME, sum(wValue) VALUE FROM (
+                SELECT tld.LEDGER_ID,tld.LEDGER_NAME,dq.METER_ID,CASE WHEN dq.WFLOW_VALUE IS NOT NULL AND tld.m_ADD_ATTR IS NOT NULL AND tld.PCT IS NOT NULL and p.ct is not null and p.pt is not null  THEN dq.WFLOW_VALUE* p.ct * p.pt*tld.m_ADD_ATTR*tld.PCT/100 ELSE 0 END wValue 
+                FROM ldevice tld LEFT JOIN (SELECT METER_ID,MAX(WFLOW_VALUE)-MIN(WFLOW_VALUE) AS WFLOW_VALUE FROM T_DAY_WFLOW
+                WHERE FREEZE_TIME >= #{beginTime,jdbcType=TIME} AND FREEZE_TIME  &lt;= #{endTime,jdbcType=TIME} GROUP BY METER_ID) dq ON tld.METER_ID = dq.METER_ID left join t_meter e on TLD.METER_ID = e.meter_id
+																						left join t_mped_info p on p.mped_id = e.mped_id) GROUP BY LEDGER_ID, LEDGER_NAME ORDER BY VALUE DESC) WHERE ROWNUM &lt;= 10
+			</when>
+            <when test="dataType == 3">
+				WITH ldevice AS (SELECT ld.*,lm.METER_ID,lm.ADD_ATTR m_ADD_ATTR,lm.PCT FROM (
+                SELECT t1.* FROM T_LEDGER t1,T_LEDGER t2 WHERE t1.LEDGER_LFT >= t2.LEDGER_LFT AND t1.LEDGER_RGT &lt;= t2.LEDGER_RGT AND t2.LEDGER_ID = #{ledgerId} AND t1.ANALY_TYPE = 106) ld
+                 LEFT JOIN T_LEDGER_METER lm ON lm.LEDGER_ID = ld.LEDGER_ID)
+
+                SELECT * FROM ( SELECT LEDGER_ID, LEDGER_NAME, sum(gValue) VALUE FROM (SELECT tld.LEDGER_ID,tld.LEDGER_NAME,dq.METER_ID,CASE WHEN dq.GFLOW_VALUE IS NOT NULL AND tld.m_ADD_ATTR IS NOT NULL AND tld.PCT IS NOT NULL THEN dq.GFLOW_VALUE*tld.m_ADD_ATTR*tld.PCT/100 ELSE 0 END gValue 
+                FROM ldevice tld LEFT JOIN (SELECT METER_ID,MAX(GFLOW_VALUE)-MIN(GFLOW_VALUE) AS GFLOW_VALUE FROM T_DAY_GFLOW
+                WHERE FREEZE_TIME >= #{beginTime,jdbcType=TIME} AND FREEZE_TIME  &lt;= #{endTime,jdbcType=TIME} GROUP BY METER_ID) dq ON tld.METER_ID = dq.METER_ID left join t_meter e on TLD.METER_ID = e.meter_id
+																						left join t_mped_info p on p.mped_id = e.mped_id) GROUP BY LEDGER_ID, LEDGER_NAME ORDER BY VALUE DESC) WHERE ROWNUM &lt;= 10
+			</when>
+            <when test="dataType == 4">
+				WITH ldevice AS (SELECT ld.*,lm.METER_ID,lm.ADD_ATTR m_ADD_ATTR,lm.PCT FROM (
+                SELECT t1.* FROM T_LEDGER t1,T_LEDGER t2 WHERE t1.LEDGER_LFT >= t2.LEDGER_LFT AND t1.LEDGER_RGT &lt;= t2.LEDGER_RGT AND t2.LEDGER_ID = #{ledgerId} AND t1.ANALY_TYPE = 106) ld
+                 LEFT JOIN T_LEDGER_METER lm ON lm.LEDGER_ID = ld.LEDGER_ID)
+
+                SELECT * FROM ( SELECT LEDGER_ID, LEDGER_NAME, sum(hValue) VALUE FROM (SELECT tld.LEDGER_ID,tld.LEDGER_NAME,dq.METER_ID,CASE WHEN dq.HEAT_VALUE IS NOT NULL AND tld.m_ADD_ATTR IS NOT NULL AND tld.PCT IS NOT NULL THEN dq.HEAT_VALUE*tld.m_ADD_ATTR*tld.PCT/100 ELSE 0 END hValue 
+                FROM ldevice tld LEFT JOIN (SELECT METER_ID,MAX(HEAT_VALUE)-MIN(HEAT_VALUE) AS HEAT_VALUE FROM T_DAY_HEAT
+                WHERE FREEZE_TIME >= #{beginTime,jdbcType=TIME} AND FREEZE_TIME  &lt;= #{endTime,jdbcType=TIME} GROUP BY METER_ID) dq ON tld.METER_ID = dq.METER_ID left join t_meter e on TLD.METER_ID = e.meter_id
+																						left join t_mped_info p on p.mped_id = e.mped_id) GROUP BY LEDGER_ID, LEDGER_NAME ORDER BY VALUE DESC) WHERE ROWNUM &lt;= 10
+			</when>
+            <when test="dataType == 0">
+				WITH ldevice AS (SELECT ld.*,lm.METER_ID,lm.ADD_ATTR m_ADD_ATTR,lm.PCT FROM (
+                SELECT t1.* FROM T_LEDGER t1,T_LEDGER t2 WHERE t1.LEDGER_LFT >= t2.LEDGER_LFT AND t1.LEDGER_RGT &lt;= t2.LEDGER_RGT AND t2.LEDGER_ID = #{ledgerId} AND t1.ANALY_TYPE = 106) ld
+                 LEFT JOIN T_LEDGER_METER lm ON lm.LEDGER_ID = ld.LEDGER_ID)
+
+                SELECT * FROM ( SELECT LEDGER_ID, LEDGER_NAME, sum(VALUE)/1000 VALUE FROM (
+                SELECT LEDGER_ID, LEDGER_NAME, #{elecUnit} * sum(eValue) VALUE FROM (SELECT tld.LEDGER_ID,tld.LEDGER_NAME,dq.METER_ID,CASE WHEN dq.FAQ_VALUE IS NOT NULL AND tld.m_ADD_ATTR IS NOT NULL AND tld.PCT IS NOT NULL and p.ct is not null and p.pt is not null  THEN dq.FAQ_VALUE* p.ct * p.pt *tld.m_ADD_ATTR*tld.PCT/100 ELSE 0 END eValue 
+                FROM ldevice tld LEFT JOIN (SELECT METER_ID,rate_number,MAX(day_fae_rate)-MIN(day_fae_rate) AS FAQ_VALUE FROM view_day_e_rate
+                WHERE FREEZE_TIME >= #{beginTime,jdbcType=TIME} AND FREEZE_TIME  &lt;= #{endTime,jdbcType=TIME} GROUP BY METER_ID,rate_number) dq ON tld.METER_ID = dq.METER_ID left join t_meter e on TLD.METER_ID = e.meter_id
+																						left join t_mped_info p on p.mped_id = e.mped_id) GROUP BY LEDGER_ID, LEDGER_NAME
+                UNION ALL
+                SELECT LEDGER_ID, LEDGER_NAME, #{waterUnit} * sum(wValue) VALUE FROM (SELECT tld.LEDGER_ID,tld.LEDGER_NAME,dq.METER_ID,CASE WHEN dq.WFLOW_VALUE IS NOT NULL AND tld.m_ADD_ATTR IS NOT NULL AND tld.PCT IS NOT NULL THEN dq.WFLOW_VALUE*tld.m_ADD_ATTR*tld.PCT/100 ELSE 0 END wValue 
+                FROM ldevice tld LEFT JOIN (SELECT METER_ID,MAX(WFLOW_VALUE)-MIN(WFLOW_VALUE) AS WFLOW_VALUE FROM T_DAY_WFLOW
+                WHERE FREEZE_TIME >= #{beginTime,jdbcType=TIME} AND FREEZE_TIME  &lt;= #{endTime,jdbcType=TIME} GROUP BY METER_ID) dq ON tld.METER_ID = dq.METER_ID left join t_meter e on TLD.METER_ID = e.meter_id
+																						left join t_mped_info p on p.mped_id = e.mped_id) GROUP BY LEDGER_ID, LEDGER_NAME
+                UNION ALL
+                SELECT LEDGER_ID, LEDGER_NAME, #{gasUnit} * sum(gValue) VALUE FROM (SELECT tld.LEDGER_ID,tld.LEDGER_NAME,dq.METER_ID,CASE WHEN dq.GFLOW_VALUE IS NOT NULL AND tld.m_ADD_ATTR IS NOT NULL AND tld.PCT IS NOT NULL THEN dq.GFLOW_VALUE*tld.m_ADD_ATTR*tld.PCT/100 ELSE 0 END gValue 
+                FROM ldevice tld LEFT JOIN (SELECT METER_ID,MAX(GFLOW_VALUE)-MIN(GFLOW_VALUE) AS GFLOW_VALUE FROM T_DAY_GFLOW
+                WHERE FREEZE_TIME >= #{beginTime,jdbcType=TIME} AND FREEZE_TIME  &lt;= #{endTime,jdbcType=TIME} GROUP BY METER_ID) dq ON tld.METER_ID = dq.METER_ID left join t_meter e on TLD.METER_ID = e.meter_id
+																						left join t_mped_info p on p.mped_id = e.mped_id) GROUP BY LEDGER_ID, LEDGER_NAME
+                UNION ALL
+                SELECT LEDGER_ID, LEDGER_NAME, #{hotUnit} * sum(hValue) VALUE FROM (SELECT tld.LEDGER_ID,tld.LEDGER_NAME,dq.METER_ID,CASE WHEN dq.HEAT_VALUE IS NOT NULL AND tld.m_ADD_ATTR IS NOT NULL AND tld.PCT IS NOT NULL THEN dq.HEAT_VALUE*tld.m_ADD_ATTR*tld.PCT/100 ELSE 0 END hValue 
+                FROM ldevice tld LEFT JOIN (SELECT METER_ID,MAX(HEAT_VALUE)-MIN(HEAT_VALUE) AS HEAT_VALUE FROM T_DAY_HEAT
+                WHERE FREEZE_TIME >= #{beginTime,jdbcType=TIME} AND FREEZE_TIME  &lt;= #{endTime,jdbcType=TIME} GROUP BY METER_ID) dq ON tld.METER_ID = dq.METER_ID left join t_meter e on TLD.METER_ID = e.meter_id
+																						left join t_mped_info p on p.mped_id = e.mped_id) GROUP BY LEDGER_ID, LEDGER_NAME) GROUP BY LEDGER_ID, LEDGER_NAME ORDER BY VALUE DESC) WHERE ROWNUM &lt;= 10
+			</when>
+		</choose>
+	</select>
+	
+	<!-- 查询EMO对比数据 -->
+	<select id="queryHouseholdData" parameterType="HashMap" resultMap="curveBeanResultMap">
+		<choose>
+			<!-- 曲线或日或月电能量 -->
+            <when test="statType == 1 ">
+                SELECT T.FREEZE_TIME + 15 / (24 * 60) as FREEZE_TIME, SUM(T.FAQ_VALUE * K.ADD_ATTR * K.PCT / 100) DATA_VALUE, P.LEDGER_ID TYPE_ID, P.LEDGER_NAME TYPE_NAME
+                FROM   T_CUR_Q  T,
+                (
+                SELECT A.METER_ID, A.LEDGER_ID, A.ADD_ATTR, A.PCT
+                FROM   T_LEDGER_METER A
+                WHERE  A.LEDGER_ID = #{ledgerId}
+                ) K, T_LEDGER P
+                WHERE  T.METER_ID = K.METER_ID
+                AND    K.LEDGER_ID = P.LEDGER_ID
+                AND    T.FREEZE_TIME >= #{beginTime,jdbcType=TIME}
+                AND    T.FREEZE_TIME &lt;= #{endTime,jdbcType=TIME}
+                GROUP BY T.FREEZE_TIME, P.LEDGER_ID, P.LEDGER_NAME
+            </when>
+            
+            <when test="statType == 2 or statType == 5 or statType == 8 or statType == 20 ">
+				 SELECT 
+		            <if test="statType == 2">T.Q</if>
+		            <if test="statType == 5">T.WATER_FLOW</if>
+		            <if test="statType == 8">T.GAS_FLOW</if>
+		            <if test="statType == 20">T.TEMPER</if>
+	             DATA_VALUE, STAT_DATE + 15 / (24 * 60) AS FREEZE_TIME, P.LEDGER_ID TYPE_ID, P.LEDGER_NAME TYPE_NAME
+	            FROM T_DAY_LEDGER_STAT T LEFT JOIN T_LEDGER P ON T.LEDGER_ID = P.LEDGER_ID 
+	            WHERE t.ledger_id=#{ledgerId} and T.Stat_Date >=#{beginTime,jdbcType=TIME}
+	            AND T.Stat_Date &lt;= #{endTime,jdbcType=TIME}
+	            ORDER BY STAT_DATE
+			</when>
+			
+			<when test="statType == 3 or statType == 6 or statType == 9 or statType == 21">
+				 SELECT 
+		            <if test="statType == 3">T.Q</if>
+		            <if test="statType == 6">T.WATER_FLOW</if>
+		            <if test="statType == 9">T.GAS_FLOW</if>
+		            <if test="statType == 21">T.TEMPER</if>
+	             DATA_VALUE, STAT_DATE + 15 / (24 * 60) AS FREEZE_TIME, P.LEDGER_ID TYPE_ID, P.LEDGER_NAME TYPE_NAME
+	            FROM T_MON_LEDGER_STAT T LEFT JOIN T_LEDGER P ON T.LEDGER_ID = P.LEDGER_ID
+	            WHERE t.ledger_id=#{ledgerId} and T.Stat_Date >=#{beginTime,jdbcType=TIME}
+	            AND T.Stat_Date &lt;= #{endTime,jdbcType=TIME}
+	            ORDER BY STAT_DATE
+			</when>
+		</choose>
+	</select>
+    <!-- 查询DCP对比数据 -->
+    <select id="queryHouseholdMeterData" parameterType="HashMap" resultMap="curveBeanResultMap">
+        <choose>
+            <!-- 曲线或日或月电能量 -->
+            <when test="statType == 1 or statType == 2 or statType == 3 or statType == 10 or statType == 11">
+                <if test="isVirtual != 1">       <!-- 真实点 -->
+                    SELECT T.FREEZE_TIME + 15 / (24 * 60) as FREEZE_TIME, T.FAQ_VALUE as DATA_VALUE, K.METER_ID as TYPE_ID, K.METER_NAME as TYPE_NAME
+                    FROM
+                    <if test="statType == 1">T_CUR_Q</if>
+                    <if test="statType == 2 or statType == 10">T_DAY_Q</if>
+                    <if test="statType == 3 or statType == 11">T_MON_Q</if>
+                    T,
+                    T_METER K
+                    WHERE  T.METER_ID = K.METER_ID
+                    AND    T.FREEZE_TIME >= #{beginTime,jdbcType=TIME}
+                    AND    T.FREEZE_TIME &lt;= #{endTime,jdbcType=TIME}
+                    AND    K.METER_ID = #{meterID}
+                </if>
+                <if test="isVirtual == 1">       <!-- 虚拟点 -->
+                    SELECT T.FREEZE_TIME + 15 / (24 * 60) as FREEZE_TIME, m.METER_ID as TYPE_ID, m.METER_NAME as TYPE_NAME,
+                    sum(T.FAQ_VALUE) as DATA_VALUE
+                    FROM
+                    <if test="statType == 1">T_CUR_Q</if>
+                    <if test="statType == 2 or statType == 10">T_DAY_Q</if>
+                    <if test="statType == 3 or statType == 11">T_MON_Q</if>
+                    T, T_VIRTUAL_METER_RELATION r, T_METER m
+                    WHERE  T.METER_ID = r.METER_ID and r.VIRTUAL_ID=m.METER_ID
+                    AND    T.FREEZE_TIME >= #{beginTime,jdbcType=TIME}
+                    AND    T.FREEZE_TIME &lt;= #{endTime,jdbcType=TIME}
+                    AND    r.VIRTUAL_ID = #{meterID}
+                    group by m.METER_ID, m.METER_NAME, T.FREEZE_TIME
+                </if>
+            </when>
+
+            <!-- 日或月水流量 -->
+            <when test="statType == 5 or statType == 6 or statType == 12 or statType == 13">
+                SELECT T.FREEZE_TIME + 15 / (24 * 60) as FREEZE_TIME, T.WFLOW_VALUE as DATA_VALUE, K.METER_ID as TYPE_ID, K.METER_NAME as TYPE_NAME
+                FROM   
+                	<if test="statType == 5 or statType == 12">T_DAY_WFLOW_STAT</if>
+                	<if test="statType == 6 or statType == 13">T_MON_WFLOW_STAT</if>
+                 T,
+                       T_METER K
+                WHERE  T.METER_ID = K.METER_ID
+                AND    T.FREEZE_TIME >= #{beginTime,jdbcType=TIME}
+                AND    T.FREEZE_TIME &lt;= #{endTime,jdbcType=TIME}
+                AND    K.METER_ID = #{meterID}
+            </when>
+
+            <!-- 日或月气流量 -->
+            <when test="statType == 8 or statType == 9 or statType == 14 or statType == 15">
+                SELECT T.FREEZE_TIME + 15 / (24 * 60) as FREEZE_TIME, T.GFLOW_VALUE as DATA_VALUE, K.METER_ID as TYPE_ID, K.METER_NAME as TYPE_NAME
+                FROM   
+                	<if test="statType == 8 or statType == 14">T_DAY_GFLOW_STAT</if>
+                	<if test="statType == 9 or statType == 15">T_MON_GFLOW_STAT</if>
+                 T,  T_METER K
+                WHERE  T.METER_ID = K.METER_ID
+                AND    T.FREEZE_TIME >= #{beginTime,jdbcType=TIME}
+                AND    T.FREEZE_TIME &lt;= #{endTime,jdbcType=TIME}
+                AND    K.METER_ID = #{meterID}
+            </when>
+            
+            <!-- 日或月热量 -->
+            <when test="statType == 20 or statType == 21">
+                SELECT T.FREEZE_TIME + 15 / (24 * 60) as FREEZE_TIME, T.HEAT_VALUE as DATA_VALUE, K.METER_ID as TYPE_ID, K.METER_NAME as TYPE_NAME
+                FROM   
+                	<if test="statType == 20">T_DAY_HEAT_STAT</if>
+                	<if test="statType == 21">T_MON_HEAT_STAT</if>
+                 T,  T_METER K
+                WHERE  T.METER_ID = K.METER_ID
+                AND    T.FREEZE_TIME >= #{beginTime,jdbcType=TIME}
+                AND    T.FREEZE_TIME &lt;= #{endTime,jdbcType=TIME}
+                AND    K.METER_ID = #{meterID}
+            </when>
+        </choose>
+    </select>
+	
+	<!-- 查询分户Top -->
+	<select id="getEnergyTop" parameterType="HashMap" resultMap="curveBeanResultMap">
+		SELECT B.LEDGER_ID TYPE_ID, B.LEDGER_NAME TYPE_NAME, 
+		<choose>
+			<!-- 电 -->
+			<when test="statType == 1 or statType == 2 or statType == 3 or statType == 10 or statType == 11">
+				SUM(A.Q) dataValue
+			</when>
+			<!-- 水 -->
+			<when test="statType == 4 or statType == 5 or statType == 6 or statType == 12 or statType == 13">
+				SUM(A.WATER_FLOW) dataValue
+			</when>
+			<!-- 气 -->
+			<when test="statType == 7 or statType == 8 or statType == 9 or statType == 14 or statType == 15">
+				SUM(A.GAS_FLOW) dataValue
+			</when>
+		</choose>
+		FROM   
+		<choose>
+			<!-- 电水气日统计数据 -->
+			<when test="statType == 1 or statType == 2 or statType == 10 or statType == 4 or statType == 5 or statType == 12 or statType == 7 or statType == 8 or statType == 14">
+				T_DAY_LEDGER_STAT
+			</when>
+			<!-- 电水气月统计数据 -->
+			<otherwise>
+				T_MON_LEDGER_STAT
+			</otherwise>
+		</choose>
+		       A,  T_LEDGER B
+		WHERE  A.LEDGER_ID = B.LEDGER_ID
+		AND    A.STAT_DATE >= #{beginTime,jdbcType=TIME}
+		AND    A.STAT_DATE &lt;= #{endTime,jdbcType=TIME}
+
+        <if test="ledgerId!=null and ledgerId != -1 and ledgerId != 0">
+            AND A.LEDGER_ID IN (SELECT t1.ledger_id from t_ledger t1,t_ledger t2
+            where t1.ledger_lft>=t2.ledger_lft and t1.ledger_rgt&lt;=t2.ledger_rgt and t2.ledger_id=#{ledgerId})
+            and A.LEDGER_ID != #{ledgerId}
+        </if>
+        <if test="ledgerId!=null and ledgerId != -1 and ledgerId == 0">
+            AND A.LEDGER_ID IN (select t2.ledger_id from V_GROUP_LEDGER t1,t_ledger t2,t_ledger t3
+            where t1.account_id=#{accountId} and t1.ledger_id=t3.ledger_id and t2.ledger_lft>=t3.ledger_lft and t2.ledger_rgt&lt;=t3.ledger_rgt)
+        </if>
+        GROUP BY B.LEDGER_ID, B.LEDGER_NAME
+		ORDER BY dataValue DESC
+	</select>
+
+    <!--查询父分项下面的子分项-->
+    <select id="getChildDevice" parameterType="Long" resultType="Long">
+        select t.TYPE_ID from t_device_type t
+        where t.PARENT_TYPE_ID=#{typeId}
+    </select>
+</mapper>

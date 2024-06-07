@@ -1,0 +1,235 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.linyang.energy.mapping.projectManager.ProjectMapper" >
+	 <resultMap id="BaseResultMap" type="com.linyang.energy.model.ProjectBean" >
+	    <id column="PROJECT_ID" property="projectId" jdbcType="DECIMAL" />
+	    <result column="PROJECT_NAME" property="projectName" jdbcType="VARCHAR" />
+	    <result column="PROJECT_ADMIN" property="projectAdmin" jdbcType="VARCHAR" />
+	    <result column="OBJECT_ID" property="objectId" jdbcType="DECIMAL" />
+	    <result column="OBJECT_NAME" property="objectName" jdbcType="VARCHAR" />
+	    <result column="BEGIN_TIME" property="beginTime" jdbcType="TIMESTAMP" />
+	    <result column="END_TIME" property="endTime" jdbcType="TIMESTAMP" />
+	    <result column="CARRY_UNIT" property="carryUnit" jdbcType="VARCHAR" />
+	    <result column="REGULAR_UNIT" property="regularUnit" jdbcType="VARCHAR" />
+	    <result column="PROJECT_REMARK" property="projectRemark" jdbcType="VARCHAR" />
+	 </resultMap>
+	 <sql id="Base_Column_List" >
+	    PROJECT_ID, PROJECT_NAME, PROJECT_ADMIN, OBJECT_ID, OBJECT_NAME, BEGIN_TIME, END_TIME, 
+	    CARRY_UNIT, REGULAR_UNIT, PROJECT_REMARK
+	 </sql>
+	 <select id="selectByPrimaryKey" resultMap="BaseResultMap" parameterType="java.lang.Long" >
+	    select 
+	    <include refid="Base_Column_List" />
+	    from T_PROJECT
+	    where PROJECT_ID = #{projectId,jdbcType=DECIMAL}
+	 </select>
+	 <!-- 查询项目信息 -->
+	 <select id="getprojectPagedata" resultMap="BaseResultMap" parameterType="HashMap" >
+	    select 
+	    <include refid="Base_Column_List" />
+	    from T_PROJECT
+	      <if test="projectName != ''" >
+	       where  PROJECT_NAME   LIKE '%' || #{projectName} || '%'
+	      </if>
+	        ORDER BY PROJECT_ID DESC
+	</select>
+           <!--根据项目的Id查询用户的信息-->
+  	<select id="getProjectByProjectId" resultType="com.linyang.energy.model.ProjectBean"  parameterType="java.lang.String" >
+		SELECT T.PROJECT_ID projectId,
+		       T.PROJECT_NAME projectName,
+		       T.PROJECT_ADMIN projectAdmin,
+		       T.OBJECT_ID objectId,
+		       T.OBJECT_NAME objectName,
+		       T.BEGIN_TIME beginTime,
+		       T.END_TIME endTime,
+		       T.CARRY_UNIT carryUnit,
+		       T.REGULAR_UNIT regularUnit,
+		       T.PROJECT_REMARK projectRemark,
+		       B.PREDICT_INVEST predictInvest,
+		       B.ACTUAL_INVEST actualInvest,
+		       B.PREDICT_SAVE predictSave,
+		       B.ACTUAL_SAVE actualSave,
+		       B.PREDICT_RETURN predictReturn,
+		       B.ACTUAL_RETURN actualReturn 	     
+		  FROM T_PROJECT T, T_INVESTMENT B 
+		  WHERE T.PROJECT_ID = B.PROJECT_ID
+		        AND T.PROJECT_ID =#{projectId}
+  	</select>
+   	<!-- 判断项目名称是否重复 -->
+	<select id="checkProjectName" parameterType="java.lang.String" resultType="int">
+		SELECT    COUNT(*) FROM T_PROJECT T WHERE T.PROJECT_NAME=#{projectName}
+		<if test="operType == 1">
+			AND T.PROJECT_NAME != #{projectName}
+		</if>
+	</select>
+	<!--获取历史月数据-->
+  	<select id="getMonthChartData" resultType="HashMap"  parameterType="HashMap" >
+		SELECT T.Q AS Q, T.STAT_DATE AS STATDATE
+          FROM T_DAY_LEDGER_STAT T
+         WHERE T.LEDGER_ID = #{objectId}
+           AND T.STAT_DATE BETWEEN #{lastEndDate} AND #{BeginDate}
+  	</select>
+  	<!--获取历史季度数据-->
+  	<select id="getQuarterChartData" resultType="HashMap"  parameterType="HashMap" >
+		SELECT T.Q AS Q, T.STAT_DATE AS STATDATE
+          FROM T_DAY_LEDGER_STAT T
+         WHERE T.LEDGER_ID = #{objectId}
+           AND T.STAT_DATE BETWEEN #{lastEndDate} AND #{BeginDate}
+  	</select>
+	<!--获取现在月数据-->
+  	<select id="getMonthChartDataN" resultType="HashMap"  parameterType="HashMap" >
+		SELECT T.Q AS QN, T.STAT_DATE AS STATDATEN
+          FROM T_DAY_LEDGER_STAT T
+         WHERE T.LEDGER_ID = #{objectId}
+         AND T.STAT_DATE BETWEEN #{BeginDate1} AND #{nextEndDate}
+  	</select>
+  	<!--获取现在季度数据-->
+  	<select id="getQuarterChartDataN" resultType="HashMap"  parameterType="HashMap" >
+		SELECT T.Q AS QN, T.STAT_DATE AS STATDATEN
+          FROM T_DAY_LEDGER_STAT T
+         WHERE T.LEDGER_ID = #{objectId}
+         AND T.STAT_DATE BETWEEN #{BeginDate1} AND #{nextEndDate}
+  	</select>
+	<!--获取历史年数据-->
+  	<select id="getYearChartData" resultType="HashMap"  parameterType="HashMap" >
+		SELECT T.Q AS Q, T.STAT_DATE AS STATDATE
+          FROM T_MON_LEDGER_STAT T
+         WHERE T.LEDGER_ID = #{objectId}
+           AND T.STAT_DATE BETWEEN #{lastEndDate} AND #{BeginDate1}
+  	</select>
+  	<!--获取现在年数据-->
+  	<select id="getYearChartDataN" resultType="HashMap"  parameterType="HashMap" >
+		SELECT T.Q AS QN, T.STAT_DATE AS STATDATEN
+          FROM T_MON_LEDGER_STAT T
+         WHERE T.LEDGER_ID = #{objectId}
+         AND T.STAT_DATE BETWEEN #{BeginDate} AND #{nextEndDate}
+  	</select>
+  
+  	<delete id="deleteByPrimaryKey" parameterType="java.lang.String" >
+	    delete from T_PROJECT
+	    where  	 <if test="projectId != null"> PROJECT_ID in  <foreach collection="projectId" item="ids" open="(" separator="," close=")"> #{ids} </foreach></if>			<!-- 待修改 -->
+  	</delete>
+  	<insert id="insert" parameterType="com.linyang.energy.model.ProjectBean" >
+	    insert into T_PROJECT (PROJECT_ID, PROJECT_NAME, PROJECT_ADMIN, 
+	      OBJECT_ID, OBJECT_NAME, BEGIN_TIME, 
+	      END_TIME, CARRY_UNIT, REGULAR_UNIT, 
+	      PROJECT_REMARK)
+	    values (#{projectId,jdbcType=DECIMAL}, #{projectName,jdbcType=VARCHAR}, #{projectAdmin,jdbcType=VARCHAR}, 
+	      #{objectId,jdbcType=DECIMAL}, #{objectName,jdbcType=VARCHAR}, #{beginTime,jdbcType=TIMESTAMP}, 
+	      #{endTime,jdbcType=TIMESTAMP}, #{carryUnit,jdbcType=VARCHAR}, #{regularUnit,jdbcType=VARCHAR}, 
+	      #{projectRemark,jdbcType=VARCHAR})
+  	</insert>
+  	<insert id="insertSelective" parameterType="com.linyang.energy.model.ProjectBean" >
+    	insert into T_PROJECT
+    	<trim prefix="(" suffix=")" suffixOverrides="," >
+	      <if test="projectId != null" >
+	        PROJECT_ID,
+	      </if>
+	      <if test="projectName != null" >
+	        PROJECT_NAME,
+	      </if>
+	      <if test="projectAdmin != null" >
+	        PROJECT_ADMIN,
+	      </if>
+	      <if test="objectId != null" >
+	        OBJECT_ID,
+	      </if>
+	      <if test="objectName != null" >
+	        OBJECT_NAME,
+	      </if>
+	      <if test="beginTime != null" >
+	        BEGIN_TIME,
+	      </if>
+	      <if test="endTime != null" >
+	        END_TIME,
+	      </if>
+	      <if test="carryUnit != null" >
+	        CARRY_UNIT,
+	      </if>
+	      <if test="regularUnit != null" >
+	        REGULAR_UNIT,
+	      </if>
+	      <if test="projectRemark != null" >
+	        PROJECT_REMARK,
+	      </if>
+	    </trim>
+    	<trim prefix="values (" suffix=")" suffixOverrides="," >
+	      <if test="projectId != null" >
+	        #{projectId,jdbcType=DECIMAL},
+	      </if>
+	      <if test="projectName != null" >
+	        #{projectName,jdbcType=VARCHAR},
+	      </if>
+	      <if test="projectAdmin != null" >
+	        #{projectAdmin,jdbcType=VARCHAR},
+	      </if>
+	      <if test="objectId != null" >
+	        #{objectId,jdbcType=DECIMAL},
+	      </if>
+	      <if test="objectName != null" >
+	        #{objectName,jdbcType=VARCHAR},
+	      </if>
+	      <if test="beginTime != null" >
+	        #{beginTime,jdbcType=TIMESTAMP},
+	      </if>
+	      <if test="endTime != null" >
+	        #{endTime,jdbcType=TIMESTAMP},
+	      </if>
+	      <if test="carryUnit != null" >
+	        #{carryUnit,jdbcType=VARCHAR},
+	      </if>
+	      <if test="regularUnit != null" >
+	        #{regularUnit,jdbcType=VARCHAR},
+	      </if>
+	      <if test="projectRemark != null" >
+	        #{projectRemark,jdbcType=VARCHAR},
+	      </if>
+	    </trim>
+  	</insert>
+  	<update id="updateByPrimaryKeySelective" parameterType="com.linyang.energy.model.ProjectBean" >
+    	UPDATE T_PROJECT
+	    <set >
+	      <if test="projectName != null" >
+	        PROJECT_NAME = #{projectName,jdbcType=VARCHAR},
+	      </if>
+	      <if test="projectAdmin != null" >
+	        PROJECT_ADMIN = #{projectAdmin,jdbcType=VARCHAR},
+	      </if>
+	      <if test="objectId != null" >
+	        OBJECT_ID = #{objectId,jdbcType=DECIMAL},
+	      </if>
+	      <if test="objectName != null" >
+	        OBJECT_NAME = #{objectName,jdbcType=VARCHAR},
+	      </if>
+	      <if test="beginTime != null" >
+	        BEGIN_TIME = #{beginTime,jdbcType=TIMESTAMP},
+	      </if>
+	      <if test="endTime != null" >
+	        END_TIME = #{endTime,jdbcType=TIMESTAMP},
+	      </if>
+	      <if test="carryUnit != null" >
+	        CARRY_UNIT = #{carryUnit,jdbcType=VARCHAR},
+	      </if>
+	      <if test="regularUnit != null" >
+	        REGULAR_UNIT = #{regularUnit,jdbcType=VARCHAR},
+	      </if>
+	      <if test="projectRemark != null" >
+	        PROJECT_REMARK = #{projectRemark,jdbcType=VARCHAR},
+	      </if>
+	    </set>
+	    where PROJECT_ID = #{projectId,jdbcType=DECIMAL}
+	</update>
+  	<update id="updateByPrimaryKey" parameterType="com.linyang.energy.model.ProjectBean" >
+	    UPDATE T_PROJECT
+	    SET PROJECT_NAME = #{projectName,jdbcType=VARCHAR},
+	      PROJECT_ADMIN = #{projectAdmin,jdbcType=VARCHAR},
+	      OBJECT_ID = #{objectId,jdbcType=DECIMAL},
+	      OBJECT_NAME = #{objectName,jdbcType=VARCHAR},
+	      BEGIN_TIME = #{beginTime,jdbcType=TIMESTAMP},
+	      END_TIME = #{endTime,jdbcType=TIMESTAMP},
+	      CARRY_UNIT = #{carryUnit,jdbcType=VARCHAR},
+	      REGULAR_UNIT = #{regularUnit,jdbcType=VARCHAR},
+	      PROJECT_REMARK = #{projectRemark,jdbcType=VARCHAR}
+	    WHERE PROJECT_ID = #{projectId,jdbcType=DECIMAL}
+  	</update>
+</mapper>

@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.linyang.energy.mapping.authmanager.AccountRoleRelationBeanMapper" >
+  <resultMap id="BaseResultMap" type="com.linyang.energy.model.AccountRoleRelationBean" >
+    <id column="ROLE_ID" property="roleId" jdbcType="DECIMAL" />
+    <id column="ACCOUNT_ID" property="accountId" jdbcType="DECIMAL" />
+  </resultMap>
+  <delete id="deleteByPrimaryKey" parameterType="com.linyang.energy.model.AccountRoleRelationBean" >
+    delete from T_ACCOUNT_ROLE
+    where ROLE_ID = #{roleId,jdbcType=DECIMAL}
+      and ACCOUNT_ID = #{accountId,jdbcType=DECIMAL}
+  </delete>
+  <insert id="insert" parameterType="com.linyang.energy.model.AccountRoleRelationBean" >
+    insert into T_ACCOUNT_ROLE (ROLE_ID, ACCOUNT_ID)
+    values (#{roleId,jdbcType=DECIMAL}, #{accountId,jdbcType=DECIMAL})
+  </insert>
+  <insert id="insertSelective" parameterType="com.linyang.energy.model.AccountRoleRelationBean" >
+    insert into T_ACCOUNT_ROLE
+    <trim prefix="(" suffix=")" suffixOverrides="," >
+      <if test="roleId != null" >
+        ROLE_ID,
+      </if>
+      <if test="accountId != null" >
+        ACCOUNT_ID,
+      </if>
+    </trim>
+    <trim prefix="values (" suffix=")" suffixOverrides="," >
+      <if test="roleId != null" >
+        #{roleId,jdbcType=DECIMAL},
+      </if>
+      <if test="accountId != null" >
+        #{accountId,jdbcType=DECIMAL},
+      </if>
+    </trim>
+  </insert>
+  
+  <select id="getUserRoles"  parameterType="java.lang.Long" resultType="HashMap" >
+   SELECT A.ACCOUNT_ID accountId,A.ROLE_ID roleId FROM T_ACCOUNT_ROLE A,T_ROLE B WHERE A.ROLE_ID = B.ROLE_ID AND B.ROLE_STATUS=1
+    WHERE ACCOUNT_ID = #{accountId,jdbcType=DECIMAL}
+  </select>
+</mapper>

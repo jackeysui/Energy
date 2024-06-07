@@ -1,0 +1,391 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.linyang.energy.mapping.yunNan.MeasuringMapper">
+
+    <select id="queryMeasuringPageList" resultType="HashMap">
+		SELECT T1.MSI_ID msiId,T1.MSI_NAME msiName,T1.DATACODE dataCode,T1.MANUFACTURER manufacturer,T2.DATA_NAME dataName,
+        T1.ALIGN_STATUS alignStatus,T1.ALIGN_CYCLE alignCycle,T1.LOCATION location,T1.CURRENT_STATUS currentStatus ,
+        T3.NEXTALIGN_DATE NEXTALIGNDATA,T1.ENT_ID
+        FROM T_MSI T1
+        LEFT JOIN T_DATACFG_ITEM T2 ON T1.DATACODE = T2.DATA_ID
+        LEFT JOIN T_ALIGN_RECORD T3 ON T3.MSI_ID = T1.MSI_ID
+        JOIN (
+        SELECT T1.LEDGER_ID AS ID, T1.LEDGER_NAME AS NAME, 1 AS TYPE FROM T_LEDGER T1,T_LEDGER T2
+        WHERE T1.LEDGER_LFT >= T2.LEDGER_LFT AND T1.LEDGER_RGT &lt;=T2.LEDGER_RGT AND T2.LEDGER_ID=#{ledgerId}
+        ) T4 ON T1.ENT_ID = T4.ID
+		WHERE 1=1
+        <if test="eventType != null and eventType != ''">
+            AND  T1.MSI_TYPE = #{eventType}
+        </if>
+        <if test="manufacturer != null and manufacturer != ''">
+            AND T1.MANUFACTURER = #{manufacturer}
+        </if>
+        <if test="alignStatus != -1">
+            AND T1.ALIGN_STATUS = #{alignStatus}
+        </if>
+        <if test="location != null and location != ''">
+            AND T1.LOCATION = #{location}
+        </if>
+        <if test="currentStatus != -1">
+            AND T1.CURRENT_STATUS = #{currentStatus}
+        </if>
+    </select>
+
+    <insert id="saveMeasuring" parameterType="HashMap" >
+        INSERT INTO T_MSI
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="msiId">
+                MSI_ID,
+            </if>
+            <if test="msiName">
+                MSI_NAME,
+            </if>
+            <if test="msiType">
+                MSI_TYPE,
+            </if>
+            <if test="msiLevel">
+                MSI_LEVEL,
+            </if>
+            <if test="params">
+                PARAMS,
+            </if>
+            <if test="dataCode">
+                DATACODE,
+            </if>
+            <if test="reportArith">
+                REPORT_ARITH,
+            </if>
+            <if test="reportRatio">
+                REPORT_RATIO,
+            </if>
+            <if test="editManufacturer">
+                MANUFACTURER,
+            </if>
+            <if test="range">
+                RANGE,
+            </if>
+            <if test="manageNo">
+                MANAGE_NO,
+            </if>
+            <if test="model">
+                MODEL,
+            </if>
+            <if test="precisionLevel">
+                PRECISION_LEVEL,
+            </if>
+            <if test="editAlignStatus">
+                ALIGN_STATUS,
+            </if>
+            <if test="alignCycle">
+                ALIGN_CYCLE,
+            </if>
+            <if test="AOid">
+                AO_ID,
+            </if>
+            <if test="unalignReason">
+                UNALIGN_REASON,
+            </if>
+            <if test="installer">
+                INSTALLER,
+            </if>
+            <if test="installDate">
+                INSTALL_DATE,
+            </if>
+            <if test="editLocation">
+                LOCATION,
+            </if>
+            <if test="linkSys">
+                LINKSYS,
+            </if>
+            <if test="editCurrentStatus">
+                CURRENT_STATUS,
+            </if>
+            <if test="serNO">
+                SERNO,
+            </if>
+            <if test="barcode">
+                BARCODE,
+            </if>
+            <if test="uploadStatus">
+                UPLOAD_STATUS,
+            </if>
+            <if test="remark != null and remark != ''">
+                REMARK,
+            </if>
+            <if test="entId">
+                ENT_ID,
+            </if>
+        </trim>
+        VALUES
+        <trim prefix="values(" suffix=")" suffixOverrides=",">
+            <if test="msiId">
+                #{msiId},
+            </if>
+            <if test="msiName">
+                #{msiName,jdbcType=VARCHAR},
+            </if>
+            <if test="msiType">
+                #{msiType},
+            </if>
+            <if test="msiLevel">
+                #{msiLevel},
+            </if>
+            <if test="params">
+                #{params},
+            </if>
+            <if test="dataCode">
+                #{dataCode},
+            </if>
+            <if test="reportArith">
+                #{reportArith},
+            </if>
+            <if test="reportRatio">
+                #{reportRatio},
+            </if>
+            <if test="editManufacturer">
+                #{editManufacturer},
+            </if>
+            <if test="range">
+                #{range},
+            </if>
+            <if test="manageNo">
+                #{manageNo},
+            </if>
+            <if test="model">
+                #{model},
+            </if>
+            <if test="precisionLevel">
+                #{precisionLevel},
+            </if>
+            <if test="editAlignStatus">
+                #{editAlignStatus},
+            </if>
+            <if test="alignCycle">
+                #{alignCycle},
+            </if>
+            <if test="AOid">
+                #{AOid},
+            </if>
+            <if test="unalignReason">
+                #{unalignReason},
+            </if>
+            <if test="installer">
+                #{installer},
+            </if>
+            <if test="installDate">
+                #{installDate,jdbcType=TIME},
+            </if>
+            <if test="editLocation">
+                #{editLocation},
+            </if>
+            <if test="linkSys">
+                #{linkSys},
+            </if>
+            <if test="editCurrentStatus">
+                #{editCurrentStatus},
+            </if>
+            <if test="serNO">
+                #{serNO},
+            </if>
+            <if test="barcode">
+                #{barcode},
+            </if>
+            <if test="uploadStatus">
+                #{uploadStatus},
+            </if>
+            <if test="remark != null and remark != ''">
+                #{remark},
+            </if>
+            <if test="entId">
+                #{entId},
+            </if>
+        </trim>
+    </insert>
+
+    <update id="modifyMeasuring" parameterType="HashMap">
+        UPDATE T_MSI
+        <set>
+            <if test="msiName != null and msiName != ''">
+                MSI_NAME = #{msiName},
+            </if>
+            <if test="msiType != -1">
+                MSI_TYPE = #{msiType},
+            </if>
+            <if test="msiLevel != -1">
+                MSI_LEVEL = #{msiLevel},
+            </if>
+            <if test="params != null and params != ''">
+                PARAMS = #{params},
+            </if>
+            <if test="dataCode != -1">
+                DATACODE = #{dataCode},
+            </if>
+            <if test="reportArith != -1">
+                REPORT_ARITH = #{reportArith},
+            </if>
+            <if test="reportRatio != -1">
+                REPORT_RATIO = #{reportRatio},
+            </if>
+            <if test="editManufacturer != null and editManufacturer != ''">
+                MANUFACTURER = #{editManufacturer},
+            </if>
+            <if test="range != null and range != ''">
+                RANGE = #{range},
+            </if>
+            <if test="manageNo != null and manageNo != ''">
+                MANAGE_NO = #{manageNo},
+            </if>
+            <if test="model != null and model != ''">
+                MODEL = #{model},
+            </if>
+            <if test="precisionLevel != null and precisionLevel != ''">
+                PRECISION_LEVEL = #{precisionLevel},
+            </if>
+            <if test="editAlignStatus != -1">
+                ALIGN_STATUS = #{editAlignStatus},
+            </if>
+            <if test="alignCycle != null and alignCycle != ''">
+                ALIGN_CYCLE = #{alignCycle},
+            </if>
+            <if test="AOid != null and AOid != ''">
+                AO_ID = #{AOid},
+            </if>
+            <if test="unalignReason != null and unalignReason != ''">
+                UNALIGN_REASON = #{unalignReason},
+            </if>
+            <if test="installer != -1">
+                INSTALLER = #{installer},
+            </if>
+            <if test="editLocation != null and editLocation != ''">
+                LOCATION = #{editLocation},
+            </if>
+            <if test="linkSys != -1">
+                LINKSYS = #{linkSys},
+            </if>
+            <if test="editCurrentStatus != -1">
+                CURRENT_STATUS = #{editCurrentStatus},
+            </if>
+            <if test="changeDate != null and changeDate != ''">
+                CHANGE_DATE = #{changeDate,jdbcType=TIME},
+            </if>
+            <if test="serNO != null and serNO != ''">
+                SERNO = #{serNO},
+            </if>
+            <if test="barcode != null and barcode != ''">
+                BARCODE = #{barcode},
+            </if>
+            <if test="remark != null and remark != ''">
+                REMARK = #{remark},
+            </if>
+            <if test="entId != -1">
+                ENT_ID = #{entId},
+            </if>
+        </set>
+        WHERE
+	    MSI_ID = #{msiId}
+    </update>
+
+    <select id="queryDataById" parameterType="Long" resultType="HashMap">
+        SELECT
+            T1.MSI_ID msiId,
+            T1.MSI_NAME msiName,
+            T1.MSI_TYPE msiType,
+            T4.MSI_TYPE_NAME msiTypeName,
+            T1.MSI_LEVEL msiLevel,
+            T1.PARAMS params,
+            T1.DATACODE dataCode,
+            T1.REPORT_ARITH reportArith,
+            T1.REPORT_RATIO reportRatio,
+            T1.MANUFACTURER manufacturer,
+            T1.RANGE range,
+            T1.MANAGE_NO manageNo,
+            T1.MODEL model,
+            T1.PRECISION_LEVEL precisionLevel,
+            T1.ALIGN_STATUS alignStatus,
+            T1.ALIGN_CYCLE alignCycle,
+            T1.AO_ID  AOID,
+			T2.AO_NAME AONAME,
+            T1.UNALIGN_REASON unalignReason,
+            T1.INSTALLER installer,
+            T1.INSTALL_DATE installDate,
+            T1.LOCATION location,
+            T1.LINKSYS linksys,
+            T1.CURRENT_STATUS currentStatus,
+            T1.CHANGE_DATE changeDate,
+            T1.SERNO serNo,
+            T1.BARCODE barcode,
+            T1.UPLOAD_STATUS uploadStatus,
+			T3.LASTALIGN_DATE lastAlignDate,
+			T3.NEXTALIGN_DATE nextAlignDate,
+			T1.REMARK remark,
+			T1.ENT_ID entId,
+			T5.ENT_NAME entName,
+            T6.DATA_ID dataId,
+            T6.DATA_NAME dataName,
+            T7.EN_TYPE_NAME enTypeName
+         FROM T_MSI T1
+			LEFT JOIN T_ALIGN_ORG T2 ON T1.AO_ID = T2.AO_ID
+			LEFT JOIN T_ALIGN_RECORD T3 ON T1.MSI_ID = T3.MSI_ID
+			LEFT JOIN T_MSI_TYPE T4 ON T1.MSI_TYPE = T4.MSI_TYPE_ID
+			LEFT JOIN T_ENT_INFO T5 ON T5.ENT_ID = T1.ENT_ID
+			LEFT JOIN T_DATACFG_ITEM T6 ON T6.DATA_ID = T1.DATACODE
+            LEFT JOIN T_EN_TYPE T7 ON T1.PARAMS = T7.EN_TYPE_ID
+			WHERE T1.MSI_ID = #{msiId}
+    </select>
+
+    <select id="queryAlignOrg" resultType="HashMap">
+        SELECT AO_ID AOID,AO_NAME AONAME FROM T_ALIGN_ORG
+    </select>
+
+    <select id="queryMsiType" resultType="HashMap">
+        SELECT MSI_TYPE_ID msiTypeId,MSI_TYPE_NAME msiTypeName FROM T_MSI_TYPE
+    </select>
+
+    <delete id="deleteMsiDataById">
+        DELETE FROM T_MSI WHERE MSI_ID = #{msiId}
+    </delete>
+
+    <select id="queryUploadData" resultType="HashMap">
+        SELECT T1.MSI_NAME MSINAME,T1.MSI_TYPE METERTYPE,T1.MSI_LEVEL METERLEVEL,T1.PARAMS PARAMS,T5.DATA_CODE DATACODE,T1.REPORT_ARITH REPORTARITHMETIC,T1.REPORT_RATIO REPORTRATIO,
+        T1.MANUFACTURER MANUFACTURER,T1.MODEL MODEL,T1.PRECISION_LEVEL PRECISIONLEVEL,T1.RANGE RANGES,T1.MANAGE_NO MANAGENO,T1.ALIGN_STATUS ALIGNSTATE,T1.ALIGN_CYCLE ALIGNCYCLE,
+        T2.LASTALIGN_DATE LASTALIGNDATE,T2.NEXTALIGN_DATE NEXTALIGNDATE ,T3.AO_NAME ALIGNORG,T1.UNALIGN_REASON UNALIGNREASON,T1.LOCATION LOCATION,T1.INSTALLER INSTALLER,T1.INSTALL_DATE INSTALLTIME,
+        T1.LINKSYS LINKSYS,T1.CURRENT_STATUS CURRENTSTATE,T1.CHANGE_DATE STATECHANGETIME,T1.SERNO SERNO,T1.BARCODE BARCODE ,T1.REMARK REMARK,T1.DATA_INDEX ,T4.ENT_CODE,T1.UPLOAD_STATUS UPLOADSTATUS,
+        T1.ENT_ID
+        FROM T_MSI T1
+        JOIN T_ALIGN_RECORD T2 ON T1.MSI_ID = T2.MSI_ID
+        JOIN T_ALIGN_ORG T3 ON T1.AO_ID = T3.AO_ID
+        JOIN T_ENT_INFO T4 ON T1.ENT_ID = T4.ENT_ID
+        JOIN T_DATACFG_ITEM T5 ON T5.DATA_ID = T1.DATACODE
+        WHERE T1.MSI_ID = #{msiId}
+    </select>
+
+    <update id="updateDataIndexById">
+        UPDATE T_MSI SET DATA_INDEX = #{dataIndex},UPLOAD_STATUS = #{uploadStatus} WHERE MSI_ID = #{msiId}
+    </update>
+
+    <insert id="saveRecordData" parameterType="HashMap">
+        INSERT INTO T_ALIGN_RECORD ( MSI_ID,LASTALIGN_DATE,NEXTALIGN_DATE,UPLOAD_STATUS )
+        VALUES ( #{msiId},To_Date(#{recentTime},'yyyy-mm-dd'),To_Date(#{nextTime},'yyyy-mm-dd'),0 )
+    </insert>
+
+    <select id="queryDataCode" resultType="HashMap">
+        SELECT DATA_ID DATAID,DATA_NAME DATANAME FROM T_DATACFG_ITEM
+    </select>
+    
+    <select id="queryEnType" resultType="HashMap">
+      SELECT EN_TYPE_ID ENTYPEID,EN_TYPE_NAME ENTYPENAME FROM T_EN_TYPE
+    </select>
+
+    <update id="updateUsageStatus" parameterType="Long">
+        UPDATE T_DATACFG_ITEM SET USAGE_STATUS = 1 WHERE DATA_ID = #{dataCode}
+    </update>
+
+    <select id="queryLedgerByRegion" resultType="HashMap">
+        SELECT t1.ledger_id as id, t1.ledger_name as name, 1 as type from t_ledger t1,t_ledger t2
+        where t1.ledger_lft>=t2.ledger_lft and t1.ledger_rgt &lt; =t2.ledger_rgt and t2.ledger_id=#{ledgerId}
+        and t1.ANALY_TYPE = 102
+    </select>
+
+
+
+</mapper>

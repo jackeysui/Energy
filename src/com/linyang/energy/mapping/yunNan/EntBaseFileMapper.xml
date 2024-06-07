@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.linyang.energy.mapping.yunNan.EntBaseFileMapper" >
+   <!-- 添加能源管理信息 -->
+  <select id="getEmInfoById" resultType="HashMap" parameterType="long" >
+	  SELECT * FROM T_ENMS_INFO WHERE ENT_ID= #{entId}
+  </select>
+  
+  <!-- 添加能源管理信息 -->
+  <insert id="mergeEmInfo" parameterType="HashMap">
+		merge into T_ENMS_INFO t
+		using (select #{entId,jdbcType=BIGINT} as entId,
+		              #{emName,jdbcType=VARCHAR}   as emName,
+		              #{offName,jdbcType=VARCHAR}   as offName,
+		              #{offPosi,jdbcType=VARCHAR}  as offPosi,
+		              #{tel,jdbcType=VARCHAR} as tel,
+		              #{fax,jdbcType=TIME} as fax
+		         from dual) s
+		on (t.ENT_ID = s.entId)
+		when not matched then
+		  insert (ENT_ID, EM_NAME, OFFICIAL_NAME, OFFICIAL_POSITION, TEL,FAX,UPLOAD_STATUS)
+		  values (s.entId, s.emName, s.offName, s.offPosi, s.tel,s.fax,'0')
+		when matched then
+		  update set 
+		      t.EM_NAME = s.emName,
+		      t.OFFICIAL_NAME = s.offName,
+		      t.OFFICIAL_POSITION =  s.offPosi,
+		      t.TEL =  s.tel,
+		      t.FAX = s.fax
+  </insert>
+  
+  <!-- 更新 -->
+  <update id="updateEnergyManageStatus" parameterType="HashMap" >
+ 	  UPDATE T_ENMS_INFO SET UPLOAD_STATUS=#{uploadStatus,jdbcType=INTEGER}
+ 	  <if test="dataIndex != null ">
+          ,DATA_INDEX=#{dataIndex,jdbcType=VARCHAR}
+       </if>
+ 	  WHERE ENT_ID=#{entId,jdbcType=BIGINT}
+  </update>
+  
+   <!-- 添加企业认证信息 -->
+  <select id="getEntIdentInfoById" resultType="HashMap" parameterType="long" >
+	  SELECT T.ENT_ID,to_char(T.PASS_DATE,'yyyy-mm-dd') PASS_DATE,T.PASS_ORG,T.PASS_NAME,T.TEL,T.STATUS,T.DATA_INDEX,t.UPLOAD_STATUS
+ 		FROM T_ENT_AUT T WHERE ENT_ID= #{entId}
+  </select>
+  
+  <!-- 添加企业认证信息 -->
+  <insert id="mergeEntIdentInfo" parameterType="HashMap">
+		merge into T_ENT_AUT t
+		using (select #{entId,jdbcType=BIGINT} as entId,
+		              to_date(#{passDate},'yyyy-mm-dd')  as passDate,
+					  #{passOrg,jdbcType=VARCHAR}   as passOrg,
+		              #{passName,jdbcType=VARCHAR}   as passName,
+		              #{tel,jdbcType=VARCHAR} as tel,
+		              #{status,jdbcType=VARCHAR} as status
+		         from dual) s
+		on (t.ENT_ID = s.entId)
+		when not matched then
+		  insert (ENT_ID, PASS_DATE,PASS_ORG, PASS_NAME, TEL, STATUS,UPLOAD_STATUS)
+		  values (s.entId, s.passDate,s.passOrg, s.passName, s.tel,s.status,'0')
+		when matched then
+		  update set 
+		      t.PASS_DATE = s.passDate,
+					t.PASS_ORG = s.passOrg,
+		      t.PASS_NAME = s.passName,
+		      t.TEL =  s.tel,
+		      t.STATUS = s.status
+  </insert>
+  
+   <!-- 更新 -->
+  <update id="updateEntIdentStatus" parameterType="HashMap" >
+ 	  UPDATE T_ENT_AUT SET UPLOAD_STATUS=#{uploadStatus,jdbcType=INTEGER}
+ 	  <if test="dataIndex != null ">
+          ,DATA_INDEX=#{dataIndex,jdbcType=VARCHAR}
+       </if>
+ 	  WHERE ENT_ID=#{entId,jdbcType=BIGINT}
+  </update>
+  
+   <!-- 添加水电燃气户号 -->
+  <select id="getWaterPowerGasInfoById" resultType="HashMap" >
+	  SELECT * FROM T_ENACC_INFO T WHERE ENT_ID= #{entId} and ACCOUNT_TYPE = #{accType}
+  </select>
+  
+  <!-- 添加企业认证信息 -->  
+  <insert id="mergeWaterPowerGasInfo" parameterType="HashMap">
+		merge into T_ENACC_INFO t
+		using (select #{entId,jdbcType=BIGINT} as entId,
+					  #{accType,jdbcType=VARCHAR}   as accType,
+		              #{accNo,jdbcType=VARCHAR}   as accNo,
+		              #{accName,jdbcType=VARCHAR} as accName,
+		              #{provider,jdbcType=VARCHAR} as provider
+		         from dual) s
+		on (t.ENT_ID = s.entId and t.ACCOUNT_TYPE=s.accType)
+		when not matched then
+		  insert (ENT_ID, ACCOUNT_TYPE,ACCOUNT_NO, ACCOUNT_NAME, PROVIDER,UPLOAD_STATUS)
+		  values (s.entId, s.accType,s.accNo, s.accName, s.provider,'0')
+		when matched then
+		  update set 
+			  t.ACCOUNT_NO = s.accNo,
+		      t.ACCOUNT_NAME = s.accName,
+		      t.PROVIDER =  s.provider
+  </insert>
+  
+  <!-- 更新 -->
+  <update id="updateWPGStatus" parameterType="HashMap" >
+ 	  UPDATE T_ENACC_INFO SET UPLOAD_STATUS=#{uploadStatus,jdbcType=INTEGER}
+ 	  <if test="dataIndex != null ">
+          ,DATA_INDEX=#{dataIndex,jdbcType=VARCHAR}
+       </if>
+ 	  WHERE ENT_ID=#{entId,jdbcType=BIGINT}
+  </update>
+  
+   <!-- 分页年度经营列表-->
+  <select id="getRunYearPageData" resultType="HashMap" parameterType="HashMap" >
+	   SELECT * FROM t_enincome_info T
+	   WHERE 1=1 
+	   <if test="entId != null and entId != '0' and entId != ''">
+           AND T.ENT_ID=#{entId}
+       </if>
+        AND T.ENT_ID in (
+	   	SELECT t1.ledger_id as ledgerId from t_ledger t1,t_ledger t2
+   		WHERE t1.ledger_lft>=t2.ledger_lft 
+		and t1.ledger_rgt &lt;=t2.ledger_rgt and t2.ledger_id =  #{ledgerId})
+	   ORDER BY T.CNT_YEAR
+  </select>
+  
+   <!-- 单个年度经营信息 -->
+  <select id="getRunYearInfo" resultType="HashMap" parameterType="HashMap" >
+	   SELECT T.*,L.LEDGER_NAME ENT_NAME FROM t_enincome_info T
+		INNER JOIN T_LEDGER L ON L.LEDGER_ID=T.ENT_ID
+	    WHERE T.ENT_ID=#{entId} AND T.CNT_YEAR=#{cntYear}
+  </select>
+  
+  <!-- 添加企业认证信息 -->  
+  <insert id="mergeRunYearInfo" parameterType="HashMap">
+		merge into t_enincome_info t
+		using (select #{entId,jdbcType=BIGINT} as entId,
+					  #{cntYear,jdbcType=INTEGER}   as cntYear,
+		              #{outputValue,jdbcType=DOUBLE}   as outputValue,
+		              #{addValue,jdbcType=DOUBLE} as addValue,
+		              #{income,jdbcType=DOUBLE} as income
+		         from dual) s
+		on (t.ENT_ID = s.entId AND t.CNT_YEAR = s.cntYear)
+		when not matched then
+		  insert (ENT_ID,CNT_YEAR, OUTPUT_VALUE,ADDED_VALUE, INCOME, UPLOAD_STATUS)
+		  values (s.entId,s.cntYear,s.outputValue,s.addValue, s.income, '0')
+		when matched then
+		  update set 
+		      t.OUTPUT_VALUE = s.outputValue,
+			  t.ADDED_VALUE = s.addValue,
+		      t.INCOME = s.income
+  </insert>
+  
+   <!-- 删除年度经营信息 -->
+  <delete id="deleteRunYearInfo" parameterType="long">
+		DELETE FROM t_enincome_info WHERE ENT_ID=#{entId} and CNT_YEAR=#{cntYear}
+  </delete>
+  
+  <!-- 更新 -->
+  <update id="updateRunYearInfoStatus" parameterType="HashMap" >
+ 	  UPDATE t_enincome_info SET UPLOAD_STATUS=#{uploadStatus,jdbcType=INTEGER}
+ 	  <if test="dataIndex != null ">
+          ,DATA_INDEX=#{dataIndex,jdbcType=VARCHAR}
+       </if>
+ 	  WHERE ENT_ID=#{entId,jdbcType=BIGINT} AND CNT_YEAR=#{cntYear,jdbcType=VARCHAR}
+  </update>
+</mapper>

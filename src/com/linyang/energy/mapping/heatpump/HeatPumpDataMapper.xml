@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.linyang.energy.mapping.heatpump.HeatPumpDataMapper" >
+	<!-- 获取电力数据 -->
+	<select id="getElecPowerData" parameterType="HashMap" resultType="HashMap">
+		select TO_CHAR(d1.fdate,'yyyy-MM-dd HH24:MI') ftime,d2.va,d2.vb,d2.vc,d3.ia,d3.ib,d3.ic,d4.pf,d4.pf_a,d4.pf_b,d4.pf_c,d5.ap,
+  		d5.ap_a, d5.ap_b, d5.ap_c,d6.rp,d6.rp_a,d6.rp_b,d6.rp_c,d7.fae_value,d7.fre_value,d7.bae_value,d7.bre_value
+		 from (select TO_DATE(tt.datestr,'yyyy-MM-dd HH24:MI:SS') fdate from (select t1.MYDATE||' '||t2.freeze_time as datestr from 
+		(SELECT TO_CHAR(TO_DATE(#{beginDate}, 'yyyy-MM-dd') + LEVEL - 1, 'YYYY-MM-DD') AS MYDATE
+		  FROM DUAL CONNECT BY LEVEL &lt;= (TO_DATE(#{endDate}, 'yyyy-MM-dd') - TO_DATE(#{beginDate}, 'yyyy-MM-dd') + 1)) t1,
+		  T_TIME_DIMENSION5 t2 ) tt where tt.datestr>=#{beginTime} and tt.datestr &lt;=#{endTime}) d1
+		  left join 
+		  (select * from t_cur_v c1 where c1.meter_id=#{meterId} and c1.freeze_time>= TO_DATE(#{beginTime}, 'yyyy-MM-dd HH24:MI:SS')
+		  and c1.freeze_time &lt;= TO_DATE(#{endTime}, 'yyyy-MM-dd HH24:MI:SS')) d2 on d2.freeze_time=d1.fdate
+		  left join 
+		  (select * from t_cur_i c2 where c2.meter_id=#{meterId} and c2.freeze_time>= TO_DATE(#{beginTime}, 'yyyy-MM-dd HH24:MI:SS')
+		  and c2.freeze_time &lt;= TO_DATE(#{endTime}, 'yyyy-MM-dd HH24:MI:SS')) d3 on d3.freeze_time=d1.fdate
+		    left join 
+		  (select * from t_cur_pf c3 where c3.meter_id=#{meterId} and c3.freeze_time>= TO_DATE(#{beginTime}, 'yyyy-MM-dd HH24:MI:SS')
+		  and c3.freeze_time &lt;= TO_DATE(#{endTime}, 'yyyy-MM-dd HH24:MI:SS')) d4 on d4.freeze_time=d1.fdate
+		    left join 
+		  (select * from t_cur_ap c4 where c4.meter_id=#{meterId} and c4.freeze_time>= TO_DATE(#{beginTime}, 'yyyy-MM-dd HH24:MI:SS')
+		  and c4.freeze_time &lt;= TO_DATE(#{endTime}, 'yyyy-MM-dd HH24:MI:SS')) d5 on d5.freeze_time=d1.fdate
+		   left join 
+		  (select * from t_cur_rp c5 where c5.meter_id=#{meterId} and c5.freeze_time>= TO_DATE(#{beginTime}, 'yyyy-MM-dd HH24:MI:SS')
+		  and c5.freeze_time &lt;= TO_DATE(#{endTime}, 'yyyy-MM-dd HH24:MI:SS')) d6 on d6.freeze_time=d1.fdate
+		  left join 
+		  (select * from t_cur_e_total c6 where c6.meter_id=#{meterId} and c6.freeze_time>= TO_DATE(#{beginTime}, 'yyyy-MM-dd HH24:MI:SS')
+		  and c6.freeze_time &lt;= TO_DATE(#{endTime}, 'yyyy-MM-dd HH24:MI:SS')) d7 on d7.freeze_time=d1.fdate
+		  order by d1.fdate asc
+	</select>
+	
+	<select id="get5MinHeatPumpData" parameterType="HashMap" resultType="HashMap">
+		select TO_CHAR(d1.fdate,'yyyy-MM-dd HH24:MI') ftime,d2.*,d4.*,d5.*
+	    from (select TO_DATE(tt.datestr,'yyyy-MM-dd HH24:MI:SS') fdate from (select t1.MYDATE||' '||t2.freeze_time as datestr from 
+	    (SELECT TO_CHAR(TO_DATE(#{beginDate}, 'yyyy-MM-dd') + LEVEL - 1, 'YYYY-MM-DD') AS MYDATE
+	      FROM DUAL CONNECT BY LEVEL  &lt;= (TO_DATE(#{endDate}, 'yyyy-MM-dd') - TO_DATE(#{beginDate}, 'yyyy-MM-dd') + 1)) t1,
+	      T_TIME_DIMENSION5 t2 ) tt where tt.datestr>=#{beginTime} and tt.datestr &lt;=#{endTime}) d1
+	      left join 
+	      (select * from t_cur_unit_t c1 where c1.meter_id=#{meterId} and c1.freeze_time>= TO_DATE(#{beginTime}, 'yyyy-MM-dd HH24:MI:SS')
+	      and c1.freeze_time &lt;= TO_DATE(#{endTime}, 'yyyy-MM-dd HH24:MI:SS')) d2 on d2.freeze_time=d1.fdate 
+	        left join 
+	      (select * from t_cur_heatcumu c3 where c3.meter_id=#{meterId} and c3.freeze_time>= TO_DATE(#{beginTime}, 'yyyy-MM-dd HH24:MI:SS')
+	      and c3.freeze_time &lt;= TO_DATE(#{endTime}, 'yyyy-MM-dd HH24:MI:SS')) d4 on d4.freeze_time=d1.fdate
+	        left join 
+	      (select * from t_cur_heatp c4 where c4.meter_id=#{meterId} and c4.freeze_time>= TO_DATE(#{beginTime}, 'yyyy-MM-dd HH24:MI:SS')
+	      and c4.freeze_time &lt;= TO_DATE(#{endTime}, 'yyyy-MM-dd HH24:MI:SS')) d5 on d5.freeze_time=d1.fdate
+	       order by d1.fdate asc  
+	</select>
+	
+	<!-- 获取热泵数据 -->
+	<select id="get1MinHeatPumpData" parameterType="HashMap" resultType="HashMap">
+		select TO_CHAR(d1.fdate,'yyyy-MM-dd HH24:MI') ftime,d3.inlet_water_t H_INLET_WATER_T,d3.outlet_water_t H_OUTLET_WATER_T,d6.*,d7.*
+        from (select TO_DATE(tt.datestr,'yyyy-MM-dd HH24:MI:SS') fdate from (select t1.MYDATE||' '||t2.freeze_time as datestr from 
+        (SELECT TO_CHAR(TO_DATE(#{beginDate}, 'yyyy-MM-dd') + LEVEL - 1, 'YYYY-MM-DD') AS MYDATE
+          FROM DUAL CONNECT BY LEVEL  &lt;= (TO_DATE(#{endDate}, 'yyyy-MM-dd') - TO_DATE(#{beginDate}, 'yyyy-MM-dd') + 1)) t1,
+          T_TIME_DIMENSION1 t2 ) tt where tt.datestr>=#{beginTime} and tt.datestr &lt;=#{endTime}) d1  
+          left join 
+          (select * from t_cur_temp c2 where c2.meter_id=#{meterId} and c2.freeze_time>= TO_DATE(#{beginTime}, 'yyyy-MM-dd HH24:MI:SS')
+          and c2.freeze_time &lt;= TO_DATE(#{endTime}, 'yyyy-MM-dd HH24:MI:SS')) d3 on d3.freeze_time=d1.fdate
+           left join 
+          (         
+           SELECT  T.FREEZE_TIME,
+           max(CASE T.RATE_NUMBER WHEN 1 THEN T.HEATPUMP_STATUS ELSE -1 END) AS STATUS_OPEN,
+           max(CASE T.RATE_NUMBER WHEN 2 THEN T.HEATPUMP_STATUS ELSE -1 END) AS STATUS_MODEL,
+           max(CASE T.RATE_NUMBER WHEN 3 THEN T.HEATPUMP_STATUS ELSE -1 END) AS STATUS_FOG,
+           max(CASE T.RATE_NUMBER WHEN 4 THEN T.HEATPUMP_STATUS ELSE -1 END) AS STATUS_FREEZN,
+           max(CASE T.RATE_NUMBER WHEN 5 THEN T.HEATPUMP_STATUS ELSE -1 END) AS STATUS_ERROR
+           FROM T_CUR_HEATSTATUS T
+           where T.FREEZE_TIME BETWEEN TO_DATE(#{beginTime},'yyyy-mm-dd hh24:mi:ss')  
+           AND  TO_DATE(#{endTime},'yyyy-mm-dd hh24:mi:ss')
+           and T.meter_id = #{meterId}
+           GROUP BY FREEZE_TIME         
+          ) d6 on d6.freeze_time=d1.fdate
+          left join 
+          (select * from t_cur_flow c5 where c5.meter_id=#{meterId} and c5.freeze_time>= TO_DATE(#{beginTime}, 'yyyy-MM-dd HH24:MI:SS')
+          and c5.freeze_time &lt;= TO_DATE(#{endTime}, 'yyyy-MM-dd HH24:MI:SS')) d7 on d7.freeze_time=d1.fdate
+          order by d1.fdate asc
+	</select>
+</mapper>

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<map>
+	<nodeList className="map_box_jiangsu"><!-- className表示的是首页的地图图片的css名称，当某个地方要安装时，美工事先要先把css的名称定义好，开发这里配置 -->
+		<node className="nan_jing" name="南京" ledgerId="3"/>
+		<node className="huai_an" name="淮安" ledgerId="4"/><!-- 节点:className表示首页地图上的点的css的名称，美工事先也需要定义，这里配置  name表示的是名称 -->
+		<node className="zhen_jiang" name="镇江" ledgerId="5"/><!--ledgerId要和数据库中这个分户的ledgerId一致  -->
+		<node className="chang_zhou" name="常州" ledgerId="15"/>
+		<node className="wu_xi" name="无锡" ledgerId="6"/>
+		<node className="su_zhou" name="苏州" ledgerId="7"/>
+		<node className="yang_zhou" name="扬州" ledgerId="8"/>
+		<node className="nan_tong" name="南通" ledgerId="9"/>
+		<node className="tai_zhou" name="泰州" ledgerId="10"/>
+		<node className="yan_cheng" name="盐城" ledgerId="11"/>
+		<node className="su_qian" name="宿迁" ledgerId="12"/>
+		<node className="xu_zhou" name="徐州" ledgerId="13"/>
+		<node className="lian_yungang" name="连云港" edgerId="14"/>
+	</nodeList>
+</map>
+
+

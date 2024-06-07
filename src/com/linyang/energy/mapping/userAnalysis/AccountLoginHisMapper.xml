@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8" ?> 
+<!DOCTYPE mapper PUBLIC "-//ibatis.apache.org//DTD Mapper 3.0//EN" "http://ibatis.apache.org/dtd/ibatis-3-mapper.dtd">
+
+<mapper namespace="com.linyang.energy.mapping.userAnalysis.AccountLoginHisMapper">
+
+	<!-- 保存用户登录信息-->
+	<insert id="addAccountLoginHis" parameterType="com.linyang.energy.model.AccountLoginHisBean" >
+		INSERT INTO T_ACCOUT_LOGIN_HIS(ACCOUNT_ID,LOGIN_DATE,LOGIN_SOFTWARE_TYPE,OS_VERSION)
+		VALUES(
+			#{accountId},#{loginDate},#{loginSoftwareType},#{osVersion}
+		)
+	</insert>
+
+    <select id="checkAccountLoginHis" resultType="java.lang.Integer">
+        select count(1) from T_ACCOUT_LOGIN_HIS
+        where ACCOUNT_ID = #{accountId} and LOGIN_DATE = #{date}
+    </select>
+	
+</mapper>

@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8" ?> 
+<!DOCTYPE mapper PUBLIC "-//ibatis.apache.org//DTD Mapper 3.0//EN" "http://ibatis.apache.org/dtd/ibatis-3-mapper.dtd">
+
+<mapper namespace="com.linyang.energy.mapping.energydataquery.ERateQueryMapper">
+
+	<!-- 查询正向有功分费率电能示值(用于显示示值) -->
+    <select id="queryFaeRate" resultType="Double">
+        select day_fae_rate from T_DAY_E_RATE
+        where meter_id = #{meterId}
+        and freeze_time = #{date}
+        and rate_number = #{rate}
+    </select>
+
+    <!-- 查询正向有功分费率电能示值(用于计算电量) -->
+    <select id="getViewDayERate" resultType="Double">
+        select day_fae_rate from view_day_e_rate
+        where meter_id = #{meterId}
+        and FREEZE_TIME = #{date}
+        and RATE_NUMBER = #{rate}
+    </select>
+
+    <!-- 查询正向有功总电能示值(用于显示示值) -->
+    <select id="queryTotalFaeRate" resultType="Double">
+        select day_fae_total from T_DAY_E_TOTAL
+        where meter_id = #{meterId}
+        and freeze_time = #{date}
+    </select>
+
+    <!-- 查询正向有功总电能示值(用于计算电量) -->
+    <select id="getViewDayETotal" resultType="Double">
+        select DAY_FAE_TOTAL from view_day_e_total
+        where meter_id = #{meterId}
+        and FREEZE_TIME = #{date}
+    </select>
+
+    <!-- 查询分户下需要计算的DCP列表 -->
+    <select id="getComputeMeters" resultType="com.linyang.energy.model.MeterBean">
+        select t1.METER_ID       meterId,
+        t1.METER_NAME     	meterName,
+        t1.METER_TYPE     meterType,
+        t1.METER_ATTR     meterAttr,
+        t1.LEDGER_ID      ledgerId,
+        t1.TERMINAL_ID terminalId,
+        t1.MPED_ID     mpedId,
+        t1.TYPE_ID        typeId,
+        t1.ATTRIBUTE_ID   attributeId,
+        t1.METER_STATUS   meterStatus,
+        t1.ASSET_NUMBER   assetNumber,
+        t2.pt          pt,
+        t2.ct          ct
+        from t_ledger_meter t3 join t_meter t1 on t3.meter_id=t1.meter_id
+        join t_mped_info t2 on t1.mped_id = t2.mped_id
+        where t3.ledger_id = #{ledgerId}
+    </select>
+    
+        <!-- 查询分户下需要计算的DCP列表 -->
+    <select id="getComputeMetersWithMeterType" resultType="com.linyang.energy.model.MeterBean">
+        select t1.METER_ID       meterId,
+        t1.METER_NAME     	meterName,
+        t1.METER_TYPE     meterType,
+        t1.METER_ATTR     meterAttr,
+        t1.LEDGER_ID      ledgerId,
+        t1.TERMINAL_ID terminalId,
+        t1.MPED_ID     mpedId,
+        t1.TYPE_ID        typeId,
+        t1.ATTRIBUTE_ID   attributeId,
+        t1.METER_STATUS   meterStatus,
+        t1.ASSET_NUMBER   assetNumber,
+        t2.pt          pt,
+        t2.ct          ct
+        from t_ledger_meter t3 left join t_meter t1 on t3.meter_id=t1.meter_id
+        left join t_mped_info t2 on t1.mped_id = t2.mped_id
+        where t3.ledger_id = #{ledgerId} and t1.METER_TYPE = #{meterType}
+    </select>
+
+	<!-- 得到水能示值 -->
+    <select id="queryEWater" resultType="Double">
+        select wflow_value from t_day_wflow
+        where meter_id = #{meterId}
+        and freeze_time = #{date}
+    </select>
+    
+    <!-- 查询气能示值 -->
+    <select id="queryEGas" resultType="Double">
+        select gflow_value from t_day_gflow
+        where meter_id = #{meterId}
+        and freeze_time = #{date}
+    </select>
+    
+    <!-- 查询热能示值 -->
+    <select id="queryEHeat" resultType="Double">
+        select heat_value from t_day_heat
+        where meter_id = #{meterId}
+        and freeze_time = #{date}
+    </select>
+
+    <!-- 获取t_cur_e_total表数据，用于显示示值 -->
+    <select id="getCurETotal" resultType="Double">
+        select FAE_VALUE from T_CUR_E_TOTAL
+        where METER_ID = #{meterId} and FREEZE_TIME = #{date}
+    </select>
+
+    <!-- 获取view_cur_e_total表数据，用于计算电量的 -->
+    <select id="getViewCurETotal" resultType="Double">
+        select fae_value from view_cur_e_total
+        where meter_id = #{meterId} and freeze_time = #{date}
+    </select>
+
+</mapper>

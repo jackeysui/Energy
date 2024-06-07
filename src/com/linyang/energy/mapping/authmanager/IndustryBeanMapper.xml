@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.linyang.energy.mapping.authmanager.IndustryBeanMapper" >
+  <resultMap id="BaseResultMap" type="com.linyang.energy.model.IndustryBean" >
+    <id column="INDUSTRY_ID" property="industryId" jdbcType="VARCHAR" />
+    <result column="INDUSTRY_NAME" property="industryName" jdbcType="VARCHAR" />
+    <result column="INDUSTRY_LEVEL" property="industryLevel" jdbcType="INTEGER" />
+    <result column="PARENT_INDUSTRY_ID" property="parentIndustryId" jdbcType="VARCHAR" />
+  </resultMap>
+  <sql id="Base_Column_List" >
+    	INDUSTRY_ID, INDUSTRY_NAME, INDUSTRY_LEVEL, PARENT_INDUSTRY_ID 
+  </sql>
+  <select id="queryIndustryInfo" parameterType="com.linyang.energy.model.IndustryBean" resultMap="BaseResultMap">
+		SELECT <include refid="Base_Column_List" />
+		FROM  T_INDUSTRY
+		<where>
+			<if test="parentIndustryId != null and parentIndustryId != -1">
+				PARENT_INDUSTRY_ID = #{parentIndustryId}
+			</if>
+		</where>
+		ORDER BY INDUSTRY_ID
+	</select>
+
+    <select id="queryIndustryTypeInfo" parameterType="com.linyang.energy.model.IndustryBean" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" />
+        FROM  T_INDUSTRY_TYPE
+        <where>
+            <if test="parentIndustryId != null and parentIndustryId != -1">
+                PARENT_INDUSTRY_ID = #{parentIndustryId}
+            </if>
+        </where>
+        ORDER BY INDUSTRY_ID
+    </select>
+
+</mapper>

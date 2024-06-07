@@ -1,0 +1,1024 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.linyang.energy.mapping.recordmanager.MeterManagerMapper">
+	<!-- 分户bean map -->
+	<resultMap id="BaseResultMap" type="com.linyang.energy.model.MeterBean">
+		<id column="METER_ID" property="meterId" jdbcType="DECIMAL" />
+		<result column="METER_NAME" property="meterName" jdbcType="VARCHAR" />
+		<result column="METER_TYPE" property="meterType" jdbcType="DECIMAL" />
+		<result column="METER_ATTR" property="meterAttr" jdbcType="DECIMAL" />
+		<result column="DEVICE_TYPE" property="deviceType" jdbcType="DECIMAL" />
+		<result column="LEDGER_ID" property="ledgerId" jdbcType="DECIMAL" />
+		<result column="TERMINAL_ID" property="terminalId" jdbcType="DECIMAL" />
+		<result column="MPED_ID" property="mpedId" jdbcType="DECIMAL" />
+		<result column="TYPE_ID" property="typeId" jdbcType="DECIMAL" />
+		<result column="ATTRIBUTE_ID" property="attributeId" jdbcType="DECIMAL" />
+		<result column="ASSET_NUMBER" property="assetNumber" jdbcType="VARCHAR" />
+		<result column="AMMETER_ADDRESS" property="ammeterAddress" jdbcType="VARCHAR" />
+		<result column="VOLTAGE_LEVEL"    property="voltageLevel"    jdbcType="DECIMAL" />
+		<result column="VOLUME"           property="volume"          jdbcType="DECIMAL" />
+		<result column="VOLUME_TYPE"           property="volType"          jdbcType="DECIMAL" />
+        <result column="LOSS_MODULUS"           property="translossFactor"          jdbcType="DECIMAL" />
+        <result column="IS_VIRTUAL"           property="isVirtual"          jdbcType="DECIMAL" />
+		<result column="WATER_LIMIT_THRES"           property="waterLimitThres"          jdbcType="DECIMAL" />
+	</resultMap>
+    
+	<sql id="Base_Column_List">
+		METER_ID, METER_NAME, METER_TYPE, METER_ATTR, LEDGER_ID,
+		TERMINAL_ID,
+		MPED_ID, TYPE_ID, ATTRIBUTE_ID
+	</sql>
+
+	<!-- 查询采集点信息列表  edit by chengq 非左连接-->
+	<select id="getMeterPageList" parameterType="HashMap"
+		resultType="HashMap">
+		<!-- 分户权限 -->
+		<if test="ledgerId != 0">
+			SELECT distinct METER_ID, METER_NAME, METER_TYPE, METER_ATTR,
+			M.LEDGER_ID, TERMINAL_ID,
+			MPED_ID, M.TYPE_ID, ATTRIBUTE_ID, LEDGER_NAME , METER_STATUS , TYPE_NAME
+			FROM T_METER M
+            INNER JOIN (SELECT t1.ledger_id as ledgerId, t1.ledger_name as ledger_name from t_ledger t1,t_ledger t2
+                          where t1.ledger_lft>=t2.ledger_lft and t1.ledger_rgt&lt;=t2.ledger_rgt and t2.ledger_id=#{ledgerId}
+			             ) L ON M.LEDGER_ID = L.ledgerId
+			LEFT JOIN T_DEVICE_TYPE D ON M.TYPE_ID=D.TYPE_ID WHERE METER_STATUS = 1 and IS_VIRTUAL = 0
+			<if test="meterName != null and meterName != ''">
+				AND METER_NAME LIKE '%' || #{meterName} || '%'
+			</if>
+			<if test="ledgerName != null and ledgerName != ''">
+                AND LEDGER_NAME LIKE '%' || #{ledgerName} || '%'
+			</if>
+		</if>
+		<!-- 群组权限 -->
+		<if test="ledgerId == 0">
+			select METER_ID,
+			METER_NAME,METER_TYPE,METER_ATTR,t.LEDGER_ID,TERMINAL_ID,
+			MPED_ID,t.TYPE_ID,ATTRIBUTE_ID,LEDGER_NAME,METER_STATUS,TYPE_NAME
+			from t_meter t, t_ledger tl, T_DEVICE_TYPE td
+			where t.ledger_id in
+			<!-- 获取群组分户列表 -->
+			(select distinct ledger_id as ledgerId
+			from t_ledger
+			Start With ledger_id in
+			(select tl.LEDGER_ID AS ledgerId
+			from t_account ta,
+			t_group_account tga,
+			t_group_ledger tgl,
+			t_ledger tl
+			where ta.account_id = tga.account_id
+			and tga.group_id = tgl.group_id
+			and tgl.ledger_id = tl.ledger_id
+			and ta.account_id = #{accountId})
+			Connect By Prior ledger_id = parent_ledger_id)
+			and t.meter_status = 1 and t.IS_VIRTUAL = 0
+			and tl.ledger_id = t.ledger_id
+			and t.type_id = td.type_id(+)
+			<if test="meterName != null and meterName != ''">
+				and t.meter_name LIKE '%' || #{meterName} || '%'
+			</if>
+			<if test="ledgerName != null and ledgerName != ''">
+                AND LEDGER_NAME LIKE '%' || #{ledgerName} || '%'
+			</if>
+		</if>
+	</select>
+
+    <select id="getVirtualMeterPageList" parameterType="HashMap" resultType="HashMap">
+        SELECT distinct M.METER_ID, M.METER_NAME, M.METER_TYPE, M.LEDGER_ID, L.LEDGER_NAME
+        FROM T_METER M
+        INNER JOIN (SELECT distinct node.ledger_id as ledgerId,node.ledger_name as ledger_name
+                     FROM t_ledger node, t_ledger parent
+                     WHERE node.ledger_lft BETWEEN parent.ledger_lft AND parent.ledger_rgt
+                     <if test="ledgerId != -100">
+                     AND parent.ledger_id = #{ledgerId}
+                     </if>
+                    ) L ON M.LEDGER_ID = L.ledgerId
+        WHERE M.METER_STATUS = 1 and M.IS_VIRTUAL = 1
+        <if test="meterName != null and meterName != ''">
+            AND M.METER_NAME LIKE '%' || #{meterName} || '%'
+        </if>
+        <if test="ledgerName != null and ledgerName != ''">
+            AND L.ledger_name LIKE '%' || #{ledgerName} || '%'
+        </if>
+    </select>
+
+    <select id="getVirtualContains" parameterType="Long" resultType="String">
+		<if test="idFlag == 0">
+			select listagg(m.METER_NAME,',') WITHIN GROUP (ORDER BY m.METER_NAME)
+			from T_VIRTUAL_METER_RELATION r inner join t_meter m on r.METER_ID=m.METER_ID
+			where r.VIRTUAL_ID=#{meterId}
+		</if>
+		<if test="idFlag != 0">
+			select listagg(r.meter_id,',') WITHIN GROUP (ORDER BY r.meter_id)
+			from T_VIRTUAL_METER_RELATION r
+		</if>
+    </select>
+	<select id="getVirtualContainss" resultType="java.lang.String">
+		<if test="idFlag == 0">
+			select listagg(m.METER_NAME,',') WITHIN GROUP (ORDER BY m.METER_NAME)
+			from T_VIRTUAL_METER_RELATION r inner join t_meter m on r.METER_ID=m.METER_ID
+			where r.VIRTUAL_ID=#{meterId}
+		</if>
+		<if test="idFlag != 0">
+			select r.meter_id
+			from T_VIRTUAL_METER_RELATION r
+		</if>
+	</select>
+
+    <select id="getVirtualRelations" parameterType="Long" resultType="HashMap">
+        select m.meter_id, m.meter_name
+        from T_VIRTUAL_METER_RELATION r left join t_meter m on r.METER_ID=m.METER_ID
+        where r.VIRTUAL_ID = #{meterId}
+    </select>
+
+	<!-- 删除采集点信息 -->
+	<select id="deleteMeterData" parameterType="java.util.List">
+		UPDATE T_METER M SET
+		M.METER_STATUS=0,M.TERMINAL_ID=0,M.MPED_ID=0 WHERE 
+		<if test="meterIds != null"> M.METER_ID IN  <foreach collection="meterIds" item="id" open="(" separator="," close=")"> #{id} </foreach></if>
+	</select>
+
+    <!-- 删除虚拟采集点 -->
+    <select id="deleteVirtualMeter" parameterType="java.util.List">
+        delete from T_METER WHERE <if test="meterIds != null"> METER_ID IN  <foreach collection="meterIds" item="id" open="(" separator="," close=")"> #{id} </foreach></if>
+    </select>
+
+    <select id="deleteVirtualRelation" parameterType="java.util.List">
+        delete from T_VIRTUAL_METER_RELATION WHERE <if test="meterIds != null"> VIRTUAL_ID IN  <foreach collection="meterIds" item="id" open="(" separator="," close=")"> #{id} </foreach></if>
+    </select>
+
+
+	<!-- 删除采集点某条电配置信息 -->
+	<select id="deleteMeterDetail" parameterType="HashMap">
+		DELETE FROM
+		T_METER_THRESHOLD_RELATION
+		WHERE THRESHOLD_ID=#{thresholdId,jdbcType=DECIMAL} AND
+		METER_ID=#{meterId,jdbcType=DECIMAL}
+	</select>
+	<!-- 删除采集点所有电配置信息 -->
+	<select id="deleteDetailData" parameterType="Long">
+		DELETE FROM
+		T_METER_THRESHOLD_RELATION WHERE METER_ID=#{meterId,jdbcType=DECIMAL}
+	</select>
+
+	<!-- 得到相应的终端信息 -->
+	<select id="getTerminalData" resultType="HashMap">
+		SELECT TERMINAL_ID,TERMINAL_NAME,TERMINAL_ADDRESS,TERMINAL_STATUS FROM T_TERMINAL
+		WHERE TERMINAL_ID IN
+		(SELECT T.TERMINAL_ID FROM T_MPED_INFO T WHERE MPED_STATUS = 1
+		AND MPED_ID NOT IN (SELECT MPED_ID FROM T_METER WHERE METER_STATUS = 1))
+		AND TERMINAL_STATUS=1
+	</select>
+
+    <!-- 得到和达水表信息 -->
+    <select id="getHdWaterMeterData" resultType="HashMap">
+        select address as ID, address as NAME
+        from finecomm.f_commstation where address not in (select distinct t.mped_id from t_meter t)
+    </select>
+
+	<!-- 验证采集点名称 -->
+	<select id="checkMeterName" parameterType="HashMap" resultType="Long">
+		SELECT COUNT(METER_ID) FROM T_METER WHERE METER_NAME=#{meterName} AND
+		LEDGER_ID=#{ledgerId} AND METER_STATUS=1
+	</select>
+
+	<!-- 查询某当前用户下的所有分户 -->
+	<select id="getLedgerData" parameterType="Long" resultType="HashMap">
+		SELECT LEDGER_ID,LEDGER_NAME FROM T_LEDGER WHERE
+		PARENT_LEDGER_ID=#{ledgerId} 
+	</select>
+
+	<!-- 查询某终端下的所有可用测量点  
+		edit by chengq 140813 新增AMMETER_ADDRESS字段
+		edit by zzy	   180504 新增MPOINT_INDEX字段用于按册测量点排序-->
+	<select id="getMpedDataByTerId" parameterType="HashMap"
+		resultType="HashMap">
+		SELECT MPED_ID,MPED_NAME,AMMETER_ADDRESS,PT,CT, MPOINT_INDEX
+		FROM T_MPED_INFO T
+		LEFT JOIN COLL_PLATFORM.T_MPOINT P ON T.MPED_ID = P.MPOINT_ID
+		WHERE T.TERMINAL_ID=#{terminalId} 
+			AND MPED_TYPE=#{powerType} 
+			AND MPED_STATUS=1
+			AND MPED_ID NOT IN 
+				(SELECT MPED_ID FROM T_METER 
+				WHERE T.TERMINAL_ID=#{terminalId} 
+					AND METER_TYPE=#{powerType} 
+					AND	METER_STATUS=1)
+		ORDER BY MPOINT_INDEX
+		
+	</select>
+
+	<!-- 查询某终端下的所有已经关联的测量点 -->
+	<select id="getLinkedMpedData" parameterType="HashMap"
+		resultType="HashMap">
+		SELECT MPED_ID FROM T_METER WHERE TERMINAL_ID=#{terminalId}
+		AND METER_TYPE=#{powerType} AND METER_STATUS=1 
+	</select>
+
+	<!-- 查询设备集信息 -->
+	<select id="getDeviceData" resultType="HashMap">
+		SELECT TYPE_ID,TYPE_NAME
+		FROM T_DEVICE_TYPE 
+	</select>
+
+	<!-- 新增到采集点表 -->
+	<insert id="insertMeterInfo" parameterType="com.linyang.energy.model.MeterBean">
+		INSERT INTO T_METER
+		<trim prefix="(" suffix=")" suffixOverrides=",">
+			<if test="meterId != null">
+				METER_ID,
+	      	</if>
+			<if test="meterName != null">
+				METER_NAME,
+	      	</if>
+			<if test="meterType != null">
+				METER_TYPE,
+	      	</if>
+			<if test="meterAttr != null">
+				METER_ATTR,
+	      	</if>
+			<if test="ledgerId != null">
+				LEDGER_ID,
+	      	</if>
+			<if test="terminalId != null">
+				TERMINAL_ID,
+	      	</if>
+			<if test="mpedId != null">
+				MPED_ID,
+	      	</if>
+			<if test="attributeId != null">
+				ATTRIBUTE_ID,
+	     	</if>
+			<if test="meterStatus != null">
+				METER_STATUS,
+	      	</if>
+			<if test="assetNumber != null">
+				ASSET_NUMBER,
+	      	</if>
+	      	<if test="voltageLevel != null">
+		  		VOLTAGE_LEVEL,
+		  	</if>
+		  	<if test="volume != null">
+		  		VOLUME,
+		  	</if>
+		  	<if test="startCur != null">
+		  		STARTCUR,
+		  	</if>
+		  	<if test="volType != null">
+		  		VOLUME_TYPE,
+		  	</if>
+            <if test="translossFactor != null">
+		  		LOSS_MODULUS,
+		  	</if>
+			<if test="waterLimitThres != null">
+				WATER_LIMIT_THRES,
+			</if>
+		</trim>
+		<trim prefix="values (" suffix=")" suffixOverrides=",">
+			<if test="meterId != null">
+				#{meterId,jdbcType=DECIMAL},
+	      	</if>
+			<if test="meterName != null">
+				#{meterName,jdbcType=VARCHAR},
+	      	</if>
+			<if test="meterType != null">
+				#{meterType,jdbcType=DECIMAL},
+	      	</if>
+			<if test="meterAttr != null">
+				#{meterAttr,jdbcType=DECIMAL},
+	      	</if>
+			<if test="ledgerId != null">
+				#{ledgerId,jdbcType=DECIMAL},
+	      	</if>
+			<if test="terminalId != null">
+				#{terminalId,jdbcType=DECIMAL},
+	      	</if>
+			<if test="mpedId != null">
+				#{mpedId,jdbcType=DECIMAL},
+	     	</if>
+			<if test="attributeId != null">
+				#{attributeId,jdbcType=DECIMAL},
+	      	</if>
+			<if test="meterStatus != null">
+				1,
+	      	</if>
+			<if test="assetNumber != null">
+				#{assetNumber,jdbcType=VARCHAR},
+	      	</if>
+	      	<if test="voltageLevel != null">
+		  		#{voltageLevel,jdbcType=DECIMAL},
+		  	</if>
+		  	<if test="volume != null">
+		  		#{volume,jdbcType=DECIMAL},
+		  	</if>
+		  	<if test="startCur != null">
+		  		#{startCur,jdbcType=DECIMAL},
+		  	</if>
+		  	<if test="volType != null">
+		  		#{volType,jdbcType=DECIMAL},
+		  	</if>
+            <if test="translossFactor != null">
+		  		#{translossFactor,jdbcType=DECIMAL},
+		  	</if>
+			<if test="waterLimitThres != null">
+				#{waterLimitThres,jdbcType=DECIMAL},
+			</if>
+		</trim>
+	</insert>
+
+	<!-- 新增采集点配置关系 -->
+	<insert id="insertThresholdInfo" parameterType="HashMap">
+		INSERT INTO T_METER_THRESHOLD_RELATION
+		<trim prefix="(" suffix=")" suffixOverrides=",">
+			<if test="thresholdId != null">
+				THRESHOLD_ID,
+	      </if>
+			<if test="meterId != null">
+				METER_ID,
+	      </if>
+			<if test="thresholdValue != null">
+				THRESHOLD_VALUE,
+	      </if>
+		</trim>
+		<trim prefix="values (" suffix=")" suffixOverrides=",">
+			<if test="thresholdId != null">
+				#{thresholdId,jdbcType=DECIMAL},
+	      </if>
+			<if test="meterId != null">
+				#{meterId,jdbcType=DECIMAL},
+	      </if>
+			<if test="meterType != null">
+				#{meterType,jdbcType=DECIMAL},
+	      </if>
+			<if test="thresholdValue != null">
+				#{thresholdValue,jdbcType=VARCHAR},
+	      </if>
+		</trim>
+	</insert>
+
+	<!-- 更新采集点信息 -->
+	<update id="updateMeterInfo" parameterType="com.linyang.energy.model.MeterBean">
+		UPDATE T_METER
+		<set>
+			<if test="meterName != null">
+				METER_NAME = #{meterName,jdbcType=VARCHAR},
+	      	</if>
+			<if test="meterType != null">
+				METER_TYPE = #{meterType,jdbcType=DECIMAL},
+	      	</if>
+			<if test="terminalId != null">
+				TERMINAL_ID = #{terminalId,jdbcType=DECIMAL},
+	      	</if>
+			<if test="ledgerId != null">
+				LEDGER_ID = #{ledgerId,jdbcType=DECIMAL},
+	     	</if>
+			<if test="meterAttr != null">
+				METER_ATTR = #{meterAttr,jdbcType=DECIMAL},
+	      	</if>
+			<if test="mpedId != null">
+				MPED_ID = #{mpedId,jdbcType=DECIMAL},
+	      	</if>
+			<if test="assetNumber != null">
+				ASSET_NUMBER = #{assetNumber,jdbcType=VARCHAR},
+	      	</if>
+	      	<if test="voltageLevel != null">
+		  		VOLTAGE_LEVEL = #{voltageLevel,jdbcType=DECIMAL},
+		  	</if>
+		  	<if test="volume != null">
+		  		VOLUME = #{volume,jdbcType=DECIMAL},
+		  	</if>
+		  	<if test="startCur != null">
+		  		STARTCUR = #{startCur,jdbcType=DECIMAL},
+		  	</if>
+		  	<if test="volType != null">
+		  		VOLUME_TYPE = #{volType,jdbcType=DECIMAL},
+		  	</if>
+            <if test="translossFactor != null">
+		  		LOSS_MODULUS = #{translossFactor,jdbcType=DECIMAL},
+		  	</if>
+			<if test="waterLimitThres != null" >
+				WATER_LIMIT_THRES = #{waterLimitThres},
+			</if>
+			ATTRIBUTE_ID = #{attributeId,jdbcType=DECIMAL},
+		</set>
+		WHERE METER_ID = #{meterId,jdbcType=DECIMAL}
+	</update>
+
+    <update id="updateRelationMeterName" parameterType="com.linyang.energy.model.MeterBean">
+        UPDATE t_ledger_relation t set t.RELATION_NAME = #{meterName} where t.RELATION_TYPE=2 and t.RELATION_ID=#{meterId}
+    </update>
+
+	<!-- 更新采集点配置信息 -->
+	<update id="updateByPrimaryKeySelective" parameterType="HashMap">
+		UPDATE T_METER_THRESHOLD_RELATION
+		<set>
+			<if test="thresholdValue != null">
+				THRESHOLD_VALUE = #{thresholdValue,jdbcType=VARCHAR},
+	      </if>
+		</set>
+		WHERE METER_ID = #{meterId,jdbcType=DECIMAL} AND THRESHOLD_ID =
+		#{thresholdId,jdbcType=VARCHAR}
+	</update>
+
+	<!-- 根据Id得到相应的采集点信息  edit by chengq 140813 新增资产编号字段-->
+	<select id="getMeterDataByPrimaryKey" parameterType="Long"
+		resultType="com.linyang.energy.model.MeterBean">
+		SELECT M.METER_ID AS meterId,
+		M.METER_NAME AS meterName,
+		M.METER_TYPE AS meterType,
+		M.METER_ATTR AS meterAttr,
+		M.LEDGER_ID AS ledgerId,
+		M.TERMINAL_ID AS terminalId,
+		M.MPED_ID AS mpedId,
+		M.TYPE_ID AS typeId,
+		M.ATTRIBUTE_ID AS attributeId,
+		M.ASSET_NUMBER AS assetNumber,
+		M.VOLTAGE_LEVEL AS voltageLevel,
+		M.VOLUME AS volume,
+		M.STARTCUR as startCur,
+		M.VOLUME_TYPE AS volType,
+        M.LOSS_MODULUS AS translossFactor,
+        M.IS_VIRTUAL AS isVirtual,
+		D.TYPE_NAME AS meterTypeName,
+		T.TERMINAL_NAME AS terminalName,
+		I.MPED_NAME AS mpedName,
+		L.LEDGER_NAME AS ledgerName,
+		I.AMMETER_ADDRESS as ammeterAddress,
+		I.PT AS pt,
+		I.CT AS ct,
+		M.WATER_LIMIT_THRES AS waterLimitThres
+		FROM T_METER M
+		LEFT JOIN T_DEVICE_TYPE D
+		ON M.TYPE_ID = D.TYPE_ID
+		LEFT JOIN T_TERMINAL T
+		ON M.TERMINAL_ID = T.TERMINAL_ID
+		LEFT JOIN T_MPED_INFO I
+		ON M.MPED_ID = I.MPED_ID
+		LEFT JOIN T_LEDGER L ON M.LEDGER_ID=L.LEDGER_ID
+		WHERE M.METER_ID = #{meterId,jdbcType=DECIMAL}
+	  </select>
+
+	<!-- 获取采集点配置信息 -->
+	<select id="getMeterInfoById" parameterType="Long" resultType="HashMap">
+		SELECT THRESHOLD_ID,THRESHOLD_VALUE FROM T_METER_THRESHOLD_RELATION
+		WHERE METER_ID=#{meterId}
+	  </select>
+
+	<!-- 更新某分户下的采集点的数量 (新增)-->
+	<update id="addMeterNum" parameterType="Long">
+		update t_ledger set collmeter_number=collmeter_number+1 where ledger_id in
+		(SELECT parent.ledger_id FROM t_ledger node, t_ledger parent
+		WHERE node.ledger_lft BETWEEN parent.ledger_lft AND parent.ledger_rgt
+		AND node.ledger_id = #{ledgerId})
+	  </update>
+
+	<!-- 更新某分户下的采集点的数量 (删除)-->
+	<update id="delMeterNum" parameterType="Long">
+		update t_ledger set collmeter_number=collmeter_number-1 where ledger_id in
+		(SELECT parent.ledger_id FROM t_ledger node, t_ledger parent
+		WHERE node.ledger_lft BETWEEN parent.ledger_lft AND parent.ledger_rgt
+		AND node.ledger_id = #{ledgerId})
+	  </update>
+
+	<!-- 根据条件查询计量点列表 by guosen 2013-8-13 -->
+	<select id="queryMeterPageList" parameterType="HashMap"
+		resultType="com.linyang.energy.model.MeterBean">
+		SELECT M.METER_ID AS meterId,
+		M.METER_NAME AS meterName,
+		M.METER_TYPE AS meterType,
+		M.METER_ATTR AS meterAttr,
+		M.LEDGER_ID AS ledgerId,
+		M.TERMINAL_ID AS terminalId,
+		M.MPED_ID AS mpedId,
+		M.TYPE_ID AS typeId,
+		M.ATTRIBUTE_ID AS attributeId,
+		M.ASSET_NUMBER AS assetNumber,
+		L.RATE_ID AS rateId
+		FROM T_METER M
+		LEFT JOIN T_LEDGER L ON M.LEDGER_ID=L.LEDGER_ID
+		<where>
+			and meter_status = 1
+			<if test="meterName != null &amp; meterName !='' ">
+				and M.METER_NAME like '%' || #{meterName} || '%'
+	  			</if>
+			<if test="meterType != null &amp; meterType !='' ">
+				and M.METER_TYPE = #{meterType}
+	  			</if>
+			<if test="assetNumber != null &amp; assetNumber !='' ">
+				and M.ASSET_NUMBER = #{assetNumber}
+	  			</if>
+			<if test="ledgerName != null &amp; ledgerName !=''">
+				and M.LEDGER_ID IN (select l.ledger_id from t_ledger l where
+				l.ledger_Name like '%' || #{ledgerName} || '%' )
+	  			</if>
+			<if test="ledgerId != null &amp; ledgerId != -100">
+				AND M.LEDGER_ID IN (
+				SELECT NODE_LEDGER FROM V_LEDGER_TREE WHERE PARENT_LEDGER = #{ledgerId}
+				)
+				</if>
+			<if test="accountId != null &amp; accountId != '' ">
+				AND M.LEDGER_ID IN (
+				SELECT NODE_LEDGER FROM V_LEDGER_TREE WHERE PARENT_LEDGER in (
+				SELECT L.LEDGER_ID FROM V_GROUP_LEDGER L WHERE L.ACCOUNT_ID = #{accountId}
+				)
+				)
+				</if>
+		</where>
+		ORDER BY METER_ID
+	</select>
+	
+	<!-- 根据条件查询计量点列表 -->
+	<select id="queryMeterList" parameterType="HashMap" resultType="com.linyang.energy.model.MeterBean">
+		SELECT M.METER_ID AS meterId,
+		M.METER_NAME AS meterName,
+		M.METER_TYPE AS meterType,
+		M.METER_ATTR AS meterAttr,
+		M.LEDGER_ID AS ledgerId,
+		M.TERMINAL_ID AS terminalId,
+		M.MPED_ID AS mpedId,
+		M.TYPE_ID AS typeId,
+		M.ATTRIBUTE_ID AS attributeId,
+		M.ASSET_NUMBER AS assetNumber,
+		L.RATE_ID AS rateId
+		FROM T_METER M
+		LEFT JOIN T_LEDGER L ON M.LEDGER_ID=L.LEDGER_ID
+		<where>
+			and meter_status = 1
+			<if test="meterName != null &amp; meterName !='' ">
+				and M.METER_NAME like '%'  || {meterName} || '%'
+	  			</if>
+			<if test="meterType != null &amp; meterType !='' ">
+				and M.METER_TYPE = #{meterType}
+	  			</if>
+
+			<if test="assetNumber != null &amp; assetNumber !='' ">
+				and M.ASSET_NUMBER = #{assetNumber}
+	  			</if>
+			<if test="ledgerName != null &amp; ledgerName !=''">
+				and M.LEDGER_ID IN (select l.ledger_id from t_ledger l where
+				l.ledger_Name like '%' || #{ledgerName} || '%' )
+	  			</if>
+			<if test="ledgerId != null &amp; ledgerId != -100">
+				AND M.LEDGER_ID IN (
+				SELECT NODE_LEDGER FROM V_LEDGER_TREE WHERE PARENT_LEDGER = #{ledgerId}
+				)
+				</if>
+			<if test="accountId != null &amp; accountId != '' ">
+				AND M.LEDGER_ID IN (
+				SELECT NODE_LEDGER FROM V_LEDGER_TREE WHERE PARENT_LEDGER in (
+				SELECT L.LEDGER_ID FROM V_GROUP_LEDGER L WHERE L.ACCOUNT_ID = #{accountId}
+				)
+				)
+			</if>
+			<if test="meterLimit != null &amp; meterLimit != '' &amp;  meterLimit != -1">
+				AND METER_ID NOT IN (
+					  select t.METER_ID from t_lineloss_meter_info t
+					  start with t.parement_meter_id = #{meterLimit}
+					  connect by prior t.meter_id = t.parement_meter_id
+				)
+				AND METER_ID != #{meterLimit}
+			</if>
+		</where>
+		ORDER BY METER_ID
+	</select>
+	
+	<!-- 根据id获取测量点信息-->
+	<select id="getMpedInfoById" parameterType="Long"
+		resultType="com.linyang.energy.model.MeterBean">
+		select t.mped_id as mpedId,t.mped_name as mpedName,t.ammeter_address as
+		ammeterAddress from t_mped_info t where t.mped_id = #{mpedId}
+	  </select>
+
+	<!-- 根据meterID得到电源接线方式 -->
+	<select id="getCommModeByMeterId" parameterType="java.lang.Long"
+		resultType="java.lang.Integer">
+		select t2.comm_mode from t_meter t1
+		left join t_mped_info t2
+		on t1.mped_id = t2.mped_id
+		where t1.meter_id = #{meterId}
+	</select>
+	
+	<select id="getCommModeByLedgerId" parameterType="java.lang.Long"
+		resultType="java.lang.Integer">
+		select distinct(t2.comm_mode) from t_meter t1
+		left join t_mped_info t2
+		on t1.mped_id = t2.mped_id
+	    left join t_ledger_device_meter t3
+	    on t3.ledger_id = t1.ledger_id
+		where t3.ledger_id = #{ledgerId}
+	</select>
+	
+
+	<select id="getThresholdById" parameterType="java.lang.Long"
+		resultType="java.lang.String">
+		select t.threshold_value from
+		T_LEDGER_THRESHOLD_RELATION t, t_meter p
+		where t.ledger_id = p.ledger_id and p.meter_id=#{meterId}
+	</select>
+	
+	<select id="getMeterThresholdInfo" resultType="HashMap">
+		select t.threshold_value thresholdValue,p.METER_NAME meterName from
+		T_METER_THRESHOLD_RELATION t, t_meter p
+		where t.meter_id = p.meter_id and p.meter_id=#{meterId} and t.THRESHOLD_ID = #{thresholdId}
+	</select>
+	
+	<!-- 根据ledgerId得到该分户“计算模型”中的计量点列表 -->
+	<select id="getMeterListByLedgerId" parameterType="java.lang.Long" resultType="com.linyang.energy.model.MeterBean">
+		select t1.METER_ID       meterId,
+	       	   t1.METER_NAME     	meterName,
+		       t1.METER_TYPE     meterType,
+		       t1.METER_ATTR     meterAttr,
+		       t1.LEDGER_ID      ledgerId,
+		       t1.TERMINAL_ID terminalId,
+		       t1.MPED_ID     mpedId,
+		       t1.TYPE_ID        typeId,
+		       t1.ATTRIBUTE_ID   attributeId,
+		       t1.METER_STATUS   meterStatus,
+		       t1.ASSET_NUMBER   assetNumber,
+		       t2.pt          pt,
+		       t2.ct          ct,
+       		   t2.ammeter_address ammeterAddress
+		from t_meter t1
+		inner join t_mped_info t2 on t1.mped_id = t2.mped_id
+		inner join T_LEDGER_METER tm on t1.METER_ID = tm.METER_ID
+		where tm.ledger_id = #{ledgerId} 
+		order by t1.meter_name
+	</select>
+
+    <!-- 根据ledgerId得到该分户需要显示的计量点列表 -->
+    <select id="getShowMeterByLedgerId" parameterType="java.lang.Long" resultType="com.linyang.energy.model.MeterBean">
+        select t1.METER_ID       meterId,
+        t1.METER_NAME     	meterName,
+        t1.METER_TYPE     meterType,
+        t1.METER_ATTR     meterAttr,
+        t1.LEDGER_ID      ledgerId,
+        t1.TERMINAL_ID terminalId,
+        t1.MPED_ID     mpedId,
+        t1.TYPE_ID        typeId,
+        t1.ATTRIBUTE_ID   attributeId,
+        t1.METER_STATUS   meterStatus,
+        t1.ASSET_NUMBER   assetNumber,
+        t2.pt          pt,
+        t2.ct          ct
+        from t_meter t1
+        inner join t_mped_info t2 on t1.mped_id = t2.mped_id
+        inner join T_LEDGER_SHOW ts on t1.METER_ID = ts.METER_ID
+        where ts.ledger_id = #{ledgerId}
+    </select>
+
+    <!-- 根据父ledgerId得到分户列表 -->
+    <select id="getLedgerIdsByParent" parameterType="java.lang.Long" resultType="java.lang.Long">
+        select t.LEDGER_ID
+        from T_LEDGER t
+        where t.PARENT_LEDGER_ID = #{ledgerId}
+    </select>
+	
+	<!-- 获取所有电表信息-->
+	<select id="getAllMeter" resultType="com.linyang.energy.model.MeterBean">
+		select METER_ID       meterId,
+	       	   METER_NAME     meterName,
+		       METER_TYPE     meterType,
+		       METER_ATTR     meterAttr,
+		       LEDGER_ID      ledgerId,
+		       t1.TERMINAL_ID terminalId,
+		       t1.MPED_ID     mpedId,
+		       TYPE_ID        typeId,
+		       ATTRIBUTE_ID   attributeId,
+		       METER_STATUS   meterStatus,
+		       ASSET_NUMBER   assetNumber
+		from t_meter t1
+	</select>
+	
+	<!-- 得到计算线损需要的测量点 -->
+	<select id="getLineLossMeterList"  parameterType="java.lang.Long" resultType="HashMap">
+		select t1.METER_ID       meterId,
+	       	   t1.METER_NAME     	meterName
+			from t_meter t1
+	    right join t_lineloss_meter_info t3
+	     on t1.meter_id = t3.meter_id
+			where t1.METER_STATUS = 1
+			and t1.ledger_id = #{ledgerId}
+		<if test="meterId!=null">
+			and t1.meter_id not in (#{meterId})
+		</if>
+	</select>
+	
+	<select id="getMeterLevel"  parameterType="java.lang.Long" resultType="java.lang.Integer">
+		SELECT METER_LEVEL FROM T_LINELOSS_METER_INFO WHERE METER_ID = #{meterId}
+	</select>
+	
+	<!-- 保存LineLossMeter -->
+	<insert id="addLineLossMeter" parameterType="com.linyang.energy.model.LineLossMeterBean">
+		INSERT INTO T_LINELOSS_METER_INFO (METER_ID,PAREMENT_METER_ID,METER_LEVEL)
+		VALUES(#{meterId},#{parementMeterId},#{meterLevel})
+	</insert>
+	
+	<select id="getLineLossMeter"  parameterType="java.lang.Long" resultType="com.linyang.energy.model.LineLossMeterBean">
+		SELECT T1.METER_ID AS meterId, T1.PAREMENT_METER_ID as parementMeterId, T2.METER_NAME AS parementMeterName,
+		T1.METER_LEVEL as meterLevel 
+		FROM T_LINELOSS_METER_INFO t1 left join 
+		T_METER T2 ON T1.PAREMENT_METER_ID = T2.METER_ID
+		WHERE T1.METER_ID = #{meterId}
+	</select>
+	
+	<delete id="deleteLineLossMeter" parameterType="java.lang.Long" >
+		DELETE FROM T_LINELOSS_METER_INFO WHERE METER_ID = #{meterId}
+	</delete>
+
+    <!-- 根据ledgerId、meterId获取t_ledger_meter表数据 -->
+    <select id="getLedgerMeter" resultType="HashMap">
+        select lm.ADD_ATTR as ADD_ATTR, lm.PCT as PCT
+        from t_ledger_meter lm
+        where lm.LEDGER_ID = #{ledgerId} and lm.METER_ID = #{meterId}
+    </select>
+
+    <!-- 根据ledgerId、relationId获取t_ledger_relation表数据 -->
+    <select id="getLedgerRelation" resultType="HashMap">
+        select (1.5 - lr.ATTR_TYPE)*2 as ADD_ATTR, lr.PCT as PCT
+        from T_LEDGER_RELATION lr
+        where lr.LEDGER_ID = #{ledgerId} and lr.RELATION_TYPE = #{relationType} and lr.RELATION_ID = #{relationId}
+    </select>
+    
+    <delete id="deleteLedgerMeter">
+    	delete from T_LEDGER_METER WHERE METER_ID = #{meterId}
+    </delete>
+    
+    <delete id="deleteLedgerRelation">
+    	delete from T_LEDGER_RELATION WHERE relation_id = #{meterId} and relation_type = 2
+    </delete>
+    
+    <delete id="deleteLedgerShow">
+    	delete from T_LEDGER_SHOW WHERE METER_ID = #{meterId}
+    </delete>
+    
+    <!-- 根据ledgerId得到该分户配置的计算模型计量点列表 -->
+    <select id="getCalcMeterByLedgerId" parameterType="java.lang.Long" resultType="com.linyang.energy.model.MeterBean">
+        select t1.METER_ID       meterId,
+        t1.METER_NAME     	meterName,
+        t1.METER_TYPE     meterType,
+        t1.METER_ATTR     meterAttr,
+        t1.LEDGER_ID      ledgerId,
+        t1.TERMINAL_ID terminalId,
+        t1.MPED_ID     mpedId,
+        t1.TYPE_ID        typeId,
+        t1.ATTRIBUTE_ID   attributeId,
+        t1.METER_STATUS   meterStatus,
+        t1.ASSET_NUMBER   assetNumber,
+        t2.pt          pt,
+        t2.ct          ct
+        from t_meter t1
+        inner join t_ledger_meter tlm on t1.METER_ID = tlm.METER_ID
+        left join t_mped_info t2 on t1.mped_id = t2.mped_id
+        where tlm.ledger_id = #{ledgerId}
+    </select>
+    
+    <!-- 根据meterId获取父级meterId -->
+    <select id="getMeterParentByMeterId" resultType="Long">
+    	select m.parement_meter_id from t_lineloss_meter_info m where m.meter_id = #{meterId} 
+    </select>
+
+    <!-- 插虚拟采集点(t_meter) -->
+    <insert id="insertVirtualMeter">
+        insert into t_meter (METER_ID,METER_NAME,METER_TYPE,METER_ATTR,LEDGER_ID,TERMINAL_ID,MPED_ID,METER_STATUS,PIC_ID,IS_VIRTUAL)
+		VALUES(#{meterId},#{meterName},#{meterType},0,#{ledgerId},0,0,1,0,1)
+    </insert>
+
+    <update id="updateVirtualMeter">
+        update t_meter set METER_NAME = #{meterName}, LEDGER_ID = #{ledgerId}
+        where METER_ID = #{meterId}
+    </update>
+
+    <!-- 插虚拟采集点关联关系(T_VIRTUAL_METER_RELATION) -->
+    <insert id="insertVirtualMeterRelation">
+        insert into T_VIRTUAL_METER_RELATION (VIRTUAL_ID,METER_ID)
+        VALUES(#{meterId},#{relationId})
+    </insert>
+
+    <delete id="deleteVirtualMeterRelation">
+        delete from T_VIRTUAL_METER_RELATION where VIRTUAL_ID = #{meterId}
+    </delete>
+
+    <!-- 判断某采集点是否包含在其它虚拟采集点中 -->
+    <select id="getVirtualExistMeterNum" resultType="Integer">
+        select count(1)
+        from T_VIRTUAL_METER_RELATION
+        where VIRTUAL_ID != #{meterId} and METER_ID = #{relationId}
+    </select>
+	
+	<select id="getFilteredMeter" parameterType="HashMap" resultType="com.linyang.energy.model.MeterBean">
+		select 
+		METER_ID as meterId, METER_NAME as meterName, METER_TYPE as meterType, METER_ATTR as meterAttr, LEDGER_ID as ledgerId,
+		TERMINAL_ID as terminalId,
+		MPED_ID as mpedId, TYPE_ID as typeId, ATTRIBUTE_ID as attributeId
+		from 
+		t_meter R
+		where 1=1
+		<if test="meterName != null and meterName != ''">
+            and R.METER_NAME = #{meterName}
+   		</if>
+		<if test="meterId != null and meterId != ''">
+			and R.METER_ID = #{meterId}
+		</if>
+	</select>
+
+  <!-- 依据能管对象Id，查询测量点信息 -->
+  <select id="getMeterInfo" resultType="java.lang.Long">
+ 	 SELECT s.METER_ID meterId  
+ 	 from 
+ 	 T_LEDGER_SHOW s ,
+ 	 T_METER  m
+ 	 where  
+ 	 s.METER_ID  = m.METER_ID
+ 	 and s.LEDGER_ID = #{ledgerId} 
+  </select>
+  
+   <!-- 依据能管对象Id，查询测量点信息 -->
+  <select id="getMeterInfo1" resultType="java.lang.Long">
+	  select  r.RELATION_ID
+		FROM 
+		T_LEDGER_RELATION  r,
+		T_METER  m,
+		T_LEDGER t
+		where r.LEDGER_ID = t.LEDGER_ID 
+		and r.RELATION_ID = m.METER_ID
+		and t.LEDGER_ID =  #{ledgerId}
+		and r.RELATION_TYPE = 2
+	</select>
+	
+	<!-- 依据能管对象Id，查询测量点信息
+	 从 T_LEDGER_RELATION  类型为总加组
+	  ledgerId -->
+	<select id="getMeterInfo2" resultType="java.lang.Long">
+	select  m.METER_ID
+		FROM T_METER  m,
+	 		( 
+			select LEDGER_ID 
+ 			from T_LEDGER 
+ 			where  ANALY_TYPE = 102
+ 			start with LEDGER_ID =  #{ledgerId} 
+ 			connect by prior LEDGER_ID = PARENT_LEDGER_ID
+		) t 
+		where m.LEDGER_ID = t.LEDGER_ID 
+		and m.METER_STATUS = 1
+		order by nlssort(m.METER_NAME ,'NLS_SORT=SCHINESE_PINYIN_M') 
+	</select>
+	<!-- 依据能管对象Id，查询根id -->
+	<select id="getRootIdByLegerId" resultType="java.lang.Long">
+		select l.LEDGER_ID
+		from T_LEDGER l 
+		where l.PARENT_LEDGER_ID = 0
+		start with l.LEDGER_ID = #{ledgerId} 
+		connect by prior l.PARENT_LEDGER_ID= l.LEDGER_ID
+	</select>
+	
+	<!--依据测量点Id，查询根id  -->
+	<select id="getRootIdByMeterId" resultType="java.lang.Long">
+		select distinct e.LEDGER_ID
+			from T_LEDGER e LEFT JOIN 
+			(	SELECT l.LEDGER_ID
+					from 
+					T_LEDGER l,T_LEDGER_SHOW s
+					where  l.LEDGER_ID = s.LEDGER_ID
+					and s.METER_ID = #{meterId}
+			) s
+			on s.LEDGER_ID = e.LEDGER_ID
+			where e.PARENT_LEDGER_ID = 0
+			start with e.LEDGER_ID = s.LEDGER_ID 
+			connect by prior e.PARENT_LEDGER_ID= e.LEDGER_ID
+	</select>
+	
+	<!--依据测量点Id，查询父测量点id集合-->
+	<select id="getParentMeterIdsById"  resultType="java.lang.Long">
+		select m.METER_ID from t_lineloss_meter_info m
+		where  m.METER_ID != #{meterId}
+		start with m.METER_ID = #{meterId} 
+		connect by prior m.PAREMENT_METER_ID= m.METER_ID
+	</select>
+	
+	<!--依据测量点Id，查询父能管对象id集合 -->
+	<select id="getParentLedgerIdsById" resultType="java.lang.Long">
+		SELECT l.LEDGER_ID from T_LEDGER l LEFT JOIN T_METER m on l.LEDGER_ID = m.LEDGER_ID and m.METER_ID = #{meterId}
+		start with l.LEDGER_ID = m.LEDGER_ID
+		connect by prior l.PARENT_LEDGER_ID= l.LEDGER_ID
+	</select>
+	
+	<!--依据测量点Id，查询父能管对象id集合 -->
+	<select id="getMeterParentRootIdByMeterId" resultType="java.lang.Long">
+			select m.METER_ID from t_lineloss_meter_info m
+			where  m.PAREMENT_METER_ID = 0
+			start with m.METER_ID =  #{meterId}
+			connect by prior m.PAREMENT_METER_ID= m.METER_ID
+	</select>
+	
+	
+	<!-- 根据能管对象id获取所属企业id -->
+	<select id="getCompanyIdByLedgerId" resultType="java.lang.Long">
+		select e.LEDGER_ID from T_LEDGER e
+		where e.ANALY_TYPE =  102
+		start with e.LEDGER_ID = #{ledgerId}  
+		connect by prior e.PARENT_LEDGER_ID= e.LEDGER_ID
+	</select>
+	
+	<!-- 根据能管对象id获取需要选中的meterId -->
+	<select id="getCheckedMeterIdByLegerId" resultType="java.lang.Long">
+		SELECT t1.METER_ID
+		from 
+		(
+		SELECT m.METER_ID,m.METER_NAME
+		from 
+		T_METER m, 
+		T_LEDGER le,
+		T_LINELOSS_METER_INFO i,
+		(
+			SELECT r.LEDGER_ID,r.RELATION_ID
+			FROM
+			T_LEDGER_RELATION r,
+			T_LEDGER l
+			where 
+			l.LEDGER_ID = r.LEDGER_ID
+			and r.LEDGER_ID =#{ledgerId}
+			and r.RELATION_TYPE = 1 
+		) t
+		where 
+		i.METER_ID = m.METER_ID
+		and m.LEDGER_ID = t.RELATION_ID
+    and m.LEDGER_ID = le.LEDGER_ID
+		and i.PAREMENT_METER_ID = 0
+		order by nlssort(LE.LEDGER_NAME ,'NLS_SORT=SCHINESE_PINYIN_M') ,nlssort(m.METER_NAME ,'NLS_SORT=SCHINESE_PINYIN_M')
+  	) t1
+		where rownum = 1
+	</select>
+	
+	<!-- 根据能管对象id获取关联的总加组对象的id集合 -->
+	<select id="getRelationIdsByLedgerId" resultType="java.lang.Long" >
+		SELECT r.RELATION_ID
+			FROM
+			T_LEDGER_RELATION r,
+			T_LEDGER l
+			where l.LEDGER_ID = r.LEDGER_ID 
+			and r.LEDGER_ID =#{ledgerId} 
+			and r.RELATION_TYPE = 1 
+			order by nlssort(r.RELATION_NAME ,'NLS_SORT=SCHINESE_PINYIN_M') 
+	</select>
+	
+	<!-- 根据能管对象id获取区域下的公司的id集合  -->
+	<select id="getCompanyIdsByLedgerId" resultType="java.lang.Long">
+		select e.LEDGER_ID from T_LEDGER e
+		where e.ANALY_TYPE =  102
+		start with e.LEDGER_ID = #{ledgerId}  
+		connect by prior e.LEDGER_ID = e.PARENT_LEDGER_ID
+	</select>
+	
+	<select id="getCompanyIdsByLedgerId2" resultType="java.lang.Long">
+	SELECT t.LEDGER_ID
+		FROM
+		T_LEDGER e,
+		T_LEDGER t
+		where e.LEDGER_ID = t.PARENT_LEDGER_ID
+		and t.ANALY_TYPE =  102
+		and e.LEDGER_ID = #{ledgerId}
+		order by nlssort(t.LEDGER_NAME ,'NLS_SORT=SCHINESE_PINYIN_M') 
+	</select>
+	<!-- 根据能管对象id获取需要选中的meterId -->
+	<select id="getCheckedMeterIdByLegerId2" resultType="java.lang.Long" parameterType="list">
+		SELECT t1.METER_ID
+		from 
+		(
+		SELECT m.METER_ID,m.METER_NAME
+		from 
+		T_METER m, 
+		T_LEDGER le,
+		T_LEDGER le2,
+		T_LINELOSS_METER_INFO i
+		where 
+		i.METER_ID = m.METER_ID
+		and LE.PARENT_LEDGER_ID = LE2.LEDGER_ID
+    	and m.LEDGER_ID = le.LEDGER_ID
+		and i.PAREMENT_METER_ID = 0
+		and  
+		<foreach collection="ledgerIds" item="ledgerId"  open="(" separator="or" close=")" >
+				le.LEDGER_ID  in	#{ledgerId}
+		</foreach>
+		order by nlssort(LE2.LEDGER_NAME ,'NLS_SORT=SCHINESE_PINYIN_M'),nlssort(LE.LEDGER_NAME ,'NLS_SORT=SCHINESE_PINYIN_M') ,nlssort(m.METER_NAME ,'NLS_SORT=SCHINESE_PINYIN_M')
+  		) t1
+		where rownum = 1
+	</select>
+	
+	<!-- 加载根节点下一级节点(工程师页面加载第一个节点用) -->
+	<select id="getChildIdsByLegerId" resultType="java.lang.Long">
+		SELECT E2.LEDGER_ID,E2.LEDGER_NAME
+		from 
+		T_LEDGER e,
+		T_LEDGER e2
+		where e.LEDGER_ID = E2.PARENT_LEDGER_ID
+		and e.LEDGER_ID = #{ledgerId}
+		ORDER BY nlssort(E2.LEDGER_NAME ,'NLS_SORT=SCHINESE_PINYIN_M')
+	</select>
+	
+	<!-- 获得分户类型 -->
+	<select id="getLedgerAnalyType"  resultType="int">
+		SELECT e.ANALY_TYPE
+			from 
+			T_LEDGER e
+			where  e.LEDGER_ID = #{ledgerId}
+	</select>
+</mapper>

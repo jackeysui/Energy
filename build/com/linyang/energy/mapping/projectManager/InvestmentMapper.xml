@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.linyang.energy.mapping.projectManager.InvestmentMapper" >
+  <resultMap id="BaseResultMap" type="com.linyang.energy.model.InvestmentBean" >
+    <id column="PROJECT_ID" property="projectId" jdbcType="DECIMAL" />
+    <result column="PROJECT_NAME" property="projectName" jdbcType="VARCHAR" />
+    <result column="PREDICT_INVEST" property="predictInvest" jdbcType="DECIMAL" />
+    <result column="ACTUAL_INVEST" property="actualInvest" jdbcType="DECIMAL" />
+    <result column="PREDICT_SAVE" property="predictSave" jdbcType="DECIMAL" />
+    <result column="ACTUAL_SAVE" property="actualSave" jdbcType="DECIMAL" />
+    <result column="PREDICT_RETURN" property="predictReturn" jdbcType="DECIMAL" />
+    <result column="ACTUAL_RETURN" property="actualReturn" jdbcType="DECIMAL" />
+  </resultMap>
+  <sql id="Base_Column_List" >
+    PROJECT_ID, PROJECT_NAME, PREDICT_INVEST, ACTUAL_INVEST, PREDICT_SAVE, ACTUAL_SAVE, 
+    PREDICT_RETURN, ACTUAL_RETURN
+  </sql>
+  <select id="selectByPrimaryKey" resultMap="BaseResultMap" parameterType="java.lang.Long" >
+    SELECT 
+    <include refid="Base_Column_List" />
+    FROM T_INVESTMENT
+    WHERE PROJECT_ID = #{projectId,jdbcType=DECIMAL}
+  </select>
+  <delete id="deleteByPrimaryKey" parameterType="java.lang.String" >
+    DELETE from T_INVESTMENT
+    WHERE  <if test="projectId != null"> PROJECT_ID in  <foreach collection="projectId" item="ids" open="(" separator="," close=")"> #{ids} </foreach></if>
+  </delete>
+  <insert id="insert" parameterType="com.linyang.energy.model.InvestmentBean" >
+    INSERT INTO T_INVESTMENT (PROJECT_ID, PROJECT_NAME, PREDICT_INVEST, 
+      ACTUAL_INVEST, PREDICT_SAVE, ACTUAL_SAVE, 
+      PREDICT_RETURN, ACTUAL_RETURN)
+    VALUES (#{projectId,jdbcType=DECIMAL}, #{projectName,jdbcType=VARCHAR}, #{predictInvest,jdbcType=DECIMAL}, 
+      #{actualInvest,jdbcType=DECIMAL}, #{predictSave,jdbcType=DECIMAL}, #{actualSave,jdbcType=DECIMAL}, 
+      #{predictReturn,jdbcType=DECIMAL}, #{actualReturn,jdbcType=DECIMAL})
+  </insert>
+  <insert id="insertSelective" parameterType="com.linyang.energy.model.InvestmentBean" >
+    INSERT INTO T_INVESTMENT
+    <trim prefix="(" suffix=")" suffixOverrides="," >
+      <if test="projectId != null" >
+        PROJECT_ID,
+      </if>
+      <if test="projectName != null" >
+        PROJECT_NAME,
+      </if>
+      <if test="predictInvest != null" >
+        PREDICT_INVEST,
+      </if>
+      <if test="actualInvest != null" >
+        ACTUAL_INVEST,
+      </if>
+      <if test="predictSave != null" >
+        PREDICT_SAVE,
+      </if>
+      <if test="actualSave != null" >
+        ACTUAL_SAVE,
+      </if>
+      <if test="predictReturn != null" >
+        PREDICT_RETURN,
+      </if>
+      <if test="actualReturn != null" >
+        ACTUAL_RETURN,
+      </if>
+    </trim>
+    <trim prefix="values (" suffix=")" suffixOverrides="," >
+      <if test="projectId != null" >
+        #{projectId,jdbcType=DECIMAL},
+      </if>
+      <if test="projectName != null" >
+        #{projectName,jdbcType=VARCHAR},
+      </if>
+      <if test="predictInvest != null" >
+        #{predictInvest,jdbcType=DECIMAL},
+      </if>
+      <if test="actualInvest != null" >
+        #{actualInvest,jdbcType=DECIMAL},
+      </if>
+      <if test="predictSave != null" >
+        #{predictSave,jdbcType=DECIMAL},
+      </if>
+      <if test="actualSave != null" >
+        #{actualSave,jdbcType=DECIMAL},
+      </if>
+      <if test="predictReturn != null" >
+        #{predictReturn,jdbcType=DECIMAL},
+      </if>
+      <if test="actualReturn != null" >
+        #{actualReturn,jdbcType=DECIMAL},
+      </if>
+    </trim>
+  </insert>
+  <update id="updateByPrimaryKeySelective" parameterType="com.linyang.energy.model.InvestmentBean" >
+    UPDATE T_INVESTMENT
+    <set >
+      <if test="projectName != null" >
+        PROJECT_NAME = #{projectName,jdbcType=VARCHAR},
+      </if>
+      <if test="predictInvest != null" >
+        PREDICT_INVEST = #{predictInvest,jdbcType=DECIMAL},
+      </if>
+      <if test="actualInvest != null" >
+        ACTUAL_INVEST = #{actualInvest,jdbcType=DECIMAL},
+      </if>
+      <if test="predictSave != null" >
+        PREDICT_SAVE = #{predictSave,jdbcType=DECIMAL},
+      </if>
+      <if test="actualSave != null" >
+        ACTUAL_SAVE = #{actualSave,jdbcType=DECIMAL},
+      </if>
+      <if test="predictReturn != null" >
+        PREDICT_RETURN = #{predictReturn,jdbcType=DECIMAL},
+      </if>
+      <if test="actualReturn != null" >
+        ACTUAL_RETURN = #{actualReturn,jdbcType=DECIMAL},
+      </if>
+    </set>
+    WHERE PROJECT_ID = #{projectId,jdbcType=DECIMAL}
+  </update>
+  <update id="updateByPrimaryKey" parameterType="com.linyang.energy.model.InvestmentBean" >
+    UPDATE T_INVESTMENT
+    SET PROJECT_NAME = #{projectName,jdbcType=VARCHAR},
+      PREDICT_INVEST = #{predictInvest,jdbcType=DECIMAL},
+      ACTUAL_INVEST = #{actualInvest,jdbcType=DECIMAL},
+      PREDICT_SAVE = #{predictSave,jdbcType=DECIMAL},
+      ACTUAL_SAVE = #{actualSave,jdbcType=DECIMAL},
+      PREDICT_RETURN = #{predictReturn,jdbcType=DECIMAL},
+      ACTUAL_RETURN = #{actualReturn,jdbcType=DECIMAL}
+    WHERE PROJECT_ID = #{projectId,jdbcType=DECIMAL}
+  </update>
+</mapper>

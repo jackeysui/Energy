@@ -1,0 +1,1752 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.linyang.energy.mapping.yunNan.YunNanMapper" >
+
+    <!-- 检查“统一社会信用代码”是否已存在 -->
+    <select id="getCompanyNumBy" resultType="java.lang.Integer">
+        select count(1) from T_ENT_INFO where ENT_ID = #{entId}
+    </select>
+
+    <!-- 插入T_ENT_INFO -->
+    <insert id="insertCompanyInfo">
+        INSERT INTO T_ENT_INFO
+        <trim prefix="(" suffix=")" suffixOverrides="," >
+            <if test="entId != null" >
+                ENT_ID,
+            </if>
+            <if test="entCode != null" >
+                ENT_CODE,
+            </if>
+            <if test="password != null" >
+                PASSWORD,
+            </if>
+            <if test="sk != null" >
+                SK,
+            </if>
+            <if test="isOrg != null" >
+                IS_ORG,
+            </if>
+            <if test="entName != null" >
+                ENT_NAME,
+            </if>
+            <if test="addr != null" >
+                ADDR,
+            </if>
+            <if test="zipCode != null" >
+                ZIP_CODE,
+            </if>
+            <if test="corpName != null" >
+                CORP_NAME,
+            </if>
+            <if test="regionCode != null" >
+                REGION_CODE,
+            </if>
+            <if test="license != null" >
+                LICENSE,
+            </if>
+            <if test="registerAddr != null" >
+                REGISTER_ADDR,
+            </if>
+            <if test="registerDate != null" >
+                REGISTER_DATE,
+            </if>
+            <if test="registerPrincipal != null" >
+                REGISTER_PRINCIPAL,
+            </if>
+            <if test="typeCode != null" >
+                TYPE_CODE,
+            </if>
+            <if test="industryCode != null" >
+                INDUSTRY_CODE,
+            </if>
+            <if test="fieldCode != null" >
+                FIELD_CODE,
+            </if>
+            <if test="consumeLevel != null" >
+                CONSUME_LEVEL,
+            </if>
+            <if test="isCenter != null" >
+                IS_CENTER,
+            </if>
+            <if test="isJgzh != null" >
+                IS_JGZH,
+            </if>
+            <if test="dataIndex != null" >
+                DATA_INDEX,
+            </if>
+            <if test="lon != null" >
+                LON,
+            </if>
+            <if test="lat != null" >
+                LAT,
+            </if>
+            <if test="tel != null" >
+                TEL,
+            </if>
+            <if test="fax != null" >
+                FAX,
+            </if>
+            <if test="email != null" >
+                EMAIL,
+            </if>
+            <if test="entUrl != null" >
+                ENT_URL,
+            </if>
+            <if test="prodLine != null" >
+                PROD_LINE,
+            </if>
+            <if test="prodLeading != null" >
+                PROD_LEADING,
+            </if>
+            <if test="groupName != null" >
+                GROUP_NAME,
+            </if>
+            <if test="groupAddr != null" >
+                GROUP_ADDR,
+            </if>
+            <if test="remark != null" >
+                REMARK,
+            </if>
+            <if test="orgType != null" >
+                ORG_TYPE,
+            </if>
+            <if test="orgCode != null" >
+                ORG_CODE,
+            </if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides="," >
+            <if test="entId != null" >
+                #{entId,jdbcType=DECIMAL},
+            </if>
+            <if test="entCode != null" >
+                #{entCode,jdbcType=VARCHAR},
+            </if>
+            <if test="password != null" >
+                #{password,jdbcType=VARCHAR},
+            </if>
+            <if test="sk != null" >
+                #{sk,jdbcType=VARCHAR},
+            </if>
+            <if test="isOrg != null" >
+                #{isOrg,jdbcType=DECIMAL},
+            </if>
+            <if test="entName != null" >
+                #{entName,jdbcType=VARCHAR},
+            </if>
+            <if test="addr != null" >
+                #{addr,jdbcType=VARCHAR},
+            </if>
+            <if test="zipCode != null" >
+                #{zipCode,jdbcType=VARCHAR},
+            </if>
+            <if test="corpName != null" >
+                #{corpName,jdbcType=VARCHAR},
+            </if>
+            <if test="regionCode != null" >
+                #{regionCode,jdbcType=VARCHAR},
+            </if>
+            <if test="license != null" >
+                #{license,jdbcType=VARCHAR},
+            </if>
+            <if test="registerAddr != null" >
+                #{registerAddr,jdbcType=VARCHAR},
+            </if>
+            <if test="registerDate != null" >
+                to_date(#{registerDate}, 'yyyy-mm-dd'),
+            </if>
+            <if test="registerPrincipal != null" >
+                #{registerPrincipal,jdbcType=DECIMAL},
+            </if>
+            <if test="typeCode != null" >
+                #{typeCode,jdbcType=VARCHAR},
+            </if>
+            <if test="industryCode != null" >
+                #{industryCode,jdbcType=VARCHAR},
+            </if>
+            <if test="fieldCode != null" >
+                #{fieldCode,jdbcType=VARCHAR},
+            </if>
+            <if test="consumeLevel != null" >
+                #{consumeLevel,jdbcType=VARCHAR},
+            </if>
+            <if test="isCenter != null" >
+                #{isCenter,jdbcType=DECIMAL},
+            </if>
+            <if test="isJgzh != null" >
+                #{isJgzh,jdbcType=DECIMAL},
+            </if>
+            <if test="dataIndex != null" >
+                #{dataIndex,jdbcType=VARCHAR},
+            </if>
+            <if test="lon != null" >
+                #{lon,jdbcType=DOUBLE},
+            </if>
+            <if test="lat != null" >
+                #{lat,jdbcType=DOUBLE},
+            </if>
+            <if test="tel != null" >
+                #{tel,jdbcType=VARCHAR},
+            </if>
+            <if test="fax != null" >
+                #{fax,jdbcType=VARCHAR},
+            </if>
+            <if test="email != null" >
+                #{email,jdbcType=VARCHAR},
+            </if>
+            <if test="entUrl != null" >
+                #{entUrl,jdbcType=VARCHAR},
+            </if>
+            <if test="prodLine != null" >
+                #{prodLine,jdbcType=VARCHAR},
+            </if>
+            <if test="prodLeading != null" >
+                #{prodLeading,jdbcType=VARCHAR},
+            </if>
+            <if test="groupName != null" >
+                #{groupName,jdbcType=VARCHAR},
+            </if>
+            <if test="groupAddr != null" >
+                #{groupAddr,jdbcType=VARCHAR},
+            </if>
+            <if test="remark != null" >
+                #{remark,jdbcType=VARCHAR},
+            </if>
+            <if test="orgType != null" >
+                #{orgType,jdbcType=VARCHAR},
+            </if>
+            <if test="orgCode != null" >
+                #{orgCode,jdbcType=VARCHAR},
+            </if>
+        </trim>
+    </insert>
+
+    <!-- 更新T_ENT_INFO -->
+    <update id="updateCompanyInfo" >
+        UPDATE T_ENT_INFO
+        <set >
+            <if test="entCode != null" >
+                ENT_CODE = #{entCode,jdbcType=DECIMAL},
+            </if>
+            <if test="password != null" >
+                PASSWORD = #{password,jdbcType=VARCHAR},
+            </if>
+            <if test="sk != null" >
+                SK = #{sk,jdbcType=VARCHAR},
+            </if>
+            <if test="isOrg != null" >
+                IS_ORG = #{isOrg,jdbcType=DECIMAL},
+            </if>
+            <if test="entName != null" >
+                ENT_NAME = #{entName,jdbcType=VARCHAR},
+            </if>
+            <if test="addr != null" >
+                ADDR = #{addr,jdbcType=VARCHAR},
+            </if>
+            <if test="zipCode != null" >
+                ZIP_CODE = #{zipCode,jdbcType=VARCHAR},
+            </if>
+            <if test="corpName != null" >
+                CORP_NAME = #{corpName,jdbcType=VARCHAR},
+            </if>
+            <if test="regionCode != null" >
+                REGION_CODE = #{regionCode,jdbcType=VARCHAR},
+            </if>
+            <if test="license != null" >
+                LICENSE = #{license,jdbcType=VARCHAR},
+            </if>
+            <if test="registerAddr != null" >
+                REGISTER_ADDR = #{registerAddr,jdbcType=VARCHAR},
+            </if>
+            <if test="registerDate != null" >
+                REGISTER_DATE = to_date(#{registerDate}, 'yyyy-mm-dd'),
+            </if>
+            <if test="registerPrincipal != null" >
+                REGISTER_PRINCIPAL = #{registerPrincipal,jdbcType=DECIMAL},
+            </if>
+            <if test="typeCode != null" >
+                TYPE_CODE = #{typeCode,jdbcType=VARCHAR},
+            </if>
+            <if test="industryCode != null" >
+                INDUSTRY_CODE = #{industryCode,jdbcType=VARCHAR},
+            </if>
+            <if test="fieldCode != null" >
+                FIELD_CODE = #{fieldCode,jdbcType=VARCHAR},
+            </if>
+            <if test="consumeLevel != null" >
+                CONSUME_LEVEL = #{consumeLevel,jdbcType=VARCHAR},
+            </if>
+            <if test="isCenter != null" >
+                IS_CENTER = #{isCenter,jdbcType=DECIMAL},
+            </if>
+            <if test="isJgzh != null" >
+                IS_JGZH = #{isJgzh,jdbcType=DECIMAL},
+            </if>
+            <if test="dataIndex != null" >
+                DATA_INDEX = #{dataIndex,jdbcType=VARCHAR},
+            </if>
+            <if test="lon != null" >
+                LON = #{lon,jdbcType=DOUBLE},
+            </if>
+            <if test="lat != null" >
+                LAT = #{lat,jdbcType=DOUBLE},
+            </if>
+            <if test="tel != null" >
+                TEL = #{tel,jdbcType=VARCHAR},
+            </if>
+            <if test="fax != null" >
+                FAX = #{fax,jdbcType=VARCHAR},
+            </if>
+            <if test="email != null" >
+                EMAIL = #{email,jdbcType=VARCHAR},
+            </if>
+            <if test="entUrl != null" >
+                ENT_URL = #{entUrl,jdbcType=VARCHAR},
+            </if>
+            <if test="prodLine != null" >
+                PROD_LINE = #{prodLine,jdbcType=VARCHAR},
+            </if>
+            <if test="prodLeading != null" >
+                PROD_LEADING = #{prodLeading,jdbcType=VARCHAR},
+            </if>
+            <if test="groupName != null" >
+                GROUP_NAME = #{groupName,jdbcType=VARCHAR},
+            </if>
+            <if test="groupAddr != null" >
+                GROUP_ADDR = #{groupAddr,jdbcType=VARCHAR},
+            </if>
+            <if test="remark != null" >
+                REMARK = #{remark,jdbcType=VARCHAR},
+            </if>
+            <if test="orgType != null" >
+                ORG_TYPE = #{orgType,jdbcType=VARCHAR},
+            </if>
+            <if test="orgCode != null" >
+                ORG_CODE = #{orgCode,jdbcType=VARCHAR},
+            </if>
+        </set>
+        WHERE ENT_ID = #{entId}
+    </update>
+
+    <!-- 用主键获取T_ENT_INFO -->
+    <select id="getCompanyInfoById" resultType="HashMap">
+        SELECT t.ENT_ID as "entId", t.ENT_CODE as "entCode",  t.PASSWORD as "password",
+            t.SK as "sk",
+            t.IS_ORG as "isOrg",
+            t.ENT_NAME as "entName",
+            t.ADDR as "addr",
+            t.ZIP_CODE as "zipCode",
+            t.CORP_NAME as "corpName",
+            t.REGION_CODE as "regionCode",
+            t.LICENSE as "license",
+            t.REGISTER_ADDR as "registerAddr",
+            to_char(t.REGISTER_DATE,'yyyy-MM-dd') as "registerDate",
+            t.REGISTER_PRINCIPAL as "registerPrincipal",
+            t.TYPE_CODE as "typeCode",
+            t.INDUSTRY_CODE as "industryCode",
+            t.FIELD_CODE as "fieldCode",
+            t.CONSUME_LEVEL as "consumeLevel",
+            t.IS_CENTER as "isCenter",
+            t.IS_JGZH as "isJgzh",
+            t.DATA_INDEX as "dataIndex",
+            t.LON as "lon",
+            t.LAT as "lat",
+            t.TEL as "tel",
+            t.FAX as "fax",
+            t.EMAIL as "email",
+            t.ENT_URL as "entUrl",
+            t.PROD_LINE as "prodLine",
+            t.PROD_LEADING as "prodLeading",
+            t.GROUP_NAME as "groupName",
+            t.GROUP_ADDR as "groupAddr",
+            t.REMARK as "remark",
+            t.ORG_TYPE as "orgType",
+            t.ORG_CODE as "orgCode",
+            r.REGION_NAME as "regionName",
+            i.INDUSTRY_NAME as "industryName"
+        FROM T_ENT_INFO t
+        left join T_REGION r on t.REGION_CODE = r.REGION_ID
+        left join T_INDUSTRY_TYPE i on t.INDUSTRY_CODE = i.INDUSTRY_ID
+        WHERE t.ENT_ID = #{entId}
+    </select>
+
+    <!-- 重置 -->
+    <update id="resetRegist" >
+        UPDATE T_ENT_INFO set DATA_INDEX = null WHERE ENT_ID = #{entId}
+    </update>
+
+    <!-- 插入T_PLAT_AK -->
+    <insert id="insertPlatAk">
+        INSERT INTO T_PLAT_AK
+        <trim prefix="(" suffix=")" suffixOverrides="," >
+            <if test="entId != null" >
+                ENT_ID,
+            </if>
+            <if test="token != null" >
+                TOKEN,
+            </if>
+            <if test="beginTime != null" >
+                BEGIN_TIME,
+            </if>
+            <if test="endTime != null" >
+                END_TIME,
+            </if>
+            <if test="uploadTime != null" >
+                UPLOAD_TIME,
+            </if>
+            <if test="platUrl != null" >
+                PLAT_URL,
+            </if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides="," >
+            <if test="entId != null" >
+                #{entId,jdbcType=DECIMAL},
+            </if>
+            <if test="token != null" >
+                #{token,jdbcType=VARCHAR},
+            </if>
+            <if test="beginTime != null" >
+                to_date(#{beginTime}, 'yyyy-mm-dd hh24:mi'),
+            </if>
+            <if test="endTime != null" >
+                to_date(#{endTime}, 'yyyy-mm-dd hh24:mi'),
+            </if>
+            <if test="uploadTime != null" >
+                #{uploadTime,jdbcType=VARCHAR},
+            </if>
+            <if test="platUrl != null" >
+                #{platUrl,jdbcType=VARCHAR},
+            </if>
+        </trim>
+    </insert>
+
+    <!-- 更新T_PLAT_AK -->
+    <update id="updatePlatAk" >
+        UPDATE T_PLAT_AK
+        <set >
+            <if test="token != null" >
+                TOKEN = #{token,jdbcType=VARCHAR},
+            </if>
+            <if test="beginTime != null" >
+                BEGIN_TIME = to_date(#{beginTime}, 'yyyy-mm-dd hh24:mi'),
+            </if>
+            <if test="endTime != null" >
+                END_TIME = to_date(#{endTime}, 'yyyy-mm-dd hh24:mi'),
+            </if>
+            <if test="uploadTime != null" >
+                UPLOAD_TIME = #{uploadTime,jdbcType=VARCHAR},
+            </if>
+            <if test="platUrl != null" >
+                PLAT_URL = #{platUrl,jdbcType=VARCHAR},
+            </if>
+        </set>
+        WHERE ENT_ID = #{entId}
+    </update>
+
+    <!-- 用主键获取T_PLAT_AK -->
+    <select id="getPlatAkById" resultType="HashMap">
+        SELECT ENT_ID as "entId", TOKEN as "token",  to_char(BEGIN_TIME, 'yyyy-mm-dd hh24:mi') as "beginTime",
+        to_char(END_TIME, 'yyyy-mm-dd hh24:mi') as "endTime", UPLOAD_TIME as "uploadTime",  PLAT_URL as "platUrl"
+        FROM T_PLAT_AK
+        WHERE ENT_ID = #{entId}
+    </select>
+
+    <!-- 插入T_PLAT_VERSION -->
+    <insert id="insertPlatVersion">
+        INSERT INTO T_PLAT_VERSION
+        <trim prefix="(" suffix=")" suffixOverrides="," >
+            <if test="entId != null" >
+                ENT_ID,
+            </if>
+            <if test="dicVersion != null" >
+                DIC_VERSION,
+            </if>
+            <if test="regVersion != null" >
+                REG_VERSION,
+            </if>
+            <if test="dataUrl != null" >
+                DATA_URL,
+            </if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides="," >
+            <if test="entId != null" >
+                #{entId,jdbcType=DECIMAL},
+            </if>
+            <if test="dicVersion != null" >
+                #{dicVersion,jdbcType=VARCHAR},
+            </if>
+            <if test="regVersion != null" >
+                #{regVersion,jdbcType=VARCHAR},
+            </if>
+            <if test="dataUrl != null" >
+                #{dataUrl,jdbcType=VARCHAR},
+            </if>
+        </trim>
+    </insert>
+
+    <!-- 更新T_PLAT_VERSION -->
+    <update id="updatePlatVersion" >
+        UPDATE T_PLAT_VERSION
+        <set >
+            <if test="dicVersion != null" >
+                DIC_VERSION = #{dicVersion,jdbcType=VARCHAR},
+            </if>
+            <if test="regVersion != null" >
+                REG_VERSION = #{regVersion,jdbcType=VARCHAR},
+            </if>
+            <if test="dataUrl != null" >
+                DATA_URL = #{dataUrl,jdbcType=VARCHAR},
+            </if>
+        </set>
+        WHERE ENT_ID = #{entId}
+    </update>
+
+    <!-- 用主键获取T_PLAT_VERSION -->
+    <select id="getPlatVersionById" resultType="HashMap">
+        SELECT ENT_ID as "entId", DIC_VERSION as "dicVersion",  REG_VERSION as "regVersion", DATA_URL as "dataUrl"
+        FROM T_PLAT_VERSION
+        WHERE ENT_ID = #{entId}
+    </select>
+
+    <!-- 插入 T_PLAT_BASEURL -->
+    <insert id="insertPlatUrls">
+        INSERT INTO T_PLAT_BASEURL
+        <trim prefix="(" suffix=")" suffixOverrides="," >
+            <if test="entId != null" >
+                ENT_ID,
+            </if>
+            <if test="dataDownUrl != null" >
+                ENTDATA_DOWN_URL,
+            </if>
+            <if test="dataUrl != null" >
+                ENTDATA_URL,
+            </if>
+            <if test="infoDownUrl != null" >
+                ENTINFO_DOWN_URL,
+            </if>
+            <if test="infoUrl != null" >
+                ENTINFO_URL,
+            </if>
+            <if test="baseDataUrl != null" >
+                BASEDATA_URL,
+            </if>
+            <if test="originDataUrl != null" >
+                ORGDATA_URL,
+            </if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides="," >
+            <if test="entId != null" >
+                #{entId,jdbcType=DECIMAL},
+            </if>
+            <if test="dataDownUrl != null" >
+                #{dataDownUrl,jdbcType=VARCHAR},
+            </if>
+            <if test="dataUrl != null" >
+                #{dataUrl,jdbcType=VARCHAR},
+            </if>
+            <if test="infoDownUrl != null" >
+                #{infoDownUrl,jdbcType=VARCHAR},
+            </if>
+            <if test="infoUrl != null" >
+                #{infoUrl,jdbcType=VARCHAR},
+            </if>
+            <if test="baseDataUrl != null" >
+                #{baseDataUrl,jdbcType=VARCHAR},
+            </if>
+            <if test="originDataUrl != null" >
+                #{originDataUrl,jdbcType=VARCHAR},
+            </if>
+        </trim>
+    </insert>
+
+    <!-- 更新 T_PLAT_BASEURL -->
+    <update id="updatePlatUrls" >
+        UPDATE T_PLAT_BASEURL
+        <set >
+            <if test="dataDownUrl != null" >
+                ENTDATA_DOWN_URL = #{dataDownUrl,jdbcType=VARCHAR},
+            </if>
+            <if test="dataUrl != null" >
+                ENTDATA_URL = #{dataUrl,jdbcType=VARCHAR},
+            </if>
+            <if test="infoDownUrl != null" >
+                ENTINFO_DOWN_URL = #{infoDownUrl,jdbcType=VARCHAR},
+            </if>
+            <if test="infoUrl != null" >
+                ENTINFO_URL = #{infoUrl,jdbcType=VARCHAR},
+            </if>
+            <if test="baseDataUrl != null" >
+                BASEDATA_URL = #{baseDataUrl,jdbcType=VARCHAR},
+            </if>
+            <if test="originDataUrl != null" >
+                ORGDATA_URL = #{originDataUrl,jdbcType=VARCHAR},
+            </if>
+        </set>
+        WHERE ENT_ID = #{entId}
+    </update>
+
+    <!-- 用主键获取 T_PLAT_BASEURL -->
+    <select id="getPlatUrlsById" resultType="HashMap">
+        SELECT ENT_ID as "entId", ENTDATA_DOWN_URL as "dataDownUrl",  ENTDATA_URL as "dataUrl", ENTINFO_DOWN_URL as "infoDownUrl",
+        ENTINFO_URL as "infoUrl", BASEDATA_URL as "baseDataUrl", ORGDATA_URL as "originDataUrl"
+        FROM T_PLAT_BASEURL
+        WHERE ENT_ID = #{entId}
+    </select>
+
+    <!-- 获取“单位类型”下拉列表 -->
+    <select id="getEntTypeList" resultType="HashMap">
+        SELECT ENT_TYPE_ID as "id", ENT_TYPE_NAME as "name"
+        FROM T_ENT_TYPE
+        WHERE REGION_ID = #{regionId}
+    </select>
+
+    <!-- 清除T_ENT_TYPE表 -->
+    <delete id="deleteTableEntType" >
+        delete from t_ent_type
+    </delete>
+
+    <!-- 插入T_ENT_TYPE表-->
+    <insert id="insertEntType" >
+        INSERT INTO t_ent_type(ENT_TYPE_ID, ENT_TYPE_NAME, REGION_ID) values (#{code}, #{name}, #{region})
+    </insert>
+
+    <!-- 清除T_PROD_PCODE表 -->
+    <delete id="deleteTableProdpCode" >
+        delete from T_PROD_PCODE
+    </delete>
+
+    <!-- 插入T_PROD_PCODE表-->
+    <insert id="insertProdpCode" >
+        INSERT INTO T_PROD_PCODE(P_ID, P_NAME, REGION_ID) values (#{code}, #{name}, #{region})
+    </insert>
+
+    <!-- 清除T_PROD_PUNITCODE表 -->
+    <delete id="deleteTableProdpUnitCode" >
+        delete from T_PROD_PUNITCODE
+    </delete>
+
+    <!-- 插入T_PROD_PUNITCODE表-->
+    <insert id="insertProdpUnitCode" >
+        INSERT INTO T_PROD_PUNITCODE(PUNIT_ID, PUNIT_NAME, REGION_ID) values (#{code}, #{name}, #{region})
+    </insert>
+
+    <!-- 清除T_ENEQP表 -->
+    <delete id="deleteTableEntEquipment" >
+        delete from T_ENEQP
+    </delete>
+
+    <!-- 插入T_ENEQP表-->
+    <insert id="insertEntEquipment" >
+        INSERT INTO T_ENEQP(EQP_ID, EQP_NAME, REGION_ID) values (#{code}, #{name}, #{region})
+    </insert>
+
+    <!-- 清除T_DATA_SRC表 -->
+    <delete id="deleteTableDataSrc" >
+        delete from T_DATA_SRC
+    </delete>
+
+    <!-- 插入T_DATA_SRC表-->
+    <insert id="insertDataSrc" >
+        INSERT INTO T_DATA_SRC(DSRC_ID, DSRC_NAME, REGION_ID) values (#{code}, #{name}, #{region})
+    </insert>
+
+    <!-- 清除T_DATA_TYPE表 -->
+    <delete id="deleteTableDataType" >
+        delete from T_DATA_TYPE
+    </delete>
+
+    <!-- 插入T_DATA_TYPE表-->
+    <insert id="insertDataType" >
+        INSERT INTO T_DATA_TYPE(DTYPE_ID, DTYPE_NAME, REGION_ID) values (#{code}, #{name}, #{region})
+    </insert>
+
+
+    <!-- 能源品种编码计量单位及精度 -->
+    <delete id="deleteTableEnType" >
+        delete from T_EN_TYPE
+    </delete>
+
+    <insert id="insertEnType" >
+        INSERT INTO T_EN_TYPE(EN_TYPE_ID, EN_TYPE_NAME, UNIT, PRECISION, REGION_ID) values (#{code}, #{name}, #{unit}, #{precision}, #{region})
+    </insert>
+
+    <delete id="deleteTableEnConvert" >
+        delete from T_EN_CONVERT
+    </delete>
+
+    <insert id="insertEnConvert" >
+        INSERT INTO T_EN_CONVERT(EN_TYPE_ID, EN_TYPE_NAME, CONVERT_RATIO, CONVERT_RATIO_UNIT, REGION_ID) values (#{code}, #{name}, #{ratio}, #{ratioUnit}, #{region})
+    </insert>
+
+    <!-- 行政区域编码（云南） -->
+    <delete id="deleteRegionType" >
+        delete from T_REGION
+    </delete>
+
+    <insert id="insetRegionType" >
+        INSERT INTO T_REGION
+        <trim prefix="(" suffix=")" suffixOverrides="," >
+            <if test="code != null" >
+                REGION_ID,
+            </if>
+            <if test="name != null" >
+                REGION_NAME,
+            </if>
+            <if test="level != null" >
+                REGION_LEVEL,
+            </if>
+            <if test="parent != null" >
+                PARENT_REGION_ID,
+            </if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides="," >
+            <if test="code != null" >
+                #{code,jdbcType=VARCHAR},
+            </if>
+            <if test="name != null" >
+                #{name,jdbcType=VARCHAR},
+            </if>
+            <if test="level != null" >
+                #{level,jdbcType=DECIMAL},
+            </if>
+            <if test="parent != null" >
+                #{parent,jdbcType=VARCHAR},
+            </if>
+        </trim>
+    </insert>
+
+    <!-- 行业编码 -->
+    <delete id="deleteIndustryType" >
+        delete from T_INDUSTRY_TYPE
+    </delete>
+
+    <insert id="insetIndustryType" >
+        INSERT INTO T_INDUSTRY_TYPE
+        <trim prefix="(" suffix=")" suffixOverrides="," >
+            <if test="code != null" >
+                INDUSTRY_ID,
+            </if>
+            <if test="name != null" >
+                INDUSTRY_NAME,
+            </if>
+            <if test="level != null" >
+                INDUSTRY_LEVEL,
+            </if>
+            <if test="parent != null" >
+                PARENT_INDUSTRY_ID,
+            </if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides="," >
+            <if test="code != null" >
+                #{code,jdbcType=VARCHAR},
+            </if>
+            <if test="name != null" >
+                #{name,jdbcType=VARCHAR},
+            </if>
+            <if test="level != null" >
+                #{level,jdbcType=DECIMAL},
+            </if>
+            <if test="parent != null" >
+                #{parent,jdbcType=VARCHAR},
+            </if>
+        </trim>
+    </insert>
+
+    <!-- 耗能工质编码计量单位及精度 -->
+    <delete id="deleteTableWmed" >
+        delete from T_WMED
+    </delete>
+
+    <insert id="insertTableWmed" >
+        INSERT INTO T_WMED(WMED_ID, WMED_NAME, UNIT, PRECISION, RATIO_UNIT, RATIO_PRECISION, REGION_ID)
+          values (#{code}, #{name}, #{qualityUnit}, #{qualityPrecision}, #{collectUnit}, #{collectPrecision}, #{region})
+    </insert>
+
+    <!-- 能效指标编码及计量单位 -->
+    <delete id="deleteTableEei" >
+        delete from T_EEI
+    </delete>
+
+    <insert id="insertTableEei" >
+        INSERT INTO T_EEI(EEI_ID, EEI_NAME, INDUSTRY, TARGET_TYPE, UNIT_CH, UNIT_EN, REGION_ID)
+        values (#{code}, #{name}, #{industry}, #{targetType}, #{unitCh}, #{unitEn}, #{region})
+    </insert>
+
+    <!-- 经营指标编码及计量单位 -->
+    <delete id="deleteTableKpi" >
+        delete from T_KPI
+    </delete>
+
+    <insert id="insertTableKpi" >
+        INSERT INTO T_KPI(KPI_ID, KPI_NAME, UNIT, PRECISION, REGION_ID)
+        values (#{code}, #{name}, #{unit}, #{precisions}, #{region})
+    </insert>
+
+    <!-- 其他数据编码 -->
+    <delete id="deleteTableDataCodeOther" >
+        delete from T_DATACODE_OTHER
+    </delete>
+
+    <insert id="insertDataCodeOther" >
+        INSERT INTO T_DATACODE_OTHER(DATAOTH_ID, DATAOTH_NAME, REGION_ID) values (#{code}, #{name}, #{region})
+    </insert>
+
+    <!-- 能源用途编码 -->
+    <delete id="deleteTableDataCodeEnUse" >
+        delete from T_DATACODE_ENUSE
+    </delete>
+
+    <insert id="insertDataCodeEnUse" >
+        INSERT INTO T_DATACODE_ENUSE(DATAUSAGE_ID, DATAUSAGE_NAME, REGION_ID) values (#{code}, #{name}, #{region})
+    </insert>
+
+    <!-- 重点用能设备分类编码 -->
+    <delete id="deleteTableEneqpType" >
+        delete from T_ENEQP_TYPE
+    </delete>
+
+    <insert id="insertEneqpType" >
+        INSERT INTO T_ENEQP_TYPE(EQP_TYPE_ID, EQP_TYPE_NAME, REGION_ID) values (#{code}, #{name}, #{region})
+    </insert>
+
+
+    <!-- 根据企业ID获取企业已经上报的“机构能源消费”列表 -->
+    <select id="getInstituteEnergyDates" resultType="String">
+        SELECT to_char(REPORT_DATE,'yyyy-MM-dd')
+        FROM T_RESR_CONT_INFO
+        WHERE ENT_ID = #{entId}
+        order by REPORT_DATE desc
+    </select>
+
+    <select id="getResrContInfoBy" resultType="HashMap">
+        SELECT #{entId} as "entId", #{date} as "reportDate", to_char(PREPAR_DATE,'yyyy-MM-dd') as "preparDate", PREPARER as "preparer", CHARGER as "charger", STATISTICIAN as "statistician",
+        USE_AREA as "useArea", FLOORAGE as "floorage", ENERGY_PEOPLE as "energyPeople", STAFF as "staff", VEHICLE_NO as "vehicleNo", GASCAR_NO as "gascarNo",
+        DIESELCAR_NO as "dieselcarNo", ENERGYCAR_NO as "energycarNo", LPG_CONT as "lpgCont", LPG_COST as "lpgCost", POST_NO as "postNo", Q as "q", Q_VALUE as "qValue",
+        W as "w", W_VALUE as "wValue", C as "c", C_VALUE as "cValue", G as "g", G_VALUE as "gValue", H as "h", H_VALUE as "hValue", OTHER as "other", OTHER_VALUE as "otherValue",
+        PETROL as "petrol", PETROL_VALUE as "petrolValue", DIESEL as "diesel", DIESEL_VALUE as "dieselValue", GASCAR_FUEL as "gascarFuel", GASCAR_COST as "gascarCost",
+        GASCAR_FUEL_OTHER as "gascarFuelOther", GASCAR_OTHER_COST as "gascarOtherCost", DIESELCAR_FUEL as "dieselcarFuel", DIESELCAR_COST as "dieselcarCost",
+        DIESELCAR_FUEL_OTHER as "dieselcarFuelOther", DIESELCAR_OTHER_COST as "dieselcarOtherCost", COLLECTOR_AREA as "collectorArea", SOLAR_CAPACITY as "solarCapacity",
+        GEOTHERM_CAPACITY as "geothermCapacity"
+        FROM T_RESR_CONT_INFO
+        WHERE ENT_ID = #{entId} and to_char(REPORT_DATE,'yyyy-MM-dd') = #{date}
+    </select>
+
+    <!-- 检查“机构能源消费”是否已存在 -->
+    <select id="getResrContInfoNumBy" resultType="java.lang.Integer">
+        select count(1) from T_RESR_CONT_INFO where ENT_ID = #{entId} and to_char(REPORT_DATE, 'yyyy-mm-dd') = #{reportDate}
+    </select>
+
+    <!-- 插入 “机构能源消费” -->
+    <insert id="insertResrContInfo">
+        INSERT INTO T_RESR_CONT_INFO
+        <trim prefix="(" suffix=")" suffixOverrides="," >
+            <if test="entId != null" >
+                ENT_ID,
+            </if>
+            <if test="reportDate != null" >
+                REPORT_DATE,
+            </if>
+            <if test="preparDate != null" >
+                PREPAR_DATE,
+            </if>
+            <if test="preparer != null" >
+                PREPARER,
+            </if>
+            <if test="charger != null" >
+                CHARGER,
+            </if>
+            <if test="statistician != null" >
+                STATISTICIAN,
+            </if>
+            <if test="useArea != null" >
+                USE_AREA,
+            </if>
+            <if test="floorage != null" >
+                FLOORAGE,
+            </if>
+            <if test="energyPeople != null" >
+                ENERGY_PEOPLE,
+            </if>
+            <if test="staff != null" >
+                STAFF,
+            </if>
+            <if test="vehicleNo != null" >
+                VEHICLE_NO,
+            </if>
+            <if test="gascarNo != null" >
+                GASCAR_NO,
+            </if>
+            <if test="dieselcarNo != null" >
+                DIESELCAR_NO,
+            </if>
+            <if test="energycarNo != null" >
+                ENERGYCAR_NO,
+            </if>
+            <if test="lpgCont != null" >
+                LPG_CONT,
+            </if>
+            <if test="lpgCost != null" >
+                LPG_COST,
+            </if>
+            <if test="postNo != null" >
+                POST_NO,
+            </if>
+            <if test="q != null" >
+                Q,
+            </if>
+            <if test="qValue != null" >
+                Q_VALUE,
+            </if>
+            <if test="w != null" >
+                W,
+            </if>
+            <if test="wValue != null" >
+                W_VALUE,
+            </if>
+            <if test="c != null" >
+                C,
+            </if>
+            <if test="cValue != null" >
+                C_VALUE,
+            </if>
+            <if test="g != null" >
+                G,
+            </if>
+            <if test="gValue != null" >
+                G_VALUE,
+            </if>
+            <if test="h != null" >
+                H,
+            </if>
+            <if test="hValue != null" >
+                H_VALUE,
+            </if>
+            <if test="other != null" >
+                OTHER,
+            </if>
+            <if test="otherValue != null" >
+                OTHER_VALUE,
+            </if>
+            <if test="petrol != null" >
+                PETROL,
+            </if>
+            <if test="petrolValue != null" >
+                PETROL_VALUE,
+            </if>
+            <if test="diesel != null" >
+                DIESEL,
+            </if>
+            <if test="dieselValue != null" >
+                DIESEL_VALUE,
+            </if>
+            <if test="gascarFuel != null" >
+                GASCAR_FUEL,
+            </if>
+            <if test="gascarCost != null" >
+                GASCAR_COST,
+            </if>
+            <if test="gascarFuelOther != null" >
+                GASCAR_FUEL_OTHER,
+            </if>
+            <if test="gascarOtherCost != null" >
+                GASCAR_OTHER_COST,
+            </if>
+            <if test="dieselcarFuel != null" >
+                DIESELCAR_FUEL,
+            </if>
+            <if test="dieselcarCost != null" >
+                DIESELCAR_COST,
+            </if>
+            <if test="dieselcarFuelOther != null" >
+                DIESELCAR_FUEL_OTHER,
+            </if>
+            <if test="dieselcarOtherCost != null" >
+                DIESELCAR_OTHER_COST,
+            </if>
+            <if test="collectorArea != null" >
+                COLLECTOR_AREA,
+            </if>
+            <if test="solarCapacity != null" >
+                SOLAR_CAPACITY,
+            </if>
+            <if test="geothermCapacity != null" >
+                GEOTHERM_CAPACITY,
+            </if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides="," >
+            <if test="entId != null" >
+                #{entId,jdbcType=DECIMAL},
+            </if>
+            <if test="reportDate != null" >
+                to_date(#{reportDate}, 'yyyy-mm-dd'),
+            </if>
+            <if test="preparDate != null" >
+                to_date(#{preparDate}, 'yyyy-mm-dd'),
+            </if>
+            <if test="preparer != null" >
+                #{preparer,jdbcType=VARCHAR},
+            </if>
+            <if test="charger != null" >
+                #{charger,jdbcType=VARCHAR},
+            </if>
+            <if test="statistician != null" >
+                #{statistician,jdbcType=VARCHAR},
+            </if>
+            <if test="useArea != null" >
+                #{useArea,jdbcType=DECIMAL},
+            </if>
+            <if test="floorage != null" >
+                #{floorage,jdbcType=DECIMAL},
+            </if>
+            <if test="energyPeople != null" >
+                #{energyPeople,jdbcType=DECIMAL},
+            </if>
+            <if test="staff != null" >
+                #{staff,jdbcType=DECIMAL},
+            </if>
+            <if test="vehicleNo != null" >
+                #{vehicleNo,jdbcType=DECIMAL},
+            </if>
+            <if test="gascarNo != null" >
+                #{gascarNo,jdbcType=DECIMAL},
+            </if>
+            <if test="dieselcarNo != null" >
+                #{dieselcarNo,jdbcType=DECIMAL},
+            </if>
+            <if test="energycarNo != null" >
+                #{energycarNo,jdbcType=DECIMAL},
+            </if>
+            <if test="lpgCont != null" >
+                #{lpgCont,jdbcType=DECIMAL},
+            </if>
+            <if test="lpgCost != null" >
+                #{lpgCost,jdbcType=DECIMAL},
+            </if>
+            <if test="postNo != null" >
+                #{postNo,jdbcType=DECIMAL},
+            </if>
+            <if test="q != null" >
+                #{q,jdbcType=DECIMAL},
+            </if>
+            <if test="qValue != null" >
+                #{qValue,jdbcType=DECIMAL},
+            </if>
+            <if test="w != null" >
+                #{w,jdbcType=DECIMAL},
+            </if>
+            <if test="wValue != null" >
+                #{wValue,jdbcType=DECIMAL},
+            </if>
+            <if test="c != null" >
+                #{c,jdbcType=DECIMAL},
+            </if>
+            <if test="cValue != null" >
+                #{cValue,jdbcType=DECIMAL},
+            </if>
+            <if test="g != null" >
+                #{g,jdbcType=DECIMAL},
+            </if>
+            <if test="gValue != null" >
+                #{gValue,jdbcType=DECIMAL},
+            </if>
+            <if test="h != null" >
+                #{h,jdbcType=DECIMAL},
+            </if>
+            <if test="hValue != null" >
+                #{hValue,jdbcType=DECIMAL},
+            </if>
+            <if test="other != null" >
+                #{other,jdbcType=DECIMAL},
+            </if>
+            <if test="otherValue != null" >
+                #{otherValue,jdbcType=DECIMAL},
+            </if>
+            <if test="petrol != null" >
+                #{petrol,jdbcType=DECIMAL},
+            </if>
+            <if test="petrolValue != null" >
+                #{petrolValue,jdbcType=DECIMAL},
+            </if>
+            <if test="diesel != null" >
+                #{diesel,jdbcType=DECIMAL},
+            </if>
+            <if test="dieselValue != null" >
+                #{dieselValue,jdbcType=DECIMAL},
+            </if>
+            <if test="gascarFuel != null" >
+                #{gascarFuel,jdbcType=DECIMAL},
+            </if>
+            <if test="gascarCost != null" >
+                #{gascarCost,jdbcType=DECIMAL},
+            </if>
+            <if test="gascarFuelOther != null" >
+                #{gascarFuelOther,jdbcType=DECIMAL},
+            </if>
+            <if test="gascarOtherCost != null" >
+                #{gascarOtherCost,jdbcType=DECIMAL},
+            </if>
+            <if test="dieselcarFuel != null" >
+                #{dieselcarFuel,jdbcType=DECIMAL},
+            </if>
+            <if test="dieselcarCost != null" >
+                #{dieselcarCost,jdbcType=DECIMAL},
+            </if>
+            <if test="dieselcarFuelOther != null" >
+                #{dieselcarFuelOther,jdbcType=DECIMAL},
+            </if>
+            <if test="dieselcarOtherCost != null" >
+                #{dieselcarOtherCost,jdbcType=DECIMAL},
+            </if>
+            <if test="collectorArea != null" >
+                #{collectorArea,jdbcType=DECIMAL},
+            </if>
+            <if test="solarCapacity != null" >
+                #{solarCapacity,jdbcType=DECIMAL},
+            </if>
+            <if test="geothermCapacity != null" >
+                #{geothermCapacity,jdbcType=DECIMAL},
+            </if>
+        </trim>
+    </insert>
+
+    <!-- 更新 “机构能源消费” -->
+    <update id="updateResrContInfo" >
+        UPDATE T_RESR_CONT_INFO
+        <set >
+            <if test="preparDate != null" >
+                PREPAR_DATE = to_date(#{preparDate}, 'yyyy-mm-dd'),
+            </if>
+            <if test="preparer != null" >
+                PREPARER = #{preparer,jdbcType=VARCHAR},
+            </if>
+            <if test="charger != null" >
+                CHARGER = #{charger,jdbcType=VARCHAR},
+            </if>
+            <if test="statistician != null" >
+                STATISTICIAN = #{statistician,jdbcType=VARCHAR},
+            </if>
+            <if test="useArea != null" >
+                USE_AREA = #{useArea,jdbcType=DECIMAL},
+            </if>
+            <if test="floorage != null" >
+                FLOORAGE = #{floorage,jdbcType=DECIMAL},
+            </if>
+            <if test="energyPeople != null" >
+                ENERGY_PEOPLE = #{energyPeople,jdbcType=DECIMAL},
+            </if>
+            <if test="staff != null" >
+                STAFF = #{staff,jdbcType=DECIMAL},
+            </if>
+            <if test="vehicleNo != null" >
+                VEHICLE_NO = #{vehicleNo,jdbcType=DECIMAL},
+            </if>
+            <if test="gascarNo != null" >
+                GASCAR_NO = #{gascarNo,jdbcType=DECIMAL},
+            </if>
+            <if test="dieselcarNo != null" >
+                DIESELCAR_NO = #{dieselcarNo,jdbcType=DECIMAL},
+            </if>
+            <if test="energycarNo != null" >
+                ENERGYCAR_NO = #{energycarNo,jdbcType=DECIMAL},
+            </if>
+            <if test="lpgCont != null" >
+                LPG_CONT = #{lpgCont,jdbcType=DECIMAL},
+            </if>
+            <if test="lpgCost != null" >
+                LPG_COST = #{lpgCost,jdbcType=DECIMAL},
+            </if>
+            <if test="postNo != null" >
+                POST_NO = #{postNo,jdbcType=DECIMAL},
+            </if>
+            <if test="q != null" >
+                Q = #{q,jdbcType=DECIMAL},
+            </if>
+            <if test="qValue != null" >
+                Q_VALUE = #{qValue,jdbcType=DECIMAL},
+            </if>
+            <if test="w != null" >
+                W = #{w,jdbcType=DECIMAL},
+            </if>
+            <if test="wValue != null" >
+                W_VALUE = #{wValue,jdbcType=DECIMAL},
+            </if>
+            <if test="c != null" >
+                C = #{c,jdbcType=DECIMAL},
+            </if>
+            <if test="cValue != null" >
+                C_VALUE = #{cValue,jdbcType=DECIMAL},
+            </if>
+            <if test="g != null" >
+                G = #{g,jdbcType=DECIMAL},
+            </if>
+            <if test="gValue != null" >
+                G_VALUE = #{gValue,jdbcType=DECIMAL},
+            </if>
+            <if test="h != null" >
+                H = #{h,jdbcType=DECIMAL},
+            </if>
+            <if test="hValue != null" >
+                H_VALUE = #{hValue,jdbcType=DECIMAL},
+            </if>
+            <if test="other != null" >
+                OTHER = #{other,jdbcType=DECIMAL},
+            </if>
+            <if test="otherValue != null" >
+                OTHER_VALUE = #{otherValue,jdbcType=DECIMAL},
+            </if>
+            <if test="petrol != null" >
+                PETROL = #{petrol,jdbcType=DECIMAL},
+            </if>
+            <if test="petrolValue != null" >
+                PETROL_VALUE = #{petrolValue,jdbcType=DECIMAL},
+            </if>
+            <if test="diesel != null" >
+                DIESEL = #{diesel,jdbcType=DECIMAL},
+            </if>
+            <if test="dieselValue != null" >
+                DIESEL_VALUE = #{dieselValue,jdbcType=DECIMAL},
+            </if>
+            <if test="gascarFuel != null" >
+                GASCAR_FUEL = #{gascarFuel,jdbcType=DECIMAL},
+            </if>
+            <if test="gascarCost != null" >
+                GASCAR_COST = #{gascarCost,jdbcType=DECIMAL},
+            </if>
+            <if test="gascarFuelOther != null" >
+                GASCAR_FUEL_OTHER = #{gascarFuelOther,jdbcType=DECIMAL},
+            </if>
+            <if test="gascarOtherCost != null" >
+                GASCAR_OTHER_COST = #{gascarOtherCost,jdbcType=DECIMAL},
+            </if>
+            <if test="dieselcarFuel != null" >
+                DIESELCAR_FUEL = #{dieselcarFuel,jdbcType=DECIMAL},
+            </if>
+            <if test="dieselcarCost != null" >
+                DIESELCAR_COST = #{dieselcarCost,jdbcType=DECIMAL},
+            </if>
+            <if test="dieselcarFuelOther != null" >
+                DIESELCAR_FUEL_OTHER = #{dieselcarFuelOther,jdbcType=DECIMAL},
+            </if>
+            <if test="dieselcarOtherCost != null" >
+                DIESELCAR_OTHER_COST = #{dieselcarOtherCost,jdbcType=DECIMAL},
+            </if>
+            <if test="collectorArea != null" >
+                COLLECTOR_AREA = #{collectorArea,jdbcType=DECIMAL},
+            </if>
+            <if test="solarCapacity != null" >
+                SOLAR_CAPACITY = #{solarCapacity,jdbcType=DECIMAL},
+            </if>
+            <if test="geothermCapacity != null" >
+                GEOTHERM_CAPACITY = #{geothermCapacity,jdbcType=DECIMAL},
+            </if>
+        </set>
+        WHERE ENT_ID = #{entId} and to_char(REPORT_DATE, 'yyyy-mm-dd') = #{reportDate}
+    </update>
+
+
+    <!-- 根据企业ID获取企业已经上报的“机构机房消费”列表 -->
+    <select id="getMechanismRoomDataDates" resultType="String">
+        SELECT to_char(REPORT_DATE,'yyyy-MM-dd')
+        FROM T_DCRESR_CONT_INFO
+        WHERE ENT_ID = #{entId}
+        order by REPORT_DATE desc
+    </select>
+
+    <select id="getMechanismRoomBy" resultType="HashMap">
+        SELECT #{entId} as "entId", #{date} as "reportDate", to_char(PREPAR_DATE,'yyyy-MM-dd') as "preparDate", PREPARER as "preparer", CHARGER as "charger", STATISTICIAN as "statistician",
+        FLOORAGE as "floorage", RITTAL_NO as "rittalNo", RESERVE_RITTAL_NO as "reserveRittalNo", TOTAL_P as "totalP", IT_P as "itP", AC_P as "acP", ACCESS_P as "accessP",
+        UPS_CAPACITY as "upsCapacity", TOTAL_Q as "totalQ", IT_Q as "itQ", AC_Q as "acQ", ACCESS_Q as "accessQ", OTHER_Q as "otherQ", CENTER_NAME as "centerName"
+        FROM T_DCRESR_CONT_INFO
+        WHERE ENT_ID = #{entId} and to_char(REPORT_DATE,'yyyy-MM-dd') = #{date}
+    </select>
+
+    <!-- 检查“机构机房消费”是否已存在 -->
+    <select id="getMechanismRoomNumBy" resultType="java.lang.Integer">
+        select count(1) from T_DCRESR_CONT_INFO where ENT_ID = #{entId} and to_char(REPORT_DATE, 'yyyy-mm-dd') = #{reportDate}
+    </select>
+
+    <!-- 插入 “机构机房消费” -->
+    <insert id="insertMechanismRoom">
+        INSERT INTO T_DCRESR_CONT_INFO
+        <trim prefix="(" suffix=")" suffixOverrides="," >
+            <if test="entId != null" >
+                ENT_ID,
+            </if>
+            <if test="reportDate != null" >
+                REPORT_DATE,
+            </if>
+            <if test="preparDate != null" >
+                PREPAR_DATE,
+            </if>
+            <if test="preparer != null" >
+                PREPARER,
+            </if>
+            <if test="charger != null" >
+                CHARGER,
+            </if>
+            <if test="statistician != null" >
+                STATISTICIAN,
+            </if>
+            <if test="floorage != null" >
+                FLOORAGE,
+            </if>
+            <if test="rittalNo != null" >
+                RITTAL_NO,
+            </if>
+            <if test="reserveRittalNo != null" >
+                RESERVE_RITTAL_NO,
+            </if>
+            <if test="totalP != null" >
+                TOTAL_P,
+            </if>
+            <if test="itP != null" >
+                IT_P,
+            </if>
+            <if test="acP != null" >
+                AC_P,
+            </if>
+            <if test="accessP != null" >
+                ACCESS_P,
+            </if>
+            <if test="upsCapacity != null" >
+                UPS_CAPACITY,
+            </if>
+            <if test="totalQ != null" >
+                TOTAL_Q,
+            </if>
+            <if test="itQ != null" >
+                IT_Q,
+            </if>
+            <if test="acQ != null" >
+                AC_Q,
+            </if>
+            <if test="accessQ != null" >
+                ACCESS_Q,
+            </if>
+            <if test="otherQ != null" >
+                OTHER_Q,
+            </if>
+            <if test="centerName != null" >
+                CENTER_NAME,
+            </if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides="," >
+            <if test="entId != null" >
+                #{entId,jdbcType=DECIMAL},
+            </if>
+            <if test="reportDate != null" >
+                to_date(#{reportDate}, 'yyyy-mm-dd'),
+            </if>
+            <if test="preparDate != null" >
+                to_date(#{preparDate}, 'yyyy-mm-dd'),
+            </if>
+            <if test="preparer != null" >
+                #{preparer,jdbcType=VARCHAR},
+            </if>
+            <if test="charger != null" >
+                #{charger,jdbcType=VARCHAR},
+            </if>
+            <if test="statistician != null" >
+                #{statistician,jdbcType=VARCHAR},
+            </if>
+            <if test="floorage != null" >
+                #{floorage,jdbcType=DECIMAL},
+            </if>
+            <if test="rittalNo != null" >
+                #{rittalNo,jdbcType=DECIMAL},
+            </if>
+            <if test="reserveRittalNo != null" >
+                #{reserveRittalNo,jdbcType=DECIMAL},
+            </if>
+            <if test="totalP != null" >
+                #{totalP,jdbcType=DECIMAL},
+            </if>
+            <if test="itP != null" >
+                #{itP,jdbcType=DECIMAL},
+            </if>
+            <if test="acP != null" >
+                #{acP,jdbcType=DECIMAL},
+            </if>
+            <if test="accessP != null" >
+                #{accessP,jdbcType=DECIMAL},
+            </if>
+            <if test="upsCapacity != null" >
+                #{upsCapacity,jdbcType=DECIMAL},
+            </if>
+            <if test="totalQ != null" >
+                #{totalQ,jdbcType=DECIMAL},
+            </if>
+            <if test="itQ != null" >
+                #{itQ,jdbcType=DECIMAL},
+            </if>
+            <if test="acQ != null" >
+                #{acQ,jdbcType=DECIMAL},
+            </if>
+            <if test="accessQ != null" >
+                #{accessQ,jdbcType=DECIMAL},
+            </if>
+            <if test="otherQ != null" >
+                #{otherQ,jdbcType=DECIMAL},
+            </if>
+            <if test="centerName != null" >
+                #{centerName,jdbcType=VARCHAR},
+            </if>
+        </trim>
+    </insert>
+
+    <!-- 更新 “机构机房消费” -->
+    <update id="updateMechanismRoom" >
+        UPDATE T_DCRESR_CONT_INFO
+        <set >
+            <if test="preparDate != null" >
+                PREPAR_DATE = to_date(#{preparDate}, 'yyyy-mm-dd'),
+            </if>
+            <if test="preparer != null" >
+                PREPARER = #{preparer,jdbcType=VARCHAR},
+            </if>
+            <if test="charger != null" >
+                CHARGER = #{charger,jdbcType=VARCHAR},
+            </if>
+            <if test="statistician != null" >
+                STATISTICIAN = #{statistician,jdbcType=VARCHAR},
+            </if>
+            <if test="floorage != null" >
+                FLOORAGE = #{floorage,jdbcType=DECIMAL},
+            </if>
+            <if test="rittalNo != null" >
+                RITTAL_NO = #{rittalNo,jdbcType=DECIMAL},
+            </if>
+            <if test="reserveRittalNo != null" >
+                RESERVE_RITTAL_NO = #{reserveRittalNo,jdbcType=DECIMAL},
+            </if>
+            <if test="totalP != null" >
+                TOTAL_P = #{totalP,jdbcType=DECIMAL},
+            </if>
+            <if test="itP != null" >
+                IT_P = #{itP,jdbcType=DECIMAL},
+            </if>
+            <if test="acP != null" >
+                AC_P = #{acP,jdbcType=DECIMAL},
+            </if>
+            <if test="accessP != null" >
+                ACCESS_P = #{accessP,jdbcType=DECIMAL},
+            </if>
+            <if test="upsCapacity != null" >
+                UPS_CAPACITY = #{upsCapacity,jdbcType=DECIMAL},
+            </if>
+            <if test="totalQ != null" >
+                TOTAL_Q = #{totalQ,jdbcType=DECIMAL},
+            </if>
+            <if test="itQ != null" >
+                IT_Q = #{itQ,jdbcType=DECIMAL},
+            </if>
+            <if test="acQ != null" >
+                AC_Q = #{acQ,jdbcType=DECIMAL},
+            </if>
+            <if test="accessQ != null" >
+                ACCESS_Q = #{accessQ,jdbcType=DECIMAL},
+            </if>
+            <if test="otherQ != null" >
+                OTHER_Q = #{otherQ,jdbcType=DECIMAL},
+            </if>
+            <if test="centerName != null" >
+                CENTER_NAME = #{centerName,jdbcType=VARCHAR},
+            </if>
+        </set>
+        WHERE ENT_ID = #{entId} and to_char(REPORT_DATE, 'yyyy-mm-dd') = #{reportDate}
+    </update>
+
+    <!-- 根据企业ID获取企业已经上报的“机构采暖消费”列表 -->
+    <select id="getMechanismHeatingDataDates" resultType="String">
+        SELECT to_char(REPORT_DATE,'yyyy-MM-dd')
+        FROM T_HEATRESR_CONT_INFO
+        WHERE ENT_ID = #{entId}
+        order by REPORT_DATE desc
+    </select>
+
+    <select id="getMechanismHeatingBy" resultType="HashMap">
+        SELECT #{entId} as "entId", #{date} as "reportDate", to_char(PREPAR_DATE,'yyyy-MM-dd') as "preparDate", PREPARER as "preparer", CHARGER as "charger", STATISTICIAN as "statistician",
+        HEAT_AREA as "heatArea", IH_AREA as "ihArea", CH_AREA_A as "chAreaA", CH_AREA_H as "chAreaH", HEAT_DAY as "heatDay", BOILER_P as "boilerP", STEAM_P as "steamP",
+        Q as "q", Q_VALUE as "qValue", W as "w", W_VALUE as "wValue", C as "c", C_VALUE as "cValue", G as "g", G_VALUE as "gValue", H as "h", H_VALUE as "hValue",
+        DIESEL as "diesel", DIESEL_VALUE as "dieselValue", OTHER as "other", OTHER_VALUE as "otherValue"
+        FROM T_HEATRESR_CONT_INFO
+        WHERE ENT_ID = #{entId} and to_char(REPORT_DATE,'yyyy-MM-dd') = #{date}
+    </select>
+
+    <!-- 检查“机构采暖消费”是否已存在 -->
+    <select id="getMechanismHeatingNumBy" resultType="java.lang.Integer">
+        select count(1) from T_HEATRESR_CONT_INFO where ENT_ID = #{entId} and to_char(REPORT_DATE, 'yyyy-mm-dd') = #{reportDate}
+    </select>
+
+    <!-- 插入 “机构采暖消费” -->
+    <insert id="insertMechanismHeating">
+        INSERT INTO T_HEATRESR_CONT_INFO
+        <trim prefix="(" suffix=")" suffixOverrides="," >
+            <if test="entId != null" >
+                ENT_ID,
+            </if>
+            <if test="reportDate != null" >
+                REPORT_DATE,
+            </if>
+            <if test="preparDate != null" >
+                PREPAR_DATE,
+            </if>
+            <if test="preparer != null" >
+                PREPARER,
+            </if>
+            <if test="charger != null" >
+                CHARGER,
+            </if>
+            <if test="statistician != null" >
+                STATISTICIAN,
+            </if>
+            <if test="heatArea != null" >
+                HEAT_AREA,
+            </if>
+            <if test="ihArea != null" >
+                IH_AREA,
+            </if>
+            <if test="chAreaA != null" >
+                CH_AREA_A,
+            </if>
+            <if test="chAreaH != null" >
+                CH_AREA_H,
+            </if>
+            <if test="heatDay != null" >
+                HEAT_DAY,
+            </if>
+            <if test="boilerP != null" >
+                BOILER_P,
+            </if>
+            <if test="steamP != null" >
+                STEAM_P,
+            </if>
+            <if test="q != null" >
+                Q,
+            </if>
+            <if test="qValue != null" >
+                Q_VALUE,
+            </if>
+            <if test="w != null" >
+                W,
+            </if>
+            <if test="wValue != null" >
+                W_VALUE,
+            </if>
+            <if test="c != null" >
+                C,
+            </if>
+            <if test="cValue != null" >
+                C_VALUE,
+            </if>
+            <if test="g != null" >
+                G,
+            </if>
+            <if test="gValue != null" >
+                G_VALUE,
+            </if>
+            <if test="h != null" >
+                H,
+            </if>
+            <if test="hValue != null" >
+                H_VALUE,
+            </if>
+            <if test="diesel != null" >
+                DIESEL,
+            </if>
+            <if test="dieselValue != null" >
+                DIESEL_VALUE,
+            </if>
+            <if test="other != null" >
+                OTHER,
+            </if>
+            <if test="otherValue != null" >
+                OTHER_VALUE,
+            </if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides="," >
+            <if test="entId != null" >
+                #{entId,jdbcType=DECIMAL},
+            </if>
+            <if test="reportDate != null" >
+                to_date(#{reportDate}, 'yyyy-mm-dd'),
+            </if>
+            <if test="preparDate != null" >
+                to_date(#{preparDate}, 'yyyy-mm-dd'),
+            </if>
+            <if test="preparer != null" >
+                #{preparer,jdbcType=VARCHAR},
+            </if>
+            <if test="charger != null" >
+                #{charger,jdbcType=VARCHAR},
+            </if>
+            <if test="statistician != null" >
+                #{statistician,jdbcType=VARCHAR},
+            </if>
+            <if test="heatArea != null" >
+                #{heatArea,jdbcType=DECIMAL},
+            </if>
+            <if test="ihArea != null" >
+                #{ihArea,jdbcType=DECIMAL},
+            </if>
+            <if test="chAreaA != null" >
+                #{chAreaA,jdbcType=DECIMAL},
+            </if>
+            <if test="chAreaH != null" >
+                #{chAreaH,jdbcType=DECIMAL},
+            </if>
+            <if test="heatDay != null" >
+                #{heatDay,jdbcType=DECIMAL},
+            </if>
+            <if test="boilerP != null" >
+                #{boilerP,jdbcType=DECIMAL},
+            </if>
+            <if test="steamP != null" >
+                #{steamP,jdbcType=DECIMAL},
+            </if>
+            <if test="q != null" >
+                #{q,jdbcType=DECIMAL},
+            </if>
+            <if test="qValue != null" >
+                #{qValue,jdbcType=DECIMAL},
+            </if>
+            <if test="w != null" >
+                #{w,jdbcType=DECIMAL},
+            </if>
+            <if test="wValue != null" >
+                #{wValue,jdbcType=DECIMAL},
+            </if>
+            <if test="c != null" >
+                #{c,jdbcType=DECIMAL},
+            </if>
+            <if test="cValue != null" >
+                #{cValue,jdbcType=DECIMAL},
+            </if>
+            <if test="g != null" >
+                #{g,jdbcType=DECIMAL},
+            </if>
+            <if test="gValue != null" >
+                #{gValue,jdbcType=DECIMAL},
+            </if>
+            <if test="h != null" >
+                #{h,jdbcType=DECIMAL},
+            </if>
+            <if test="hValue != null" >
+                #{hValue,jdbcType=DECIMAL},
+            </if>
+            <if test="diesel != null" >
+                #{diesel,jdbcType=DECIMAL},
+            </if>
+            <if test="dieselValue != null" >
+                #{dieselValue,jdbcType=DECIMAL},
+            </if>
+            <if test="other != null" >
+                #{other,jdbcType=DECIMAL},
+            </if>
+            <if test="otherValue != null" >
+                #{otherValue,jdbcType=DECIMAL},
+            </if>
+        </trim>
+    </insert>
+
+    <!-- 更新 “机构采暖消费” -->
+    <update id="updateMechanismHeating" >
+        UPDATE T_HEATRESR_CONT_INFO
+        <set >
+            <if test="preparDate != null" >
+                PREPAR_DATE = to_date(#{preparDate}, 'yyyy-mm-dd'),
+            </if>
+            <if test="preparer != null" >
+                PREPARER = #{preparer,jdbcType=VARCHAR},
+            </if>
+            <if test="charger != null" >
+                CHARGER = #{charger,jdbcType=VARCHAR},
+            </if>
+            <if test="statistician != null" >
+                STATISTICIAN = #{statistician,jdbcType=VARCHAR},
+            </if>
+            <if test="heatArea != null" >
+                HEAT_AREA = #{heatArea,jdbcType=DECIMAL},
+            </if>
+            <if test="ihArea != null" >
+                IH_AREA = #{ihArea,jdbcType=DECIMAL},
+            </if>
+            <if test="chAreaA != null" >
+                CH_AREA_A = #{chAreaA,jdbcType=DECIMAL},
+            </if>
+            <if test="chAreaH != null" >
+                CH_AREA_H = #{chAreaH,jdbcType=DECIMAL},
+            </if>
+            <if test="heatDay != null" >
+                HEAT_DAY = #{heatDay,jdbcType=DECIMAL},
+            </if>
+            <if test="boilerP != null" >
+                BOILER_P = #{boilerP,jdbcType=DECIMAL},
+            </if>
+            <if test="steamP != null" >
+                STEAM_P = #{steamP,jdbcType=DECIMAL},
+            </if>
+            <if test="q != null" >
+                Q = #{q,jdbcType=DECIMAL},
+            </if>
+            <if test="qValue != null" >
+                Q_VALUE = #{qValue,jdbcType=DECIMAL},
+            </if>
+            <if test="w != null" >
+                W = #{w,jdbcType=DECIMAL},
+            </if>
+            <if test="wValue != null" >
+                W_VALUE = #{wValue,jdbcType=DECIMAL},
+            </if>
+            <if test="c != null" >
+                C = #{c,jdbcType=DECIMAL},
+            </if>
+            <if test="cValue != null" >
+                C_VALUE = #{cValue,jdbcType=DECIMAL},
+            </if>
+            <if test="g != null" >
+                G = #{g,jdbcType=DECIMAL},
+            </if>
+            <if test="gValue != null" >
+                G_VALUE = #{gValue,jdbcType=DECIMAL},
+            </if>
+            <if test="h != null" >
+                H = #{h,jdbcType=DECIMAL},
+            </if>
+            <if test="hValue != null" >
+                H_VALUE = #{hValue,jdbcType=DECIMAL},
+            </if>
+            <if test="diesel != null" >
+                DIESEL = #{diesel,jdbcType=DECIMAL},
+            </if>
+            <if test="dieselValue != null" >
+                DIESEL_VALUE = #{dieselValue,jdbcType=DECIMAL},
+            </if>
+            <if test="other != null" >
+                OTHER = #{other,jdbcType=DECIMAL},
+            </if>
+            <if test="otherValue != null" >
+                OTHER_VALUE = #{otherValue,jdbcType=DECIMAL},
+            </if>
+        </set>
+        WHERE ENT_ID = #{entId} and to_char(REPORT_DATE, 'yyyy-mm-dd') = #{reportDate}
+    </update>
+
+    <!-- 根据企业ID获取企业的“采集项配置”列表 -->
+    <select id="getCompanyCollectionConfig" resultType="HashMap">
+        SELECT DATA_ID as "dataId", DATA_NAME as "dataName"
+        FROM T_DATACFG_ITEM
+        WHERE ENT_ID = #{entId}
+    </select>
+
+    <select id="getOneCollectionConfig" resultType="HashMap">
+        SELECT t1.DATA_CODE as "dataCode", t1.DATA_NAME as "dataName", t1.FREQUCE as "frequce",
+        c.CONVERT_RATIO as "convertRatio", t1.SCOPE as "scope", t1.INPUT_TYPE as "inputType",
+        t1.EMO_TYPE as "relateType", t1.EMO_ID as "relateId",
+        t1.EN_TYPE_ID as "enTypeId",
+        t2.EN_TYPE_NAME as "enTypeName", t2.UNIT as "unit", t2.PRECISION as "precision"
+        FROM T_DATACFG_ITEM t1 left join T_EN_TYPE t2 on t1.EN_TYPE_ID = t2.EN_TYPE_ID
+			  left join T_EN_CONVERT c on c.EN_TYPE_ID=t2.EN_TYPE_ID
+        WHERE t1.ENT_ID = #{entId} and t1.DATA_ID = #{dataId} and t2.REGION_ID = #{region}
+    </select>
+
+</mapper>

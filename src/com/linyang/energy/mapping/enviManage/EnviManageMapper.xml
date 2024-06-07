@@ -1,0 +1,416 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.linyang.energy.mapping.enviManage.EnviManageMapper" >
+    <resultMap id="BaseResultMap" type="com.linyang.energy.model.IndustryBean" >
+        <id column="INDUSTRY_ID" property="industryId" jdbcType="VARCHAR" />
+        <result column="INDUSTRY_NAME" property="industryName" jdbcType="VARCHAR" />
+        <result column="PARENT_INDUSTRY_ID" property="parentIndustryId" jdbcType="VARCHAR" />
+    </resultMap>
+
+    <select id="queryPolluteInfo" resultMap="BaseResultMap">
+        SELECT POLLUT_ID as INDUSTRY_ID, POLLUT_NAME as INDUSTRY_NAME, PARENT_POLLUT_ID as PARENT_INDUSTRY_ID
+        FROM  t_pollut_facil
+        <where>
+            <if test="parentId != null and parentId != ''">
+                PARENT_POLLUT_ID = #{parentId}
+            </if>
+        </where>
+        ORDER BY POLLUT_ID
+    </select>
+
+    <select id="queryControlInfo" resultMap="BaseResultMap">
+        SELECT POLLUTCTL_ID as INDUSTRY_ID, POLLUTCTL_NAME as INDUSTRY_NAME, PARENT_POLLUTCTL_ID as PARENT_INDUSTRY_ID
+        FROM  T_POLLUTCTL_FACIL
+        <where>
+            <if test="parentId != null and parentId != ''">
+                PARENT_POLLUTCTL_ID = #{parentId}
+            </if>
+        </where>
+        ORDER BY POLLUTCTL_ID
+    </select>
+
+    <select id="ajaxEnviManagePageList" parameterType="HashMap" resultType="com.linyang.energy.model.EnviManageBean">
+        select r.EP_RELA_ID as relateId, t1.ledger_name as ledgerName, t1.ledger_id as ledgerId,
+                t2.ledger_name as polluteName, r.POLLUT_BOOT_THR as polluteVal, p1.POLLUT_NAME as polluteTypeName, t2.ledger_id as polluteId,
+                t3.ledger_name as controlName, r.POLLUTCTL_BOOT_THR as controlVal, p2.pollutctl_name as controlTypeName, t3.ledger_id as controlId
+        from T_EP_FACIL_RELATION r inner join t_ledger t1 on r.LEDGER_ID_CO=t1.ledger_id
+        inner join t_ledger t2 on r.LEDGER_ID_POLLUT=t2.ledger_id
+        inner join t_pollut_facil p1 on t2.POLLUT_ID=p1.POLLUT_ID
+        inner join t_ledger t3 on r.LEDGER_ID_POLLUTCTL=t3.ledger_id
+        inner join t_pollutctl_facil p2 on t3.POLLUTCTL_ID=p2.pollutctl_id
+        where 1=1
+        <if test="deviceName != null and deviceName != ''">
+            and (t2.ledger_name LIKE '%' || #{deviceName} || '%' or t3.ledger_name LIKE '%' || #{deviceName} || '%')
+        </if>
+        <if test="polluteId != null and polluteId != ''">
+            and t2.POLLUT_ID = #{polluteId}
+        </if>
+        <if test="controlId != null and controlId != ''">
+            and t3.POLLUTCTL_ID = #{controlId}
+        </if>
+        <if test="ledgerId != null and ledgerId > 0">
+            and r.LEDGER_ID_CO in (SELECT t1.ledger_id from t_ledger t1,t_ledger t2 where t1.ledger_lft>=t2.ledger_lft and t1.ledger_rgt&lt;=t2.ledger_rgt and t2.ledger_id=#{ledgerId})
+        </if>
+        <if test="isGroup == 0">
+            and r.LEDGER_ID_CO in (SELECT t1.ledger_id from t_ledger t1,t_ledger t2 where t1.ledger_lft>=t2.ledger_lft and t1.ledger_rgt&lt;=t2.ledger_rgt and t2.ledger_id=#{userLedgerId})
+        </if>
+        <if test="isGroup == 1">
+            and r.LEDGER_ID_CO in (SELECT t1.ledger_id from t_ledger t1,t_ledger t2
+                                   where t1.ledger_lft>=t2.ledger_lft and t1.ledger_rgt&lt;=t2.ledger_rgt
+                                   and t2.ledger_id in (SELECT gl.ledger_id from t_group_account ga inner join t_group_ledger gl on ga.GROUP_ID = gl.GROUP_ID where ga.ACCOUNT_ID = #{accountId})
+                                   )
+        </if>
+        order by r.EP_RELA_ID
+    </select>
+
+    <delete id="deletePolluteControlRelation" parameterType="Long">
+        DELETE FROM t_ep_facil_relation t where t.EP_RELA_ID = #{relateId}
+    </delete>
+
+    <select id="getEventSetNumBy" resultType="Integer">
+        select count(1)
+        from t_ep_facil_relation t1 inner join t_event_setting_rec t2 on t1.LEDGER_ID_POLLUT=t2.OBJECT_ID
+        where t1.EP_RELA_ID = #{relateId} and t2.EVENT_ID = 1107
+    </select>
+
+    <select id="getPolluteControlMessage1" resultType="HashMap">
+        <if test="type == 1">
+            select p.POLLUT_NAME as TYPE_NAME, t.E_POWER
+            from t_ledger l left join T_POLLUT_FACIL p on l.POLLUT_ID = p.POLLUT_ID
+            left join (
+                   select t1.ledger_id, sum(t2.THRESHOLD_VALUE * t1.ADD_ATTR * t1.PCT/100) as E_POWER
+                   from t_ledger_meter t1 inner join t_meter_threshold_relation t2 on t1.METER_ID=t2.METER_ID
+                   where t1.ledger_id = #{id} and t2.THRESHOLD_ID = 4
+                   group by t1.ledger_id
+            ) t on l.ledger_id = t.ledger_id
+            where l.ledger_id = #{id}
+        </if>
+        <if test="type == 2">
+            select p.pollutctl_name as TYPE_NAME, t.E_POWER
+            from t_ledger l left join t_pollutctl_facil p on l.POLLUTCTL_ID = p.pollutctl_id
+            left join (
+                       select t1.ledger_id, sum(t2.THRESHOLD_VALUE * t1.ADD_ATTR * t1.PCT/100) as E_POWER
+                       from t_ledger_meter t1 inner join t_meter_threshold_relation t2 on t1.METER_ID=t2.METER_ID
+                       where t1.ledger_id = #{id} and t2.THRESHOLD_ID = 4
+                       group by t1.ledger_id
+            ) t on l.ledger_id = t.ledger_id
+            where l.ledger_id = #{id}
+        </if>
+    </select>
+
+    <select id="getPolluteControlMessage2" resultType="Double">
+        <if test="type == 1">
+            select POLLUT_BOOT_THR from T_EP_FACIL_RELATION where LEDGER_ID_CO = #{ledgerId} and LEDGER_ID_POLLUT = #{id}
+        </if>
+        <if test="type == 2">
+            select POLLUTCTL_BOOT_THR from T_EP_FACIL_RELATION where LEDGER_ID_CO = #{ledgerId} and LEDGER_ID_POLLUTCTL = #{id}
+        </if>
+    </select>
+
+    <select id="getEnviManageByRelateId" resultType="com.linyang.energy.model.EnviManageBean">
+        select r.EP_RELA_ID as relateId, r.LEDGER_ID_CO as ledgerId, t1.ledger_name as ledgerName,
+                    t2.ledger_name as polluteName, t2.ledger_id as polluteId,
+                    t3.ledger_name as controlName, t3.ledger_id as controlId
+        from T_EP_FACIL_RELATION r inner join t_ledger t1 on r.LEDGER_ID_CO=t1.ledger_id
+        inner join t_ledger t2 on r.LEDGER_ID_POLLUT = t2.ledger_id
+        inner join t_ledger t3 on r.LEDGER_ID_POLLUTCTL = t3.ledger_id
+        where r.EP_RELA_ID = #{relateId}
+    </select>
+
+    <select id="getNotRelateEnviManage" resultType="HashMap">
+        <if test="type == 1">
+            select t.LEDGER_ID, t.LEDGER_NAME
+            from t_ledger t inner join t_pollut_facil p on t.POLLUT_ID = p.POLLUT_ID
+            where t.ledger_id in (SELECT t1.ledger_id from t_ledger t1,t_ledger t2 where t1.ledger_lft>=t2.ledger_lft and t1.ledger_rgt&lt;=t2.ledger_rgt and t2.ledger_id=#{ledgerId})
+            and t.ledger_id not in (select LEDGER_ID_POLLUT from T_EP_FACIL_RELATION where LEDGER_ID_CO = #{ledgerId})
+        </if>
+        <if test="type == 2">
+            select t.LEDGER_ID, t.LEDGER_NAME
+            from t_ledger t inner join t_pollutctl_facil p on t.pollutctl_id = p.pollutctl_id
+            where t.ledger_id in (SELECT t1.ledger_id from t_ledger t1,t_ledger t2 where t1.ledger_lft>=t2.ledger_lft and t1.ledger_rgt&lt;=t2.ledger_rgt and t2.ledger_id=#{ledgerId})
+            and t.ledger_id not in (select LEDGER_ID_POLLUTCTL from T_EP_FACIL_RELATION where LEDGER_ID_CO = #{ledgerId})
+        </if>
+    </select>
+
+    <insert id="insertEnviManage">
+        insert into  T_EP_FACIL_RELATION(EP_RELA_ID, LEDGER_ID_POLLUT, LEDGER_ID_POLLUTCTL, LEDGER_ID_CO, POLLUT_BOOT_THR, POLLUTCTL_BOOT_THR)
+        values(#{relateId},#{polluteId},#{controlId},#{ledgerId},#{polluteVal},#{controlVal})
+    </insert>
+
+    <update id="updateEnviManage">
+        update T_EP_FACIL_RELATION t
+        <set>
+            <if test="polluteId != null">
+                t.LEDGER_ID_POLLUT = #{polluteId},
+            </if>
+            <if test="controlId != null">
+                t.LEDGER_ID_POLLUTCTL = #{controlId},
+            </if>
+            <if test="ledgerId != null">
+                t.LEDGER_ID_CO = #{ledgerId},
+            </if>
+            <if test="polluteVal != null">
+                t.POLLUT_BOOT_THR = #{polluteVal},
+            </if>
+            <if test="controlVal != null">
+                t.POLLUTCTL_BOOT_THR = #{controlVal},
+            </if>
+        </set>
+        where t.EP_RELA_ID = #{relateId}
+    </update>
+
+    <select id="getChildLedgerList" resultType="HashMap">
+        select l.ledger_id, l.ledger_name from t_ledger l
+        where l.ledger_id in (SELECT t1.ledger_id from t_ledger t1,t_ledger t2 where t1.ledger_lft>=t2.ledger_lft and t1.ledger_rgt&lt;=t2.ledger_rgt and t2.ledger_id=#{ledgerId})
+        and (l.ANALY_TYPE = 104 or l.ANALY_TYPE = 105)
+    </select>
+
+    <select id="getLedgersOfPart" resultType="HashMap">
+        select distinct p.ledger_id as LEDGER_ID, p.ledger_name as LEDGER_NAME, #{partName} as PART_NAME
+        from t_ledger l,t_ledger p
+        where p.ledger_lft&lt;=l.ledger_lft and p.ledger_rgt>=l.ledger_rgt
+        and l.ledger_id in (select t1.ledger_id
+                             from t_ledger t1
+                             where t1.ledger_id in (SELECT t1.ledger_id from t_ledger t1,t_ledger t2 where t1.ledger_lft>=t2.ledger_lft and t1.ledger_rgt&lt;=t2.ledger_rgt and t2.ledger_id=#{partId})
+                             and t1.POLLUT_ID is not null
+                            )
+        and p.ANALY_TYPE = 102
+        <if test="ledgerName != null and ledgerName !='' ">
+            AND p.LEDGER_NAME like '%' || #{ledgerName} || '%'
+        </if>
+    </select>
+
+    <select id="getPartsOfNotGroup" resultType="HashMap">
+        select l.ledger_id as LEDGER_ID, l.ledger_name as LEDGER_NAME
+        from t_ledger l
+        where l.PARENT_LEDGER_ID = #{ledgerId}
+    </select>
+
+    <select id="getLedgersOfGroup" resultType="HashMap">
+        select distinct l.ledger_id as LEDGER_ID, l.ledger_name as LEDGER_NAME, l.ledger_name as PART_NAME
+        from t_ledger l
+        where l.ledger_id in (SELECT gl.ledger_id from t_group_account ga inner join t_group_ledger gl on ga.GROUP_ID = gl.GROUP_ID where ga.ACCOUNT_ID = #{accountId})
+        and l.ANALY_TYPE = 102
+        <if test="ledgerName != null and ledgerName !='' ">
+            AND l.LEDGER_NAME like '%' || #{ledgerName} || '%'
+        </if>
+    </select>
+
+    <select id="getPolluteDetailByLedgerId" resultType="HashMap">
+        select t0.ledger_id "ledgerId", t0.ledger_name "ledgerName", nvl(t1.base_data, 0) "baseData", nvl(t2.actual_data, 0) "actualData"
+        from
+        (select le.ledger_id, le.ledger_name
+        from t_ledger le
+        where le.ledger_id in (SELECT t1.ledger_id from t_ledger t1,t_ledger t2 where t1.ledger_lft>=t2.ledger_lft and t1.ledger_rgt&lt;=t2.ledger_rgt and t2.ledger_id=#{ledgerId})
+        and le.POLLUT_ID is not null
+        ) t0
+        left join
+        (select le.ledger_id, ls.Q as base_data
+        from t_ledger le inner join T_DAY_LEDGER_STAT ls on le.ledger_id = ls.ledger_id
+        where le.ledger_id in (SELECT t1.ledger_id from t_ledger t1,t_ledger t2 where t1.ledger_lft>=t2.ledger_lft and t1.ledger_rgt&lt;=t2.ledger_rgt and t2.ledger_id=#{ledgerId})
+        and le.POLLUT_ID is not null
+        and ls.STAT_DATE = #{baseTime}
+        ) t1 on t0.ledger_id = t1.ledger_id
+        left join
+        (select le.ledger_id, sum(ls.Q) as actual_data
+        from t_ledger le inner join T_DAY_LEDGER_STAT ls on le.ledger_id = ls.ledger_id
+        where le.ledger_id in (SELECT t1.ledger_id from t_ledger t1,t_ledger t2 where t1.ledger_lft>=t2.ledger_lft and t1.ledger_rgt&lt;=t2.ledger_rgt and t2.ledger_id=#{ledgerId})
+        and le.POLLUT_ID is not null
+        and ls.STAT_DATE between #{beginTime,jdbcType=TIME} AND #{endTime,jdbcType=TIME}
+        group by le.ledger_id, le.ledger_name
+        ) t2 on t0.ledger_id = t2.ledger_id
+    </select>
+
+    <select id="getPolluteOpenDetailBy" resultType="HashMap">
+        select t1.pollute_id "polluteId", t1.pollute_name "polluteName",
+        t2.LEDGER_ID_POLLUTCTL "controlId", t3.ledger_name "controlName", t2.POLLUT_BOOT_THR "polluteVal", t2.POLLUTCTL_BOOT_THR "controlVal"
+        from (
+        select le.ledger_id as pollute_id, le.ledger_name as pollute_name
+        from t_ledger le
+        where le.ledger_id in (SELECT t1.ledger_id from t_ledger t1,t_ledger t2 where t1.ledger_lft>=t2.ledger_lft and t1.ledger_rgt&lt;=t2.ledger_rgt and t2.ledger_id=#{ledgerId})
+        and le.POLLUT_ID is not null
+        <if test="hasControl == 1">              <!-- 有治理源 -->
+            and le.ledger_id in (select LEDGER_ID_POLLUT from T_EP_FACIL_RELATION where LEDGER_ID_CO = #{ledgerId})
+        </if>
+        <if test="hasControl == 2">              <!-- 无治理源 -->
+            and le.ledger_id not in (select LEDGER_ID_POLLUT from T_EP_FACIL_RELATION where LEDGER_ID_CO = #{ledgerId})
+        </if>
+        ) t1
+        left join t_ep_facil_relation t2 on t1.pollute_id = t2.LEDGER_ID_POLLUT
+        left join t_ledger t3 on t2.LEDGER_ID_POLLUTCTL = t3.ledger_id
+    </select>
+
+    <select id="getLedgerEpower" resultType="Double">
+        select sum(t2.THRESHOLD_VALUE * t1.ADD_ATTR * t1.PCT/100)
+        from t_ledger_meter t1
+        inner join t_meter_threshold_relation t2 on t1.METER_ID=t2.METER_ID
+        where t1.ledger_id = #{ledgerId} and t2.THRESHOLD_ID = 4
+    </select>
+
+    <select id="getLedgerQby" resultType="Double">
+        SELECT nvl(sum(T3.Q), 0)
+        FROM T_DAY_LEDGER_STAT T3
+        WHERE T3.LEDGER_ID = #{ledgerId}
+        AND T3.STAT_DATE between #{beginDate,jdbcType=TIME} AND #{endDate,jdbcType=TIME}
+        and T3.Q is not null
+    </select>
+
+    <select id="getPolluteControlOpenTimes" resultType="String">
+        select to_char(t.FREEZE_TIME,'yyyy-mm-dd hh24:mi')
+        from (
+              select ap.FREEZE_TIME, sum(ap.AP * lm.ADD_ATTR * lm.PCT/100) as VAL
+              from t_ledger_meter lm
+              inner join T_CUR_AP ap on lm.METER_ID = ap.METER_ID
+              where lm.LEDGER_ID = #{ledgerId} and ap.FREEZE_TIME between #{beginDate,jdbcType=TIME} AND #{endDate,jdbcType=TIME}
+              and ap.freeze_time &lt;= SYSDATE
+              group by ap.FREEZE_TIME
+        ) t
+        where t.VAL >= #{val}
+        order by t.FREEZE_TIME
+    </select>
+
+    <select id="queryReducePlanPageList" resultType="HashMap">
+        select t1.region_id as "regionId", t1.region_name as "regionName", t2.ledger_num as "ledgerNum", t1.plan_num as "planNum",
+        t1.plan_type as "planType", to_char(t1.begin_time,'yyyy-mm-dd') as "begin", to_char(t1.end_time,'yyyy-mm-dd') as "end"
+        from (
+            select r.region_id, r.region_name, count(distinct l.ledger_id) as plan_num, avg(p.PLAN_TYPE) as plan_type, min(p.begin_time) as begin_time, max(p.end_time) as end_time
+            from t_ep_plan p
+            inner join t_ledger l on p.ledger_id_co = l.ledger_id
+            inner join t_region r on l.region=r.region_id
+            where 1=1
+            <if test="isGroup == 0">
+                and l.ledger_id in (SELECT t1.ledger_id from t_ledger t1,t_ledger t2 where t1.ledger_lft>=t2.ledger_lft and t1.ledger_rgt&lt;=t2.ledger_rgt and t2.ledger_id=#{userLedgerId})
+            </if>
+            <if test="isGroup == 1">
+                and l.ledger_id in (SELECT gl.ledger_id from t_group_account ga inner join t_group_ledger gl on ga.GROUP_ID = gl.GROUP_ID where ga.ACCOUNT_ID = #{accountId})
+            </if>
+            <if test="planType != 0">
+                and p.plan_type = #{planType}
+            </if>
+            <if test="beginTime != '' and endTime != ''">
+                and to_char(p.BEGIN_TIME,'yyyy-mm-dd') &lt;= #{endTime} and to_char(p.END_TIME,'yyyy-mm-dd') >= #{beginTime}
+            </if>
+            group by r.region_id, r.region_name
+        ) t1 inner join
+        (
+            select r.region_id, r.region_name, count(distinct l.ledger_id) as ledger_num
+            from t_ledger l
+            inner join t_region r on l.region=r.region_id
+            where l.ANALY_TYPE = 102
+            <if test="isGroup == 0">
+                and l.ledger_id in (SELECT t1.ledger_id from t_ledger t1,t_ledger t2 where t1.ledger_lft>=t2.ledger_lft and t1.ledger_rgt&lt;=t2.ledger_rgt and t2.ledger_id=#{userLedgerId})
+            </if>
+            <if test="isGroup == 1">
+                and l.ledger_id in (SELECT gl.ledger_id from t_group_account ga inner join t_group_ledger gl on ga.GROUP_ID = gl.GROUP_ID where ga.ACCOUNT_ID = #{accountId})
+            </if>
+            group by r.region_id, r.region_name
+        ) t2 on t1.region_id = t2.region_id
+    </select>
+
+    <select id="getReduceLedgerPageList" resultType="HashMap">
+        select r.region_id as "regionId", r.region_name as "regionName", l.ledger_id as "ledgerId", l.ledger_name as "ledgerName",
+        avg(p.PLAN_TYPE) as "planType", to_char(min(p.begin_time),'yyyy-mm-dd') as "begin", to_char(max(p.end_time),'yyyy-mm-dd') as "end"
+        from t_ep_plan p
+        inner join t_ledger l on p.ledger_id_co = l.ledger_id
+        left join t_region r on l.region=r.region_id
+        where 1=1
+        <if test="isGroup == 0">
+            and l.ledger_id in (SELECT t1.ledger_id from t_ledger t1,t_ledger t2 where t1.ledger_lft>=t2.ledger_lft and t1.ledger_rgt&lt;=t2.ledger_rgt and t2.ledger_id=#{userLedgerId})
+        </if>
+        <if test="isGroup == 1">
+            and l.ledger_id in (SELECT gl.ledger_id from t_group_account ga inner join t_group_ledger gl on ga.GROUP_ID = gl.GROUP_ID where ga.ACCOUNT_ID = #{accountId})
+        </if>
+        <if test="regionId != ''">
+            and r.region_id in (SELECT region_id FROM t_region START WITH region_id = #{regionId} CONNECT BY PRIOR region_id = parent_region_id)
+        </if>
+        <if test="ledgerName != null and ledgerName !='' ">
+            AND l.LEDGER_NAME like '%' || #{ledgerName} || '%'
+        </if>
+        <if test="beginTime != '' and endTime != ''">
+            and to_char(p.BEGIN_TIME,'yyyy-mm-dd') &lt;= #{endTime} and to_char(p.END_TIME,'yyyy-mm-dd') >= #{beginTime}
+        </if>
+        <if test="planType != 0">
+            and p.plan_type = #{planType}
+        </if>
+        <if test="limitResult != 0">
+            and p.LIMIT_RESULT = #{limitResult}
+        </if>
+        group by r.region_id, r.region_name, l.ledger_id, l.ledger_name
+    </select>
+
+    <select id="getReducePolluteList" resultType="HashMap">
+        select p.LEDGER_ID_POLLUT as "polluteId", to_char(p.BEGIN_TIME,'yyyy-mm-dd') as "start", to_char(p.END_TIME,'yyyy-mm-dd') as "over", p.LIMIT_STOP_RATIO as "percent", p.LIMIT_RESULT
+        from t_ep_plan p
+        where p.LEDGER_ID_CO = #{ledgerId}
+        and to_char(p.BEGIN_TIME,'yyyy-mm-dd') >= #{beginTime} and to_char(p.END_TIME,'yyyy-mm-dd') &lt;= #{endTime}
+        <if test="planType != 0">
+            and p.plan_type = #{planType}
+        </if>
+        <if test="limitResult != 0">
+            and p.LIMIT_RESULT = #{limitResult}
+        </if>
+    </select>
+
+    <select id="getPolluteLedgerQBy" resultType="Double">
+        select  nvl(sum(Q), 0)
+        from T_DAY_LEDGER_STAT
+        where LEDGER_ID = #{polluteId} and to_char(STAT_DATE,'yyyy-mm-dd') >= #{start} and to_char(STAT_DATE,'yyyy-mm-dd') &lt;= #{over}
+    </select>
+
+    <select id="getLedgerAverageQ" resultType="Double">
+        select Q_STD from T_LEDGER_CO where LEDGER_ID_CO = #{ledgerId}
+    </select>
+
+    <update id="updateLimitResult">
+        update t_ep_plan set LIMIT_RESULT = #{newPlanType}
+        where LEDGER_ID_CO = #{ledgerId}
+        <if test="beginTime != '' and endTime != ''">
+            and to_char(BEGIN_TIME,'yyyy-mm-dd') >= #{beginTime} and to_char(BEGIN_TIME,'yyyy-mm-dd')  &lt;= #{endTime}
+            and to_char(END_TIME,'yyyy-mm-dd') >= #{beginTime} and to_char(END_TIME,'yyyy-mm-dd')  &lt;= #{endTime}
+        </if>
+        <if test="planType != 0">
+            and plan_type = #{planType}
+        </if>
+        <if test="limitResult != 0">
+            and LIMIT_RESULT = #{limitResult}
+        </if>
+    </update>
+
+    <select id="getReduceLedgerRanking" resultType="HashMap">
+        select r.region_id as "regionId", r.region_name as "regionName",
+        l.ledger_id as "ledgerId", l.ledger_name as "ledgerName",
+        i.INDUSTRY_ID as "industryId", i.INDUSTRY_NAME as "industryName",
+        avg(p.PLAN_TYPE) as "planType", to_char(min(p.begin_time),'yyyy-mm-dd') as "begin", to_char(max(p.end_time),'yyyy-mm-dd') as "end"
+        from t_ep_plan p
+        inner join t_ledger l on p.ledger_id_co = l.ledger_id
+        left join t_region r on l.region=r.region_id
+        left join T_LEDGER_CO co on l.ledger_id = co.LEDGER_ID_CO
+        left join T_INDUSTRY i on l.INDUSTRY_TYPE = i.INDUSTRY_ID
+        where 1=1
+        <if test="isGroup == 0">
+            and l.ledger_id in (SELECT t1.ledger_id from t_ledger t1,t_ledger t2 where t1.ledger_lft>=t2.ledger_lft and t1.ledger_rgt&lt;=t2.ledger_rgt and t2.ledger_id=#{userLedgerId})
+        </if>
+        <if test="isGroup == 1">
+            and l.ledger_id in (SELECT gl.ledger_id from t_group_account ga inner join t_group_ledger gl on ga.GROUP_ID = gl.GROUP_ID where ga.ACCOUNT_ID = #{accountId})
+        </if>
+        <if test="regionId != ''">
+            and r.region_id in (SELECT region_id FROM t_region START WITH region_id = #{regionId} CONNECT BY PRIOR region_id = parent_region_id)
+        </if>
+        <if test="industryId != ''">
+            and i.INDUSTRY_ID = #{industryId}
+        </if>
+        <if test="ledgerName != null and ledgerName !='' ">
+            AND l.LEDGER_NAME like '%' || #{ledgerName} || '%'
+        </if>
+        <if test="beginTime != '' and endTime != ''">
+            and to_char(p.BEGIN_TIME,'yyyy-mm-dd') &lt;= #{endTime} and to_char(p.END_TIME,'yyyy-mm-dd') >= #{beginTime}
+        </if>
+        <if test="planType != 0">
+            and p.plan_type = #{planType}
+        </if>
+        <if test="coStatus != 0">
+            and co.CO_STATUS = #{coStatus}
+        </if>
+        group by r.region_id, r.region_name, l.ledger_id, l.ledger_name, i.INDUSTRY_ID, i.INDUSTRY_NAME
+    </select>
+</mapper>

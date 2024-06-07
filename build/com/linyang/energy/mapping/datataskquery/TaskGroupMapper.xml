@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.linyang.energy.mapping.datataskquery.TaskGroupMapper">
+	<resultMap id="TaskGroupResultMap" type="com.linyang.energy.model.TaskJobGroup">
+		<id column="GROUP_ID" property="groupID" jdbcType="DECIMAL" />
+		<result column="GROUP_NAME" property="groupName" jdbcType="VARCHAR" />
+		<result column="START_TIME" property="startTime" jdbcType="TIMESTAMP" />
+		<result column="END_TIME" property="endTime" jdbcType="TIMESTAMP" />
+		<result column="GROUP_STATUS" property="groupStatus" jdbcType="DECIMAL" />
+	</resultMap>
+	<sql id="TaskGroup_Column_List">
+		GROUP_ID, GROUP_NAME, START_TIME, END_TIME, GROUP_STATUS
+	</sql>
+	
+	<select id="getTaskGroup" resultMap="TaskGroupResultMap">
+		select
+		<include refid="TaskGroup_Column_List" />
+		from t_job_group 
+	</select>
+
+	  <!-- 更新任务群组信息  by gaop 2014-09-10 -->
+	<update id="updateTaskGroup" parameterType="com.linyang.energy.model.TaskJobGroup">
+	  update t_job_group
+	    <set>
+	         <if  test="groupName!=null">
+	            GROUP_NAME = #{groupName,jdbcType=VARCHAR},
+	         </if>
+	         <if  test="startTime!=null">
+	            START_TIME=#{startTime,jdbcType=TIMESTAMP},
+	         </if>
+	         <if  test="endTime!=null">
+	            END_TIME=#{endTime,jdbcType=TIMESTAMP},
+	         </if>
+	         <if  test="groupStatus!=null">
+	         GROUP_STATUS=#{groupStatus},
+	         </if>
+	    </set>
+	     where GROUP_ID = #{groupID,jdbcType=DECIMAL}
+	</update>
+		</mapper>

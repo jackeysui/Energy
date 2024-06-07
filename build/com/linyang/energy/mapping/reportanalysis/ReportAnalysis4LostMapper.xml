@@ -1,0 +1,397 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+
+<mapper namespace="com.linyang.energy.mapping.reportanalysis.ReportAnalysis4LostMapper">
+
+	<!-- 得到测量点报表数据(缺失表计) -->
+	<select id="getMeterReportData4Lost" resultType="HashMap">
+		<if test="dataType == 1">
+		SELECT
+		T1.METER_ID  objectId ,
+		T2.METER_NAME objectName,
+		T3.AMMETER_ADDRESS address,
+		to_date(T1.DATA_TIME,'yyyy-MM-dd HH24') freezeTime,
+		SUM(T1.faq) as A ,
+		SUM(T1.frq) as B
+		FROM
+		(
+		select substr(to_char( tb2.data_time,'yyyy-MM-dd HH24:mi:ss'),0,13) as data_time, nvl(tb1.faq, '') as faq , nvl(tb1.frq, '') as frq ,nvl(meter_id,#{objectId}) meter_id
+		from
+		(
+		select faq_value as faq , frq_value as frq, FREEZE_TIME as data_time ,meter_id
+		from T_CUR_Q
+		where METER_ID = #{objectId} and FREEZE_TIME  >= #{beginDate,jdbcType=TIME}
+		AND FREEZE_TIME &lt;= #{endDate,jdbcType=TIME}
+		and faq_value is not null
+		and frq_value is not null
+		order by FREEZE_TIME
+		) tb1 right join
+		(
+		select to_date(substr(to_char( #{beginDate,jdbcType=TIME},'yyyy-MM-dd HH24:mi:ss'),0,10) || ' ' || t.freeze_time, 'yyyy-MM-dd HH24:mi:ss') as data_time from t_time_dimension t
+		) tb2 on tb1.data_time=tb2.data_time
+		order by tb2.data_time
+		) T1 JOIN T_METER T2 ON  T1.METER_ID = T2.METER_ID
+		JOIN T_MPED_INFO T3 ON T3.MPED_ID = T2.MPED_ID
+		GROUP BY T1.METER_ID ,T2.METER_NAME,T3.AMMETER_ADDRESS,T1.DATA_TIME
+		</if>
+		<if test="dataType == 2">
+			SELECT
+			T1.METER_ID  objectId ,
+			T2.METER_NAME objectName,
+			T3.AMMETER_ADDRESS address,
+			T1.DATA_TIME freezeTime,
+			T1.A
+			FROM
+			(
+			select  tb2.data_time as data_time, nvl(tb1.A, '') as A ,nvl(meter_id,#{objectId}) meter_id
+			from
+			(
+			select AP as A , FREEZE_TIME as data_time ,meter_id
+			from T_CUR_AP
+			where METER_ID = #{objectId} and FREEZE_TIME  >= #{beginDate,jdbcType=TIME}
+			AND FREEZE_TIME &lt;= #{endDate,jdbcType=TIME}
+			and AP is not null
+			order by FREEZE_TIME
+			) tb1 right join
+			(
+			select to_date(substr(to_char( #{beginDate,jdbcType=TIME},'yyyy-MM-dd HH24:mi:ss'),0,10) || ' ' || t.freeze_time, 'yyyy-MM-dd HH24:mi:ss') as data_time from t_time_dimension t
+			) tb2 on tb1.data_time=tb2.data_time
+			order by tb2.data_time
+			) T1 JOIN T_METER T2 ON  T1.METER_ID = T2.METER_ID
+			JOIN T_MPED_INFO T3 ON T3.MPED_ID = T2.MPED_ID
+		</if>
+		<if test="dataType == 3">
+			SELECT
+			T1.METER_ID  objectId ,
+			T2.METER_NAME objectName,
+			T3.AMMETER_ADDRESS address,
+			T1.DATA_TIME freezeTime,
+			T1.A
+			FROM
+			(
+			select  tb2.data_time as data_time, nvl(tb1.A, '') as A ,nvl(meter_id,#{objectId}) meter_id
+			from
+			(
+			select RP as A , FREEZE_TIME as data_time ,meter_id
+			from T_CUR_RP
+			where METER_ID = #{objectId} and FREEZE_TIME  >= #{beginDate,jdbcType=TIME}
+			AND FREEZE_TIME &lt;= #{endDate,jdbcType=TIME}
+			and RP is not null
+			order by FREEZE_TIME
+			) tb1 right join
+			(
+			select to_date(substr(to_char( #{beginDate,jdbcType=TIME},'yyyy-MM-dd HH24:mi:ss'),0,10) || ' ' || t.freeze_time, 'yyyy-MM-dd HH24:mi:ss') as data_time from t_time_dimension t
+			) tb2 on tb1.data_time=tb2.data_time
+			order by tb2.data_time
+			) T1 JOIN T_METER T2 ON  T1.METER_ID = T2.METER_ID
+			JOIN T_MPED_INFO T3 ON T3.MPED_ID = T2.MPED_ID
+		</if>
+		<if test="dataType == 4">
+			SELECT
+			T1.METER_ID  objectId ,
+			T2.METER_NAME objectName,
+			T3.AMMETER_ADDRESS address,
+			T1.DATA_TIME freezeTime,
+			T1.A
+			FROM
+			(
+			select  tb2.data_time as data_time, nvl(tb1.A, '') as A ,nvl(meter_id,#{objectId} ) meter_id
+			from
+			(
+			select PF/100 as A , FREEZE_TIME as data_time ,meter_id
+			from T_CUR_PF
+			where METER_ID = #{objectId} and FREEZE_TIME  >= #{beginDate,jdbcType=TIME}
+			AND FREEZE_TIME &lt;= #{endDate,jdbcType=TIME}
+			and PF is not null
+			order by FREEZE_TIME
+			) tb1 right join
+			(
+			select to_date(substr(to_char( #{beginDate,jdbcType=TIME},'yyyy-MM-dd HH24:mi:ss'),0,10) || ' ' || t.freeze_time, 'yyyy-MM-dd HH24:mi:ss') as data_time from t_time_dimension t
+			) tb2 on tb1.data_time=tb2.data_time
+			order by tb2.data_time
+			) T1 JOIN T_METER T2 ON  T1.METER_ID = T2.METER_ID
+			JOIN T_MPED_INFO T3 ON T3.MPED_ID = T2.MPED_ID
+		</if>
+		<if test="dataType == 5">
+			SELECT
+			T1.METER_ID  objectId ,
+			T2.METER_NAME objectName,
+			T3.AMMETER_ADDRESS address,
+			T1.DATA_TIME freezeTime,
+			T1.A,
+			T1.B,
+			T1.C
+			FROM
+			(
+			select  tb2.data_time as data_time, nvl(tb1.A, '') as A ,nvl(tb1.B, '') as B,nvl(tb1.C, '') as C ,nvl(meter_id,#{objectId}) meter_id
+			from
+			(
+			select IA as A ,IB as B,IC as C, FREEZE_TIME as data_time ,meter_id
+			from T_CUR_I
+			where METER_ID = #{objectId} and FREEZE_TIME  >= #{beginDate,jdbcType=TIME}
+			AND FREEZE_TIME &lt;= #{endDate,jdbcType=TIME}
+			and IA is not null
+			AND IB IS NOT NULL
+			AND IC IS NOT NULL
+			order by FREEZE_TIME
+			) tb1 right join
+			(
+			select to_date(substr(to_char( #{beginDate,jdbcType=TIME},'yyyy-MM-dd HH24:mi:ss'),0,10) || ' ' || t.freeze_time, 'yyyy-MM-dd HH24:mi:ss') as data_time from t_time_dimension t
+			) tb2 on tb1.data_time=tb2.data_time
+			order by tb2.data_time
+			) T1 JOIN T_METER T2 ON  T1.METER_ID = T2.METER_ID
+			JOIN T_MPED_INFO T3 ON T3.MPED_ID = T2.MPED_ID
+		</if>
+		<if test="dataType == 6">
+            SELECT
+            T1.METER_ID  objectId ,
+            T2.METER_NAME objectName,
+            T3.AMMETER_ADDRESS address,
+            T1.DATA_TIME freezeTime,
+            T1.A,
+            T1.B,
+            T1.C
+            FROM
+            (
+            select  tb2.data_time as data_time, nvl(tb1.A, '') as A ,nvl(tb1.B, '') as B,nvl(tb1.C, '') as C ,nvl(meter_id,#{objectId}) meter_id
+            from
+            (
+            select VA as A ,VB as B,VC as C, FREEZE_TIME as data_time ,meter_id
+            from T_CUR_V
+            where METER_ID = #{objectId} and FREEZE_TIME  >= #{beginDate,jdbcType=TIME}
+            AND FREEZE_TIME &lt;= #{endDate,jdbcType=TIME}
+            and VA is not null
+            AND VB IS NOT NULL
+            AND VC IS NOT NULL
+            order by FREEZE_TIME
+            ) tb1 right join
+            (
+            select to_date(substr(to_char( #{beginDate,jdbcType=TIME},'yyyy-MM-dd HH24:mi:ss'),0,10) || ' ' || t.freeze_time, 'yyyy-MM-dd HH24:mi:ss') as data_time from t_time_dimension t
+            ) tb2 on tb1.data_time=tb2.data_time
+            order by tb2.data_time
+
+            ) T1 JOIN T_METER T2 ON  T1.METER_ID = T2.METER_ID
+            JOIN T_MPED_INFO T3 ON T3.MPED_ID = T2.MPED_ID
+		</if>
+        <if test="dataType == 7">
+            SELECT
+            t1.METER_ID AS objectId,
+            T2.METER_NAME as objectName,
+            T1.data_time as freezeTime,
+            SUM(t1.A) as A,
+            SUM(t1.B) AS B,
+            T3.AMMETER_ADDRESS as address,
+            T3.PT AS PT,
+            T3.CT AS CT
+            FROM (
+            select  tb2.data_time as data_time, nvl(tb1.A, '') as A ,nvl(tb1.B, '') as B ,nvl(meter_id,#{objectId}) meter_id
+            from
+            ( select DAY_FAQ as A ,DAY_FRQ as B, FREEZE_TIME as data_time ,meter_id
+            from T_DAY_Q_RATE
+            where METER_ID = #{objectId} and FREEZE_TIME  >= #{beginDate,jdbcType=TIME}
+            AND FREEZE_TIME &lt;= #{endDate,jdbcType=TIME}
+            and DAY_FAQ is not null
+            AND DAY_FRQ IS NOT NULL
+            order by FREEZE_TIME
+            ) tb1 right join
+            ( SELECT #{beginDate,jdbcType=TIME}+ROWNUM-1 as data_time
+            FROM DUAL CONNECT BY ROWNUM &lt;= trunc(#{endDate,jdbcType=TIME}+1-#{beginDate,jdbcType=TIME})
+            ) TB2 ON TB1.DATA_TIME=TB2.DATA_TIME
+            ) T1 JOIN T_METER T2 ON T1.METER_ID = T2.METER_ID
+            JOIN T_MPED_INFO T3 ON T3.MPED_ID = T2.MPED_ID
+            GROUP BY T1.METER_ID, T2.METER_NAME, T1.DATA_TIME, T3.PT, T3.CT, T3.AMMETER_ADDRESS
+        </if>
+        <if test="dataType == 8">
+            SELECT
+            t1.METER_ID AS objectId,
+            T2.METER_NAME as objectName,
+            T1.data_time as freezeTime,
+            t1.A as A,
+            T3.AMMETER_ADDRESS as address,
+            T3.PT AS PT,
+            T3.CT AS CT
+            FROM (
+            select  tb2.data_time as data_time, nvl(tb1.A, '') as A ,nvl(meter_id,#{objectId}) meter_id
+            from
+            ( select WFLOW_VALUE as A , FREEZE_TIME as data_time ,meter_id
+            from T_DAY_WFLOW_STAT
+            where METER_ID = #{objectId} and FREEZE_TIME  >= #{beginDate,jdbcType=TIME}
+            AND FREEZE_TIME &lt;= #{endDate,jdbcType=TIME}
+            and WFLOW_VALUE is not null
+            order by FREEZE_TIME
+            ) tb1 right join
+            ( SELECT #{beginDate,jdbcType=TIME}+ROWNUM-1 as data_time
+            FROM DUAL CONNECT BY ROWNUM &lt;= trunc(#{endDate,jdbcType=TIME}+1-#{beginDate,jdbcType=TIME})
+            ) TB2 ON TB1.DATA_TIME=TB2.DATA_TIME
+            ) T1 JOIN T_METER T2 ON T1.METER_ID = T2.METER_ID
+            JOIN T_MPED_INFO T3 ON T3.MPED_ID = T2.MPED_ID
+        </if>
+        <if test="dataType == 9">
+            SELECT
+            t1.METER_ID AS objectId,
+            T2.METER_NAME as objectName,
+            T1.data_time as freezeTime,
+            t1.A as A,
+            T3.AMMETER_ADDRESS as address,
+            T3.PT AS PT,
+            T3.CT AS CT
+            FROM (
+            select  tb2.data_time as data_time, nvl(tb1.A, '') as A ,nvl(meter_id,#{objectId}) meter_id
+            from
+            ( select GFLOW_VALUE as A , FREEZE_TIME as data_time ,meter_id
+            from T_DAY_GFLOW_STAT
+            where METER_ID = #{objectId} and FREEZE_TIME  >= #{beginDate,jdbcType=TIME}
+            AND FREEZE_TIME &lt;= #{endDate,jdbcType=TIME}
+            and GFLOW_VALUE is not null
+            order by FREEZE_TIME
+            ) tb1 right join
+            (
+            SELECT #{beginDate,jdbcType=TIME}+ROWNUM-1 as data_time
+            FROM DUAL CONNECT BY ROWNUM &lt;= trunc(#{endDate,jdbcType=TIME}+1-#{beginDate,jdbcType=TIME})
+            ) TB2 ON TB1.DATA_TIME=TB2.DATA_TIME
+            ) T1 JOIN T_METER T2 ON T1.METER_ID = T2.METER_ID
+            JOIN T_MPED_INFO T3 ON T3.MPED_ID = T2.MPED_ID
+        </if>
+        <if test="dataType == 10">
+            SELECT
+            t1.METER_ID AS objectId,
+            T2.METER_NAME as objectName,
+            T1.data_time as freezeTime,
+            t1.A as A,
+            T3.AMMETER_ADDRESS as address,
+            T3.PT AS PT,
+            T3.CT AS CT
+            FROM (
+            select  tb2.data_time as data_time, nvl(tb1.A, '') as A ,nvl(meter_id,#{objectId}) meter_id
+            from
+            (
+            select HEAT_VALUE as A , FREEZE_TIME as data_time ,meter_id
+            from T_DAY_HEAT_STAT
+            where METER_ID = #{objectId} and FREEZE_TIME  >= #{beginDate,jdbcType=TIME}
+            AND FREEZE_TIME &lt;= #{endDate,jdbcType=TIME}
+            and HEAT_VALUE is not null
+            order by FREEZE_TIME
+            ) tb1 right join
+            (
+            SELECT #{beginDate,jdbcType=TIME}+ROWNUM-1 as data_time
+            FROM DUAL CONNECT BY ROWNUM &lt;= trunc(#{endDate,jdbcType=TIME}+1-#{beginDate,jdbcType=TIME})
+            ) TB2 ON TB1.DATA_TIME=TB2.DATA_TIME
+            ) T1 JOIN T_METER T2 ON T1.METER_ID = T2.METER_ID
+            JOIN T_MPED_INFO T3 ON T3.MPED_ID = T2.MPED_ID
+        </if>
+        <if test="dataType == 12">
+            SELECT
+            t1.METER_ID AS objectId,
+            T2.METER_NAME as objectName,
+            TO_DATE(T1.data_time, 'yyyy-MM') as freezeTime,
+            SUM(t1.A) as A,
+            SUM(t1.B) AS B,
+            T3.AMMETER_ADDRESS as address,
+            T3.PT AS PT,
+            T3.CT AS CT
+            FROM (
+            select  tb2.data_time as data_time, nvl(tb1.A, '') as A,NVL(TB1.B,'') AS B ,nvl(meter_id,#{objectId}) meter_id
+            from
+            (
+            select MON_FAQ_RATE as A ,MON_FRQ_RATE as B, FREEZE_TIME as data_time ,meter_id
+            from T_MON_Q_RATE
+            where METER_ID = #{objectId} and FREEZE_TIME  >= #{beginDate,jdbcType=TIME}
+            AND FREEZE_TIME &lt;= #{endDate,jdbcType=TIME}
+            and MON_FAQ_RATE is not null
+            AND MON_FRQ_RATE IS NOT NULL
+            order by FREEZE_TIME
+            ) tb1 right join
+            (
+            SELECT TO_CHAR(ADD_MONTHS(#{beginDate,jdbcType=TIME}, ROWNUM - 1), 'yyyy-MM') as DATA_TIME FROM DUAL
+            CONNECT BY ROWNUM &lt;= months_between(#{endDate,jdbcType=TIME}, #{beginDate,jdbcType=TIME})
+            ) TB2 ON TO_CHAR(TB1.DATA_TIME, 'yyyy-MM')=TB2.DATA_TIME
+            ) T1 JOIN T_METER T2 ON T1.METER_ID = T2.METER_ID
+            JOIN T_MPED_INFO T3 ON T3.MPED_ID = T2.MPED_ID
+            GROUP BY T1.METER_ID,T2.METER_NAME,T1.DATA_TIME,T3.AMMETER_ADDRESS,T3.PT,T3.CT
+        </if>
+        <if test="dataType == 13">
+            SELECT
+            t1.METER_ID AS objectId,
+            T2.METER_NAME as objectName,
+            TO_DATE(T1.data_time, 'yyyy-MM') as freezeTime,
+            SUM(t1.A) as A,
+            T3.AMMETER_ADDRESS as address,
+            T3.PT AS PT,
+            T3.CT AS CT
+            FROM (
+            select  tb2.data_time as data_time, nvl(tb1.A, '') as A,nvl(meter_id,#{objectId}) meter_id
+            from
+            (
+            select WFLOW_VALUE as A , FREEZE_TIME as data_time ,meter_id
+            from T_MON_WFLOW_STAT
+            where METER_ID = #{objectId} and FREEZE_TIME  >= #{beginDate,jdbcType=TIME}
+            AND FREEZE_TIME &lt;= #{beginDate,jdbcType=TIME}
+            and WFLOW_VALUE is not null
+            order by FREEZE_TIME
+            ) tb1 right join
+            (
+            SELECT TO_CHAR(ADD_MONTHS(#{beginDate,jdbcType=TIME}, ROWNUM - 1), 'yyyy-MM') as DATA_TIME FROM DUAL
+            CONNECT BY ROWNUM &lt;= months_between(#{endDate,jdbcType=TIME}, #{beginDate,jdbcType=TIME})
+            ) TB2 ON TO_CHAR(TB1.DATA_TIME, 'yyyy-MM')=TB2.DATA_TIME
+            ) T1 JOIN T_METER T2 ON T1.METER_ID = T2.METER_ID
+            JOIN T_MPED_INFO T3 ON T3.MPED_ID = T2.MPED_ID
+            GROUP BY T1.METER_ID,T2.METER_NAME,T1.DATA_TIME,T3.AMMETER_ADDRESS,T3.PT,T3.CT
+        </if>
+        <if test="dataType == 14">
+            SELECT
+            t1.METER_ID AS objectId,
+            T2.METER_NAME as objectName,
+            TO_DATE(T1.data_time, 'yyyy-MM') as freezeTime,
+            SUM(t1.A) as A,
+            T3.AMMETER_ADDRESS as address,
+            T3.PT AS PT,
+            T3.CT AS CT
+            FROM (
+            select  tb2.data_time as data_time, nvl(tb1.A, '') as A,nvl(meter_id,#{objectId}) meter_id
+            from
+            ( select GFLOW_VALUE as A , FREEZE_TIME as data_time ,meter_id
+            from T_MON_GFLOW_STAT
+            where METER_ID = #{objectId} and FREEZE_TIME  >= TO_DATE('2017-07-20 00:00:00','yyyy-MM-dd HH24:mi:ss')
+            AND FREEZE_TIME &lt;= #{beginDate,jdbcType=TIME}
+            and GFLOW_VALUE is not null
+            order by FREEZE_TIME
+            ) tb1 right join
+            ( SELECT TO_CHAR(ADD_MONTHS(#{beginDate,jdbcType=TIME}, ROWNUM - 1), 'yyyy-MM') as DATA_TIME FROM DUAL
+            CONNECT BY ROWNUM &lt;= months_between(#{endDate,jdbcType=TIME}, #{beginDate,jdbcType=TIME})
+            ) TB2 ON TO_CHAR(TB1.DATA_TIME, 'yyyy-MM')=TB2.DATA_TIME
+            ) T1 JOIN T_METER T2 ON T1.METER_ID = T2.METER_ID
+            JOIN T_MPED_INFO T3 ON T3.MPED_ID = T2.MPED_ID
+            GROUP BY T1.METER_ID,T2.METER_NAME,T1.DATA_TIME,T3.AMMETER_ADDRESS,T3.PT,T3.CT
+        </if>
+        <if test="dataType == 15">
+            SELECT
+            t1.METER_ID AS objectId,
+            T2.METER_NAME as objectName,
+            TO_DATE(T1.data_time, 'yyyy-MM') as freezeTime,
+            SUM(t1.A) as A,
+            T3.AMMETER_ADDRESS as address,
+            T3.PT AS PT,
+            T3.CT AS CT
+            FROM (
+            select  tb2.data_time as data_time, nvl(tb1.A, '') as A,nvl(meter_id,#{objectId}) meter_id
+            from
+            (
+            select HEAT_VALUE as A , FREEZE_TIME as data_time ,meter_id
+            from T_MON_HEAT_STAT
+            where METER_ID = #{objectId} and FREEZE_TIME  >= #{beginDate,jdbcType=TIME}
+            AND FREEZE_TIME &lt;= #{endDate,jdbcType=TIME}
+            and HEAT_VALUE is not null
+            order by FREEZE_TIME
+            ) tb1 right join
+            (
+            SELECT TO_CHAR(ADD_MONTHS(#{beginDate,jdbcType=TIME}, ROWNUM - 1), 'yyyy-MM') as DATA_TIME FROM DUAL
+            CONNECT BY ROWNUM &lt;= months_between(#{endDate,jdbcType=TIME}, #{beginDate,jdbcType=TIME})
+            ) TB2 ON TO_CHAR(TB1.DATA_TIME, 'yyyy-MM')=TB2.DATA_TIME
+            ) T1 JOIN T_METER T2 ON T1.METER_ID = T2.METER_ID
+            JOIN T_MPED_INFO T3 ON T3.MPED_ID = T2.MPED_ID
+            GROUP BY T1.METER_ID,T2.METER_NAME,T1.DATA_TIME,T3.AMMETER_ADDRESS,T3.PT,T3.CT
+        </if>
+        ORDER BY objectName,freezeTime
+	</select>
+
+</mapper>

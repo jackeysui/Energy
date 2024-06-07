@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//ibatis.apache.org//DTD Mapper 3.0//EN" "http://ibatis.apache.org/dtd/ibatis-3-mapper.dtd">
+
+<mapper namespace="com.linyang.energy.mapping.phone.screendatasync.EnterpriseMapper">
+
+
+	<!-- 查询用户月电量电费  -->
+	<select id="consMonthAmt" resultType="com.linyang.energy.model.modelscreen.ConsMonthAmt">
+       with cons_amt_max_ym as (
+		 select cons_no, max(ym) as ym from screen.e_cons_amt group by cons_no
+		),
+		cons_amt as (
+		  select a.* from screen.e_cons_amt a
+			join cons_amt_max_ym b on b.cons_no = a.cons_no and b.ym = a.ym
+		)
+		select
+			b.*,
+			b.T_AMT as preTAmt,
+			b.T_SETTLE_PQ as preTSettlePq
+		  from screen.v_cons_info a
+		  left join cons_amt b on b.cons_no = a.CONS_NO
+        where a.CONS_NO =  #{consNo}
+   	</select>
+
+	<!-- 查询用户日用电量  -->
+	<select id="consDayEnergy3" resultType="com.linyang.energy.model.modelscreen.ConsDayEnergy">
+		with day_energy AS (
+			select * from (
+					select
+							cons_no, to_char(data_date, 'yyyy-MM-dd') as data_date,
+							COALESCE(sum(pap_e),0) as pap_e,
+							COALESCE(sum(pap_e1),0) as pap_e1,
+							COALESCE(sum(pap_e2),0) as pap_e2,
+							COALESCE(sum(pap_e3),0) as pap_e3,
+							COALESCE(sum(pap_e4),0) as pap_e4
+					from EEM.E_MP_DAY_ENERGY
+					where 1 = 1 and cons_no = #{consNo}
+					and (pap_e is not null or pap_e1 is not null or pap_e1 is not null or pap_e1 is not null or pap_e1 is not null )
+					group by cons_no, data_date order by cons_no, data_date desc
+			) where rownum &lt;= 30
+		),
+		now_date AS(
+			select
+					to_char((sysdate-1)-30 + rownum, 'yyyy-MM-dd') AS now_date,
+					to_char(
+						(select MAX(data_date) from EEM.E_MP_DAY_ENERGY where cons_no = #{consNo})-30 + rownum, 'yyyy-MM-dd') AS origin_date
+			from dual connect by rownum &lt;=30 order by now_date desc
+		)
+		SELECT
+			b.now_date AS dataDate,
+			a.cons_no AS consNo,
+			a.pap_e AS papE,
+			a.pap_e1 AS papE1,
+			a.pap_e2 AS papE2,
+			a.pap_e3 AS papE3,
+			a.pap_e4 AS papE4
+		from day_energy a
+		join now_date b on a.data_date  = b.origin_date ORDER BY b.now_date
+	</select>
+
+
+	<!-- 查询用户月用电量  -->
+	<select id="consMonEnergy" resultType="com.linyang.energy.model.modelscreen.ConsDayEnergy">
+		with day_energy AS (
+			select * from (
+				select
+					cons_no, to_char(data_date, 'yyyy-MM-dd') as data_date,
+					COALESCE(sum(pap_e),0) as pap_e,
+					COALESCE(sum(pap_e1),0) as pap_e1,
+					COALESCE(sum(pap_e2),0) as pap_e2,
+					COALESCE(sum(pap_e3),0) as pap_e3,
+					COALESCE(sum(pap_e4),0) as pap_e4
+				from EEM.E_MP_DAY_ENERGY
+				where 1 = 1 and cons_no = #{consNo}
+				group by cons_no, data_date order by cons_no, data_date desc
+			) where rownum &lt;= 30
+		),
+		now_date AS(
+			select
+				to_char((sysdate-1)-30 + rownum, 'yyyy-MM-dd') AS now_date,
+				to_char(
+				(select MAX(data_date) from EEM.E_MP_DAY_ENERGY where cons_no = #{consNo})-30 + rownum, 'yyyy-MM-dd') AS origin_date,
+				to_char((sysdate-1)-30 + rownum, 'yyyy-MM') AS now_mon
+			from dual connect by rownum &lt;= 30 order by now_date desc
+		)
+		SELECT
+			b.now_mon AS dataDate,
+			sum(a.pap_e) AS papE,
+			sum(a.pap_e1) AS papE1,
+			sum(a.pap_e2) AS papE2,
+			sum(a.pap_e3) AS papE3,
+			sum(a.pap_e4) AS papE4
+		from day_energy a
+		join now_date b on a.data_date  = b.origin_date
+		where b.now_mon = #{monDate}
+		GROUP BY b.now_mon ORDER BY b.now_mon
+	</select>
+
+
+</mapper>

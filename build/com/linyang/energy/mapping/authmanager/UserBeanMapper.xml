@@ -1,0 +1,525 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.linyang.energy.mapping.authmanager.UserBeanMapper" >
+  <resultMap id="BaseResultMap" type="com.linyang.energy.model.UserBean" >
+    <id column="ACCOUNT_ID" property="accountId" jdbcType="DECIMAL" />
+    <result column="LOGIN_NAME" property="loginName" jdbcType="VARCHAR" />
+    <result column="LOGIN_PASSWORD" property="loginPassword" jdbcType="VARCHAR" />
+    <result column="ACCOUNT_STATUS" property="accountStatus" jdbcType="DECIMAL" />
+    <result column="REAL_NAME" property="realName" jdbcType="VARCHAR" />
+    <result column="CREATE_DATE" property="createDate" jdbcType="TIMESTAMP" />
+    <result column="PHONE" property="phone" jdbcType="VARCHAR" />
+    <result column="EMAIL" property="email" jdbcType="VARCHAR" />
+    <result column="LEDGER_ID" property="ledgerId" jdbcType="DECIMAL" />
+    <result column="LAST_DATE" property="lastDate" jdbcType="TIMESTAMP" />
+    <result column="FREETIME_PERIOD" property="freeTimePeriod" jdbcType="VARCHAR" />
+    <result column="IS_SHIELD" property="isShield" jdbcType="DECIMAL" />
+    <result column="TODAY_TIMES" property="todayTimes" jdbcType="DECIMAL"/>
+    <result column="LOCK_TIME" property="lockTime" jdbcType="VARCHAR"/>
+  </resultMap>
+  
+  <sql id="Base_Column_List" >
+    ACCOUNT_ID,TODAY_TIMES,LOCK_TIME, LOGIN_NAME, LOGIN_PASSWORD, ACCOUNT_STATUS, REAL_NAME, CREATE_DATE, PHONE, 
+    EMAIL, LEDGER_ID,LAST_DATE,LOGIN_TIMES,FREETIME_PERIOD,IS_SHIELD
+  </sql>
+  <select id="selectByPrimaryKey" resultMap="BaseResultMap" parameterType="java.lang.Long" >
+    select 
+    <include refid="Base_Column_List" />
+    from T_ACCOUNT
+    where ACCOUNT_ID = #{accountId,jdbcType=DECIMAL}
+  </select>
+  <delete id="deleteByPrimaryKey" parameterType="java.lang.Long" >
+    delete from T_ACCOUNT
+    where ACCOUNT_ID = #{accountId,jdbcType=DECIMAL}
+  </delete>
+  <update id="updateUserStatus">
+  	UPDATE T_ACCOUNT SET ACCOUNT_STATUS=#{status},MODIFY_TIME=#{nowDate} WHERE  <if test="userIds != null"> ACCOUNT_ID IN  <foreach collection="userIds" item="ids" open="(" separator="," close=")"> #{ids} </foreach></if>
+  </update>
+  <insert id="insert" parameterType="com.linyang.energy.model.UserBean" >
+    insert into T_ACCOUNT (ACCOUNT_ID, LOGIN_NAME, LOGIN_PASSWORD, 
+      ACCOUNT_STATUS, REAL_NAME, CREATE_DATE, 
+      PHONE, EMAIL, LEDGER_ID
+      )
+    values (#{accountId,jdbcType=DECIMAL}, #{loginName,jdbcType=VARCHAR}, #{loginPassword,jdbcType=VARCHAR}, 
+      #{accountStatus,jdbcType=DECIMAL}, #{realName,jdbcType=VARCHAR}, #{createDate,jdbcType=TIMESTAMP}, 
+      #{phone,jdbcType=VARCHAR}, #{email,jdbcType=VARCHAR}, #{ledgerId,jdbcType=DECIMAL}
+      )
+  </insert>
+  
+  <!-- 新增到用户表 -->
+  <insert id="insertSelective" parameterType="com.linyang.energy.model.UserBean" >
+    INSERT INTO T_ACCOUNT
+    <trim prefix="(" suffix=")" suffixOverrides="," >
+      <if test="accountId != null" >
+        ACCOUNT_ID,
+      </if>
+      <if test="loginName != null" >
+        LOGIN_NAME,
+      </if>
+      <if test="loginPassword != null" >
+        LOGIN_PASSWORD,
+      </if>
+      <if test="accountStatus != null" >
+        ACCOUNT_STATUS,
+      </if>
+      <if test="realName != null" >
+        REAL_NAME,
+      </if>
+      <if test="createDate != null" >
+        CREATE_DATE,
+      </if>
+      <if test="phone != null" >
+        PHONE,
+      </if>
+      <if test="email != null" >
+        EMAIL,
+      </if>
+      <if test="ledgerId != null" >
+        LEDGER_ID,
+      </if>
+      <if test="freeTimePeriod != null" >
+        FREETIME_PERIOD,
+      </if>
+      <if test="activeStatus != null">
+      	ACTIVE_STATUS,
+      </if>
+    </trim>
+    <trim prefix="values (" suffix=")" suffixOverrides="," >
+      <if test="accountId != null" >
+        #{accountId,jdbcType=DECIMAL},
+      </if>
+      <if test="loginName != null" >
+        #{loginName,jdbcType=VARCHAR},
+      </if>
+      <if test="loginPassword != null" >
+        #{loginPassword,jdbcType=VARCHAR},
+      </if>
+      <if test="accountStatus != null" >
+        #{accountStatus,jdbcType=DECIMAL},
+      </if>
+      <if test="realName != null" >
+        #{realName,jdbcType=VARCHAR},
+      </if>
+      <if test="createDate != null" >
+        #{createDate,jdbcType=TIMESTAMP},
+      </if>
+      <if test="phone != null" >
+        #{phone,jdbcType=VARCHAR},
+      </if>
+      <if test="email != null" >
+        #{email,jdbcType=VARCHAR},
+      </if>
+      <if test="ledgerId != null" >
+        #{ledgerId,jdbcType=DECIMAL},
+      </if>
+      <if test="freeTimePeriod != null" >
+        #{freeTimePeriod,jdbcType=VARCHAR},
+      </if>
+      <if test="activeStatus !=null">
+      	#{activeStatus,jdbcType=INTEGER},
+      </if>
+    </trim>
+  </insert>
+  
+   <!-- 新增用户到 角色和用户关系表-->
+	<insert id="addUserRoleData" parameterType="com.linyang.energy.model.UserBean">
+		 insert into t_account_role  (account_id, role_id) values (#{accountId}, #{roleId})
+	</insert>
+  
+  <update id="updateByPrimaryKeySelective" parameterType="com.linyang.energy.model.UserBean" >
+    update T_ACCOUNT
+    <set >
+      <if test="loginName != null" >
+        LOGIN_NAME = #{loginName,jdbcType=VARCHAR},
+      </if>
+      <if test="loginPassword != null &amp; loginPassword != '' " >
+        LOGIN_PASSWORD = #{loginPassword,jdbcType=VARCHAR},
+      </if>
+      <if test="accountStatus != null" >
+        ACCOUNT_STATUS = #{accountStatus,jdbcType=DECIMAL},
+      </if>
+      <if test="realName != null" >
+        REAL_NAME = #{realName,jdbcType=VARCHAR},
+      </if>
+      <if test="createDate != null" >
+        CREATE_DATE = #{createDate,jdbcType=TIMESTAMP},
+      </if>
+      <if test="phone != null" >
+        PHONE = #{phone,jdbcType=VARCHAR},
+      </if>
+      <if test="email != null" >
+        EMAIL = #{email,jdbcType=VARCHAR},
+      </if>
+      <if test="ledgerId != null" >
+        LEDGER_ID = #{ledgerId,jdbcType=DECIMAL},
+      </if>
+       <if test="modifyTime != null" >
+        MODIFY_TIME = #{modifyTime,jdbcType=DECIMAL},
+      </if>
+      	<if test="freeTimePeriod != null" >
+        FREETIME_PERIOD = #{freeTimePeriod,jdbcType=VARCHAR},
+      </if>
+    </set>
+    where ACCOUNT_ID = #{accountId,jdbcType=DECIMAL}
+  </update>
+  <!-- 更新用户角色关系表 -->
+  <update id="updateUserRoleData" parameterType="com.linyang.energy.model.UserBean" >
+		update t_account_role t  set t.role_id = #{roleId} where t.account_id = #{accountId}
+  </update>
+  <!-- 更新用户信息 -->
+  <update id="updateByPrimaryKey" parameterType="com.linyang.energy.model.UserBean" >
+    update T_ACCOUNT
+    set LOGIN_NAME = #{loginName,jdbcType=VARCHAR},
+      <if test="loginPassword != null" >
+        LOGIN_PASSWORD = #{loginPassword,jdbcType=VARCHAR},
+      </if>
+      ACCOUNT_STATUS = #{accountStatus,jdbcType=DECIMAL},
+      REAL_NAME = #{realName,jdbcType=VARCHAR},
+      CREATE_DATE = #{createDate,jdbcType=TIMESTAMP},
+      PHONE = #{phone,jdbcType=VARCHAR},
+      EMAIL = #{email,jdbcType=VARCHAR},
+      <if test="freeTimePeriod != null" >
+        FREETIME_PERIOD = #{freeTimePeriod,jdbcType=VARCHAR},
+      </if>
+      LEDGER_ID = #{ledgerId,jdbcType=DECIMAL}
+    where ACCOUNT_ID = #{accountId,jdbcType=DECIMAL}
+  </update>
+  
+   <!-- 更新用户信息 -->
+  <update id="updateLastDate" parameterType="com.linyang.energy.model.UserBean" >
+    update T_ACCOUNT
+    set LAST_DATE = #{lastDate,jdbcType=TIMESTAMP}, LOGIN_TIMES = #{loginTimes}
+    where ACCOUNT_ID = #{accountId,jdbcType=DECIMAL}
+  </update>
+  
+  
+  <select id="getUserByUserName" resultMap="BaseResultMap" parameterType="java.lang.String" >
+    select 
+    <include refid="Base_Column_List" />
+    from T_ACCOUNT
+    where LOGIN_NAME = #{username,jdbcType=VARCHAR}
+    and ACCOUNT_STATUS != 2 
+  </select>
+  
+  <select id="getUserCount" resultType="int">
+  	SELECT COUNT(*) CNT FROM T_ACCOUNT WHERE ACCOUNT_ID = #{userId,jdbcType=DECIMAL} AND LOGIN_PASSWORD=#{password}
+  </select>
+  
+ <!--分页查询用户列表-->
+  <select id="getUserPageData" resultType="HashMap"  parameterType="HashMap" >
+		SELECT * FROM(
+			   SELECT U.ACCOUNT_ID     AS ACCOUNTID,
+		       U.LOGIN_NAME     AS LOGINNAME,
+		       U.REAL_NAME      AS REALNAME,
+		       R.ROLE_NAME      AS ROLENAME,
+		       U.EMAIL          AS EMAIL,
+		       E.LEDGER_NAME    AS LEDGERNAME,
+		       U.PHONE          AS PHONE,
+		       U.ACCOUNT_STATUS AS ACCOUNTSTATUS,
+		       E.LEDGER_ID      AS LEDGERID,
+               R.ROLE_ID        AS ROLEID,
+               U.LOGIN_TIMES    AS LOGINTIMES,
+               U.ACCOUNT_LEVEL  AS ACCOUNTLEVEL,
+               U.ACTIVE_STATUS AS ACTIVESTATUS,
+               U.LAST_DATE AS LASTDATE
+		  FROM T_ACCOUNT U, T_LEDGER E, T_ACCOUNT_ROLE AR, T_ROLE R
+		  <!-- 群组选中状态且排除选中ledger的状态 -->
+		  <if test="auth != null and groupId != null and auth == 2 and groupId != 0 and groupId != -1">
+		  ,T_GROUP_ACCOUNT GA
+		  </if>
+		 WHERE U.LEDGER_ID = E.LEDGER_ID(+)
+		   AND U.ACCOUNT_ID = AR.ACCOUNT_ID
+		   AND AR.ROLE_ID = R.ROLE_ID 
+		   AND AR.ROLE_ID != 1 
+		   AND R.ROLE_TYPE != 0
+		   AND U.ACCOUNT_STATUS != 2
+		  <if test="auth != null and groupId != null and auth == 2 and groupId != 0 and groupId != -1">
+		  AND U.ACCOUNT_ID = GA.ACCOUNT_ID
+		  AND GA.GROUP_ID = #{groupId}
+		  </if>
+		   <!--edit by chengq 140815 南通二期去除分户 增加数据权限
+		   AND E.LEDGER_ID IN
+		        (SELECT S.LEDGER_ID
+		           FROM T_LEDGER S, T_LEDGER T
+		          WHERE S.LEDGER_RGT BETWEEN T.LEDGER_LFT AND T.LEDGER_RGT
+		            AND T.LEDGER_ID = #{ledgerId}) 
+		   -->
+		   <if test="single == 0">
+              and U.LEDGER_ID in (SELECT t1.ledger_id from t_ledger t1,t_ledger t2
+                                   where t1.ledger_lft>=t2.ledger_lft and t1.ledger_rgt&lt;=t2.ledger_rgt and t2.ledger_id=#{ledgerId})
+           </if>
+           <if test="single != 0">
+              and U.LEDGER_ID = #{ledgerId}
+           </if>
+           <!-- 群组未选中状态 -->
+           <if test="groupId != null and groupId == 0">
+           		union
+           	   SELECT TU.ACCOUNT_ID   AS ACCOUNTID,
+		       TU.LOGIN_NAME     AS LOGINNAME,
+		       TU.REAL_NAME      AS REALNAME,
+		       TR.ROLE_NAME      AS ROLENAME,
+		       TU.EMAIL          AS EMAIL,
+		       TE.LEDGER_NAME    AS LEDGERNAME,
+		       TU.PHONE          AS PHONE,
+		       TU.ACCOUNT_STATUS AS ACCOUNTSTATUS,
+		       TE.LEDGER_ID      AS LEDGERID,
+               TR.ROLE_ID        AS ROLEID,
+               TU.LOGIN_TIMES    AS LOGINTIMES,
+               TU.ACCOUNT_LEVEL  AS ACCOUNTLEVEL,
+               TU.ACTIVE_STATUS AS ACTIVESTATUS,
+               TU.LAST_DATE AS LASTDATE
+			  FROM T_ACCOUNT TU, T_LEDGER TE, T_ACCOUNT_ROLE TAR, T_ROLE TR, T_GROUP TG, T_GROUP_ACCOUNT TGA
+			 WHERE TU.LEDGER_ID = TE.LEDGER_ID(+)
+			   AND TU.ACCOUNT_ID = TAR.ACCOUNT_ID
+			   AND TAR.ROLE_ID = TR.ROLE_ID 
+			   AND TAR.ROLE_ID != 1 
+			   AND TR.ROLE_TYPE != 0
+			   AND TU.ACCOUNT_STATUS != 2
+			  AND TU.ACCOUNT_ID = TGA.ACCOUNT_ID
+			  AND TG.GROUP_ID = TGA.GROUP_ID
+			  AND TG.CREATE_ACCOUNT = #{accountId}
+           </if>
+ 			) T
+ 			where 1=1
+ 			<if test="keyWord != null and keyWord != ''">
+              and T.LOGINNAME LIKE '%${keyWord}%'
+           </if>
+           <if test="roleId != null and roleId != ''">
+           	  and T.ROLEID = #{roleId}	
+           </if>
+           <if test="activeType != null and activeType != 0">
+           	  and T.ACTIVESTATUS = #{activeType}
+           </if>
+           <if test="begin != null and begin != -1">
+              and T.ACCOUNTLEVEL >= #{begin}
+           </if>
+           <if test="end != null and end != -1">
+              and T.ACCOUNTLEVEL &lt; #{end}
+           </if>
+           <if test="sortName != null and sortName != ''">
+		        <if test="sortOrder != null and sortOrder != ''">
+		            <if test="sortName == 'lastLogin'">
+		                order by T.LASTDATE  ${sortOrder} NULLS LAST
+		            </if>
+		            <if test="sortName == 'curLevel'">
+		                order by T.ACCOUNTLEVEL ${sortOrder}
+		            </if>
+		            <if test="sortName == 'activeStr'">
+		                order by T.ACTIVESTATUS ${sortOrder}
+		            </if>
+		        </if>
+		        <if test="sortOrder == null or sortOrder == ''">
+		            <if test="sortName == 'lastLogin'">
+		                order by T.LASTDATE NULLS LAST
+		            </if>
+		            <if test="sortName == 'curLevel'">
+		                order by T.ACCOUNTLEVEL
+		            </if>
+		            <if test="sortName == 'activeStr'">
+		                order by T.ACTIVESTATUS
+		            </if>
+		        </if>
+    		</if>
+    <if test="sortName == null or sortName == ''">
+         ORDER BY T.LASTDATE DESC NULLS LAST
+    </if>	
+  </select>
+  
+    <!--分页查询用户列表-->
+  <select id="getMessageUserPageData" resultType="HashMap"  parameterType="HashMap" >
+		SELECT U.ACCOUNT_ID     AS ACCOUNTID,
+		       U.LOGIN_NAME     AS LOGINNAME,
+		       U.REAL_NAME      AS REALNAME,
+		       R.ROLE_NAME      AS ROLENAME,
+		       U.EMAIL          AS EMAIL,
+		       E.LEDGER_NAME    AS LEDGERNAME,
+		       U.PHONE          AS PHONE,
+		       U.ACCOUNT_STATUS AS ACCOUNTSTATUS,
+		       E.LEDGER_ID      AS LEDGERID,
+               R.ROLE_ID        AS ROLEID
+		  FROM T_ACCOUNT U, T_LEDGER E, T_ACCOUNT_ROLE AR, T_ROLE R
+		 WHERE U.LEDGER_ID = E.LEDGER_ID(+)
+		   AND U.ACCOUNT_ID = AR.ACCOUNT_ID
+		   AND AR.ROLE_ID = R.ROLE_ID 
+		   AND AR.ROLE_ID != 1 
+		   AND R.ROLE_TYPE != 0
+		   AND U.ACCOUNT_STATUS != 2
+
+		   AND E.LEDGER_ID IN
+		        (SELECT S.LEDGER_ID
+		           FROM T_LEDGER S, T_LEDGER T
+		          WHERE S.LEDGER_RGT BETWEEN T.LEDGER_LFT AND T.LEDGER_RGT
+		            AND T.LEDGER_ID = #{ledgerId}) 
+           <if test="keyWord != ''">
+              AND U.LOGIN_NAME LIKE '%${keyWord}%'
+           </if>
+           <if test="begin != -1">
+              and U.ACCOUNT_LEVEL >= #{begin}
+           </if>
+           <if test="end != -1">
+              and U.ACCOUNT_LEVEL &lt; #{end}
+           </if>
+		   ORDER BY U.ACCOUNT_ID DESC
+  </select>
+  
+  <!--根据用户的Id查询用户的信息-->
+  <select id="getUserByAccountId" resultType="com.linyang.energy.model.UserBean"  parameterType="java.lang.String" >
+		SELECT U.ACCOUNT_ID     AS accountId,
+           U.LOGIN_NAME     AS loginName,
+           U.REAL_NAME      AS realName,
+           U.EMAIL          AS email,
+           U.LOGIN_PASSWORD AS loginPassword,
+           U.PHONE          AS phone,
+           U.ACCOUNT_STATUS AS accountStatus,
+           U.LAST_DATE AS lastDate,
+           U.LEDGER_ID      AS ledgerId,
+           R.ROLE_ID        AS roleId,
+           U.freetime_period AS freeTimePeriod,
+           U.IS_SHIELD       AS isShield,
+           U.TODAY_TIMES     AS todayTimes,
+           U.LOCK_TIME       AS lockTime
+      FROM T_ACCOUNT U, T_LEDGER E, T_ACCOUNT_ROLE AR, T_ROLE R
+     WHERE U.LEDGER_ID = E.LEDGER_ID(+)
+       AND U.ACCOUNT_ID = AR.ACCOUNT_ID
+       AND AR.ROLE_ID = R.ROLE_ID
+         AND U.ACCOUNT_ID = #{accountId}
+  </select>
+  <!-- 判断用户名称是否重复 -->
+  <select id="checkLoginName" parameterType="java.lang.String" resultType="int">
+		SELECT    COUNT(*) FROM T_ACCOUNT T WHERE T.LOGIN_NAME=#{loginName}
+		<if test="operType == 1">
+			AND T.ACCOUNT_ID != #{accountId}
+		</if>
+		AND T.ACCOUNT_STATUS != 2
+  </select>
+  <!-- 查询角色下拉框-->
+  <select id="getRoleList" resultType="UserBean">
+        SELECT A.ROLE_ID  roleId,A.ROLE_NAME roleName FROM T_ROLE A WHERE A.ROLE_ID!=1 AND A.ROLE_STATUS=1 ORDER BY A.ROLE_ID
+  </select>
+  <!-- 查询分户下拉框id-->
+  <select id="getLedgerList" resultType="UserBean" parameterType="Long">
+        SELECT node.ledger_id as ledgerId,node.ledger_name as ledgerName FROM t_ledger node
+         <if test="ledgerId != -100">
+        	,t_ledger parent WHERE node.ledger_lft BETWEEN parent.ledger_lft AND parent.ledger_rgt AND parent.ledger_id = #{ledgerId}
+        </if> 
+        ORDER BY node.ledger_lft
+  </select>
+   <!-- 查询分户下拉框id-->
+  <select id="getLedgerIdList" resultType="Long" parameterType="Long">
+        SELECT node.ledger_id FROM t_ledger node
+         <if test="ledgerId != -100">
+        	,t_ledger parent WHERE node.ledger_lft BETWEEN parent.ledger_lft AND parent.ledger_rgt AND parent.ledger_id = #{ledgerId}
+        </if> 
+        ORDER BY node.ledger_lft
+  </select>
+  <!-- 查询用户下拉框-->
+  <select id="getUserList" resultMap="BaseResultMap">
+        SELECT 
+        <include refid="Base_Column_List" />
+        FROM t_account A where A.ACCOUNT_STATUS = 1
+  </select>
+   <!-- 查询用户下拉框-->
+  <select id="getLedgerData" resultType="UserBean">
+        SELECT ledger_id as ledgerId,ledger_name as ledgerName FROM t_ledger
+  </select>
+  
+  <select id="getAccountIds" parameterType="Long" resultType="Long">
+  	SELECT T.ACCOUNT_ID FROM T_ACCOUNT T WHERE T.ACCOUNT_STATUS = 1 and T.LEDGER_ID = #{ledgerId}
+  </select>
+
+    <select id="getUserLoginCount" resultType="int">
+        SELECT COUNT(*)
+        FROM T_ACCOUT_LOGIN_HIS
+        WHERE ACCOUNT_ID=#{accountId} and LOGIN_DATE between #{beginTime} and #{endTime}
+    </select>
+   
+    <!-- 用户设置屏蔽状态 -->
+	<update id="updateFreeTimeSetByAccountId" >
+		UPDATE T_ACCOUNT T SET T.FREETIME_PERIOD = #{freeTimeProid},T.IS_SHIELD=#{isShield} WHERE T.ACCOUNT_ID = #{accountId} 
+	</update>
+	
+	<!-- 获取企业分户下拉框-->
+	<select id="getCompanyLedgerDataByAccountId" resultType="UserBean">
+		SELECT ledger_Id  as ledgerId, ledger_name as ledgerName FROM (SELECT * FROM t_ledger START WITH ledger_Id IN(SELECT LEDGER_ID FROM t_account WHERE ACCOUNT_ID = #{accountId}) 
+		CONNECT BY PRIOR ledger_Id = PARENT_LEDGER_ID) WHERE ANALY_TYPE = '102' ORDER BY LEDGER_NAME
+	</select>
+    
+    <select id="getCompanyLedgerDataByLedgerId" resultType="UserBean">
+		SELECT ledger_Id  as ledgerId, ledger_name as ledgerName FROM (SELECT * FROM t_ledger START WITH ledger_Id = #{ledgerId}
+		CONNECT BY PRIOR ledger_Id = PARENT_LEDGER_ID) WHERE ANALY_TYPE = '102' ORDER BY nlssort(LEDGER_NAME, 'NLS_SORT=SCHINESE_PINYIN_M')
+	</select>
+    
+    <select id="getParentCompanyLedgerDataByLedgerId" resultType="UserBean">
+		SELECT ledger_Id  as ledgerId, ledger_name as ledgerName FROM (SELECT * FROM t_ledger START WITH ledger_Id = #{ledgerId}
+		CONNECT BY PRIOR PARENT_LEDGER_ID = ledger_Id) WHERE ANALY_TYPE = '102' ORDER BY nlssort(LEDGER_NAME, 'NLS_SORT=SCHINESE_PINYIN_M')
+	</select>
+
+    <select id="getCanBookUsers" resultType="UserBean">
+        SELECT A.ACCOUNT_ID  accountId, A.LOGIN_NAME loginName
+        FROM t_account A
+        where A.ACCOUNT_STATUS = 1
+        <if test="ledgerId == 0">
+            and A.LEDGER_ID IN (SELECT gl.ledger_id from t_group_account ga inner join t_group_ledger gl on ga.GROUP_ID = gl.GROUP_ID where ga.ACCOUNT_ID = #{accountId})
+        </if>
+        <if test="ledgerId != 0">
+            and A.LEDGER_ID IN (SELECT t1.ledger_id from t_ledger t1,t_ledger t2 where t1.ledger_lft>=t2.ledger_lft and t1.ledger_rgt&lt;=t2.ledger_rgt and t2.ledger_id=#{ledgerId})
+        </if>
+    </select>
+    
+    <!-- 获取所有accountId -->
+    <select id="getAllAccountIds" resultType="Long">
+    	SELECT T.ACCOUNT_ID
+    	FROM t_account T WHERE T.ACCOUNT_STATUS != 2
+    </select>
+    
+    <!-- 更新用户的活跃度 -->
+    <update id="updateActiveStatus">
+    	UPDATE T_ACCOUNT T SET T.ACTIVE_STATUS = #{activeType} WHERE T.ACCOUNT_ID = #{accountId}
+    </update>
+    
+    <!-- 根据account配置获取群组名 -->
+    <select id="getGroupNameByAccount" resultType="String">
+    	select g.group_name from t_account a inner join t_group_account ga 
+		on a.account_id = ga.account_id inner join t_group g on
+		ga.group_id = g.group_id
+		where a.account_id = #{accountId}
+    </select>
+    
+    <!-- 获取单点登录用户 -->
+    <select id="getssoLoginUser" resultMap="BaseResultMap" parameterType="java.lang.String" >
+	   select ta.ACCOUNT_ID, ta.LOGIN_NAME, ta.LOGIN_PASSWORD, ta.ACCOUNT_STATUS, ta.REAL_NAME, ta.CREATE_DATE, ta.PHONE, 
+       ta.EMAIL, ta.LEDGER_ID, ta.LAST_DATE, ta.LOGIN_TIMES, ta.FREETIME_PERIOD, ta.IS_SHIELD
+	   from T_ACCOUNT ta inner join T_ACCOUNT_PARTNER tp
+	   on ta.account_id = tp.account_id
+	   where tp.partner_id = #{partnerId}
+	   and ta.ACCOUNT_STATUS != 2 
+	 </select>
+	 
+	 <select id="getFilteredUser" parameterType="HashMap" resultMap="BaseResultMap">
+	 	select 
+			ta.ACCOUNT_ID, ta.LOGIN_NAME, ta.LOGIN_PASSWORD, ta.ACCOUNT_STATUS, ta.REAL_NAME, ta.CREATE_DATE, ta.PHONE, 
+       		ta.EMAIL, ta.LEDGER_ID, ta.LAST_DATE, ta.LOGIN_TIMES, ta.FREETIME_PERIOD, ta.IS_SHIELD
+		from 
+			T_ACCOUNT ta
+		WHERE  1=1 
+		and ta.ACCOUNT_STATUS = 1
+  		<if test="loginName != null and loginName != ''">
+       		and ta.LOGIN_NAME = #{loginName}
+  		</if>
+		<if test="realName != null and realName != ''">
+       		and ta.REAL_NAME = #{realName}
+  		</if>	 	
+	 </select>
+	 
+	 <update id="updateTodayTimes">
+	 	UPDATE T_ACCOUNT T SET T.TODAY_TIMES=#{todayTimes} where T.ACCOUNT_ID=#{accountId}
+	 </update>
+	 
+	  <update id="updateLockTime">
+	 	UPDATE T_ACCOUNT T SET T.LOCK_TIME = #{lockTime} where T.ACCOUNT_ID=#{accountId}
+	 </update>
+	 
+	  <update id="updatePhoneNum">
+	 	UPDATE T_ACCOUNT T SET T.PHONE = #{phoneNum} where T.ACCOUNT_ID=#{accountId}
+	 </update>
+</mapper>

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 如果需要国际化则把再加字段 -->
+ <dataQuery>
+	 <queryTypeList>
+	 	<list type="4" name="热工">
+			<element tableName="T_CUR_TEMPERATURE"  timeField="FREEZE_TIME" valueField="TEMP_VALUE"     name="温度"  desc="曲线温度表"/>
+			<element tableName="T_CUR_WFLOW"  		timeField="FREEZE_TIME" valueField="FLOW_VALUE"   	name="水流量"	 desc="水曲线流量表" />
+			<element tableName="T_CUR_GFLOW"  		timeField="FREEZE_TIME" valueField="FLOW_VALUE"   	name="气流量"	 desc="气曲线流量表" />
+			<element tableName="T_CUR_MOISTURE"  	timeField="FREEZE_TIME" valueField="MOISTURE_VALUE" name="湿度"  desc="曲线湿度表" />
+			<element tableName="T_CUR_PRESSURE"  	timeField="FREEZE_TIME" valueField="PRESSURE_VALUE" name="压力"  desc="曲线压力表" />
+		</list>
+		
+	</queryTypeList>
+</dataQuery>
+

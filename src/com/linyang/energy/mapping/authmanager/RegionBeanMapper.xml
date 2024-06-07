@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.linyang.energy.mapping.authmanager.RegionBeanMapper" >
+  <resultMap id="BaseResultMap" type="com.linyang.energy.model.RegionBean" >
+    <id column="REGION_ID" property="regionId" jdbcType="VARCHAR" />
+    <result column="REGION_NAME" property="regionName" jdbcType="VARCHAR" />
+    <result column="REGION_LEVEL" property="regionLevel" jdbcType="INTEGER" />
+    <result column="PARENT_REGION_ID" property="parentRegionId" jdbcType="VARCHAR" />
+  </resultMap>
+  <sql id="Base_Column_List" >
+    	REGION_ID, REGION_NAME, REGION_LEVEL, PARENT_REGION_ID 
+  </sql>
+  <select id="queryRegionInfo" parameterType="com.linyang.energy.model.RegionBean" resultMap="BaseResultMap">
+		SELECT <include refid="Base_Column_List" />
+		FROM  T_REGION
+		<where>
+			<if test="parentRegionId != null and parentRegionId != -1">
+				PARENT_REGION_ID = #{parentRegionId}
+			</if>
+		</where>
+		ORDER BY REGION_ID
+	</select>
+
+    <select id="queryOnePointRegion" parameterType="com.linyang.energy.model.RegionBean" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List" />
+        FROM t_region
+        START WITH region_id = #{regionId}
+        CONNECT BY PRIOR region_id = parent_region_id
+    </select>
+</mapper>

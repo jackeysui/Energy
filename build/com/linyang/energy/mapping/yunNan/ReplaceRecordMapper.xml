@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.linyang.energy.mapping.yunNan.ReplaceRecordMapper">
+    
+    <select id="queryRecordPageList" parameterType="HashMap" resultType="HashMap">
+        SELECT T1.OLD_MSI_ID OLDMSIID,T2.MSI_NAME OLDMSINAME,T1.NEW_MSI_ID NEWMSIID,
+        T3.MSI_NAME NEWMSINAME,T1.INSTALL_DATE INSTALLDATE,T1.REMARK, T2.ENT_ID
+        FROM T_MSICHANGE_RECORD T1
+        LEFT JOIN T_MSI T2 ON T1.OLD_MSI_ID = T2.MSI_ID
+        LEFT JOIN T_MSI T3 ON T1.NEW_MSI_ID = T3.MSI_ID
+        JOIN (
+        SELECT T1.LEDGER_ID AS ID, T1.LEDGER_NAME AS NAME, 1 AS TYPE FROM T_LEDGER T1,T_LEDGER T2
+        WHERE T1.LEDGER_LFT >= T2.LEDGER_LFT AND T1.LEDGER_RGT &lt;=T2.LEDGER_RGT AND T2.LEDGER_ID=#{ledgerId}
+        ) T4 ON T2.ENT_ID = T4.ID
+        <where>
+            <if test="oldMsiId != null and oldMsiId != ''">
+                AND T1.OLD_MSI_ID = #{oldMsiId}
+            </if>
+            <if test="newMsiId != null and newMsiId != ''">
+                AND T1.NEW_MSI_ID = #{newMsiId}
+            </if>
+            <if test="beginTime != null and beginTime != '' and endTime != null and endTime != ''">
+                AND T1.INSTALL_DATE BETWEEN TO_DATE(#{beginTime},'yyyy-mm-dd') AND TO_DATE(#{endTime},'yyyy-mm-dd')
+            </if>
+        </where>
+    </select>
+
+    <insert id="saveData" parameterType="HashMap">
+        INSERT INTO T_MSICHANGE_RECORD (
+        <if test="oldMsiId">
+            OLD_MSI_ID,
+        </if>
+        <if test="newMsiId">
+            NEW_MSI_ID,
+        </if>
+        <if test="installDate">
+            INSTALL_DATE,
+        </if>
+        <if test="remark != null and remark != ''">
+            REMARK,
+        </if>
+        UPLOAD_STATUS )
+        VALUES (
+        <if test="oldMsiId">
+            #{oldMsiId},
+        </if>
+        <if test="newMsiId">
+            #{newMsiId},
+        </if>
+        <if test="installDate">
+            TO_DATE(#{installDate},'yyyy-mm-dd'),
+        </if>
+        <if test="remark != null and remark != ''">
+            #{remark},
+        </if>
+        0 )
+    </insert>
+
+    <update id="modifyData" parameterType="HashMap">
+        UPDATE T_MSICHANGE_RECORD
+		<set>
+            <if test="oldMsiId != null and oldMsiId != ''">
+                OLD_MSI_ID = #{oldMsiId},
+            </if>
+            <if test="newMsiId != null and newMsiId != ''">
+                NEW_MSI_ID = #{newMsiId},
+            </if>
+            <if test="installDate != null and installDate != ''">
+                INSTALL_DATE = TO_DATE(#{installDate},'yyyy-mm-dd'),
+            </if>
+            <if test="remark != null and remark != ''">
+                REMARK = #{remark}
+            </if>
+        </set>
+		WHERE OLD_MSI_ID = #{oldMsiId}
+    </update>
+
+    <select id="queryDataById" parameterType="Long" resultType="HashMap">
+		SELECT T1.OLD_MSI_ID OLDMSIID,T2.MSI_NAME OLDMSINAME,T1.NEW_MSI_ID NEWMSIID,
+		T3.MSI_NAME NEWMSINAME,T1.INSTALL_DATE INSTALLDATE,T1.REMARK,T1.UPLOAD_STATUS,
+		T4.ENT_ID , T4.ENT_NAME
+		FROM T_MSICHANGE_RECORD T1
+		LEFT JOIN T_MSI T2 ON T1.OLD_MSI_ID = T2.MSI_ID
+		LEFT JOIN T_MSI T3 ON T1.NEW_MSI_ID = T3.MSI_ID
+		LEFT JOIN T_ENT_INFO T4 ON T3.ENT_ID = T4.ENT_ID
+		WHERE T1.OLD_MSI_ID = #{oldMsiId}
+    </select>
+
+    <delete id="deleteRecordData" parameterType="Long">
+		DELETE FROM T_MSICHANGE_RECORD WHERE OLD_MSI_ID = #{oldMsiId}
+    </delete>
+
+    <update id="updateDataIndexById" parameterType="HashMap">
+        UPDATE T_MSICHANGE_RECORD
+        <set>
+            DATA_INDEX = #{dataIndex} ,
+            UPLOAD_STATUS = #{uploadStatus},
+        </set>
+        WHERE OLD_MSI_ID = #{oldMsiId}
+    </update>
+
+    <select id="queryUploadData" resultType="HashMap" >
+        SELECT T4.ENT_ID ENTID ,T4.ENT_CODE ENTERPRISECODE ,T2.SERNO REPLACEDSERNO , T2.MANAGE_NO REPLACEDMANAGENO, T2.MSI_TYPE REPLACEMSITYPE,T2.MSI_LEVEL REPLACEMSILEVEL,
+		T2.BARCODE REPLACEDBARCODE,T3.SERNO INSTALLSERNO,T3.MANAGE_NO INSTALLMANAGENO,T3.MSI_TYPE INSTALLMSITYPE,T3.MSI_LEVEL INSTALLMSILEVEL,
+		T3.BARCODE INSTALLBARCODE,T1.INSTALL_DATE INSTALLTIME,T1.REMARK,T1.DATA_INDEX DATAINDEX,T1.UPLOAD_STATUS UPLOADSTATUS
+		FROM T_MSICHANGE_RECORD T1
+		JOIN T_MSI T2 ON T1.OLD_MSI_ID = T2.MSI_ID
+		JOIN T_MSI T3 ON T1.NEW_MSI_ID = T3.MSI_ID
+		JOIN T_ENT_INFO T4 ON T3.ENT_ID = T4.ENT_ID
+		WHERE T1.OLD_MSI_ID = #{oldMsiId}
+    </select>
+
+</mapper>

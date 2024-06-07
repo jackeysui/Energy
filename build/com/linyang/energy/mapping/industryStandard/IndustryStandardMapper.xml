@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8" ?> 
+<!DOCTYPE mapper PUBLIC "-//ibatis.apache.org//DTD Mapper 3.0//EN" "http://ibatis.apache.org/dtd/ibatis-3-mapper.dtd">
+
+<mapper namespace="com.linyang.energy.mapping.industryStandard.IndustryStandardMapper">
+	
+	<!-- 获取行业指标列表 -->
+	<select id="getIndustryStandardIdList" resultType="HashMap">
+		select STANDARD_ID,STANDARD_NAME
+		from t_industry_standard
+	</select>
+	
+	<!-- 根据id获取指标列表 -->
+	<select id="getIndustryStandardPageList" parameterType="HashMap" resultType="HashMap">
+		select STANDARD_ID,STANDARD_NAME,STANDARD_DATA,UNIT_TYPE,ABOVE_STANDARD_DATA,BELOW_STANDARD_DATA
+		from t_industry_standard
+		<if test="standardId != '' and standardId != null and standardId != 0">
+			where standard_id = #{standardId}
+		</if>
+		order by STANDARD_ID		
+	</select>
+	
+	<!-- 根据id获取指标列表 -->
+	<select id="getIndustryStandardById" parameterType="Long" resultType="HashMap">
+		select STANDARD_ID,STANDARD_NAME,STANDARD_DATA,UNIT_TYPE,ABOVE_STANDARD_DATA,BELOW_STANDARD_DATA
+		from t_industry_standard
+		where standard_id = #{standardId}		
+	</select>
+	
+	<!-- 先检查指标名是否重复 -->
+    <select id="getStandardNum" resultType="Integer">
+        select count(1) from t_industry_standard
+        where standard_name = #{standardName}
+    </select>
+    
+    <!-- 插入t_industry_standard -->
+	<insert id="insertStandard" parameterType="HashMap">
+		insert into t_industry_standard(STANDARD_ID,STANDARD_NAME,STANDARD_DATA,UNIT_TYPE,ABOVE_STANDARD_DATA,BELOW_STANDARD_DATA)
+		values(#{standardId},#{standardName},#{standardData},#{unitType},#{aboveStandardData},#{belowStandardData})
+	</insert>
+	
+	<!-- 更新t_industry_standard -->
+	<update id="updateStandard" parameterType="Long">
+		update t_industry_standard set STANDARD_NAME=#{standardName},STANDARD_DATA=#{standardData},UNIT_TYPE=#{unitType},ABOVE_STANDARD_DATA=#{aboveStandardData},BELOW_STANDARD_DATA=#{belowStandardData}
+		where STANDARD_ID = #{standardId}
+	</update>
+	
+	<!-- 删除t_industry_standard -->
+    <delete id="deleteStandard" parameterType="Long">
+        delete from t_industry_standard where STANDARD_ID = #{standardId}
+    </delete>
+    
+    <!-- 获取企业指标id列表 -->
+    <select id="getLedgerStandardIdList" parameterType="Long" resultType="HashMap">
+    	select t.STANDARD_ID,t.STANDARD_NAME
+		from t_industry_standard t inner join t_ledger_standard l on t.standard_id = l.standard_id
+		where l.ledger_id = #{ledgerId} 
+    </select>
+    
+    <!-- 获取企业指标信息 -->
+    <select id="getLedgerStandardInfo" parameterType="HashMap" resultType="HashMap">
+    	select t.STANDARD_ID,t.STANDARD_NAME,t.STANDARD_DATA,t.UNIT_TYPE,t.ABOVE_STANDARD_DATA,t.BELOW_STANDARD_DATA,
+    			l.LEDGER_ID,l.LEDGER_DATA,l.UNIT_CONSUMPTION,l.STANDARD_DIFF,l.START_TIME,l.END_TIME
+		from t_industry_standard t inner join t_ledger_standard l on t.standard_id = l.standard_id
+		where l.ledger_id = #{ledgerId} and t.standard_Id = #{standardId}
+    </select>
+    
+    <!-- 先检查企业指标是否存在 -->
+    <select id="getLedgerStandardNum" parameterType="HashMap" resultType="java.lang.Integer">
+        select count(1) from t_ledger_standard
+        where LEDGER_ID = #{ledgerId} and STANDARD_ID = #{standardId}
+    </select>
+    
+    <!-- 插入t_ledger_standard -->
+	<insert id="insertLedgerStandard" parameterType="HashMap">
+		insert into t_ledger_standard(LEDGER_ID,STANDARD_ID,LEDGER_DATA,UNIT_CONSUMPTION,STANDARD_DIFF,START_TIME,END_TIME)
+		values(#{ledgerId},#{standardId},#{ledgerData},#{unitConsumption},#{standardDiff},#{startTime},#{endTime})
+	</insert>
+	
+	<!-- 更新t_ledger_standard -->
+	<update id="updateLedgerStandard" parameterType="HashMap">
+		update t_ledger_standard set LEDGER_DATA=#{ledgerData},UNIT_CONSUMPTION=#{unitConsumption},STANDARD_DIFF=#{standardDiff},START_TIME=#{startTime},END_TIME=#{endTime}
+		where STANDARD_ID = #{standardId} and LEDGER_ID = #{ledgerId}
+	</update>
+	
+	<!-- 根据id获取某指标的企业总数 -->
+	<select id="getStandardSumById" parameterType="Long" resultType="Integer">
+		select count(1) from t_ledger_standard
+		where standard_id = #{standardId}
+	</select>
+	
+	<!-- 获取企业某指标击败的用户数 -->
+	<select id="getStandardDefeat" parameterType="HashMap" resultType="Integer">
+		select count(1) from t_ledger_standard
+		where standard_id = #{standardId} and unit_consumption >= #{unitConsumption}
+	</select>
+	
+	<!-- 查询分户日电量之和 -->
+	<select id="queryLedgerQSum" resultType="Double">
+		select sum(t.q) as q from T_DAY_LEDGER_STAT t where t.ledger_id=#{ledgerId} and t.stat_date between #{beginDate} AND #{endDate}
+	</select>
+</mapper>

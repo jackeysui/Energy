@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.linyang.energy.mapping.authmanager.ScheduleBeanMapper" >
+  <!-- 分页获取排班列表-->
+  <select id="getSchedulePageData" resultType="HashMap" parameterType="HashMap" >
+  	SELECT SCHEDULE_ID, SCHEDULE_NAME, REMARK FROM T_SCHEDULE 
+  	<if test="scheduleName != ''">
+		 WHERE SCHEDULE_NAME LIKE '%' || #{scheduleName} || '%'
+	</if>
+	ORDER BY SCHEDULE_ID DESC
+  </select>
+  
+  <!-- 根据Id删除排班计划 -->
+  <delete id="deleteSchedule" parameterType="java.lang.Long" >
+    DELETE FROM T_SCHEDULE WHERE SCHEDULE_ID=#{scheduleId,jdbcType=DECIMAL}
+  </delete>
+  
+  <!-- 根据排班Id删除排班计划配置  -->
+  <delete id="deleteScheduleDetail" parameterType="java.lang.Long" >
+    DELETE FROM T_SCHEDULER_DETAIL WHERE SCHEDULE_ID=#{scheduleId,jdbcType=DECIMAL}
+  </delete>
+  
+  <!-- 根据班次Id删除排班计划配置  -->
+  <delete id="deleteGradeData" parameterType="java.lang.Long" >
+    DELETE FROM T_SCHEDULER_DETAIL WHERE GRADE_ID=#{gradeId,jdbcType=DECIMAL}
+  </delete>
+  
+  <!-- 检查是否有流水线和排班关联 -->
+  <select id="getScheduleAssembleLink" resultType="java.lang.Long" parameterType="java.lang.Long" >
+  	SELECT COUNT(ASSEMBLE_ID) FROM T_ASSEMBLE WHERE SCHEDULE_ID=#{scheduleId,jdbcType=DECIMAL}
+  </select> 
+  
+  <!-- 检查是否有相同的排班名称 -->
+  <select id="checkScheduleName" resultType="java.lang.Long" parameterType="java.lang.String" >
+  	SELECT COUNT(SCHEDULE_ID) FROM T_SCHEDULE WHERE SCHEDULE_NAME=#{scheduleName,jdbcType=VARCHAR}
+  </select>
+  
+  <!-- 插入排班信息 -->
+  <insert id="insertScheduleData" parameterType="com.linyang.energy.model.ScheduleBean" >
+    INSERT INTO T_SCHEDULE (SCHEDULE_ID,SCHEDULE_NAME,REMARK) VALUES 
+    (#{scheduleId,jdbcType=DECIMAL},#{scheduleName,jdbcType=VARCHAR},#{remark,jdbcType=VARCHAR})
+  </insert> 
+  
+  <!-- 插入排班配置信息 -->
+  <insert id="insertScheduleDetail" parameterType="com.linyang.energy.model.ScheduleDetailBean" >
+    INSERT INTO T_SCHEDULER_DETAIL (GRADE_ID,GRADE_NAME,START_TIME,END_TIME,SCHEDULE_ID) VALUES 
+    (#{gradeId,jdbcType=DECIMAL},#{gradeName,jdbcType=VARCHAR},#{startTime,jdbcType=VARCHAR},
+    #{endTime,jdbcType=VARCHAR},#{scheduleId,jdbcType=DECIMAL})
+  </insert>
+  
+  <!-- 根据排班Id获得相应的排班信息 -->
+  <select id="getScheduleData" resultType="com.linyang.energy.model.ScheduleBean" parameterType="java.lang.Long" >
+  	SELECT SCHEDULE_ID AS scheduleId,SCHEDULE_NAME AS scheduleName,REMARK AS remark 
+  	FROM T_SCHEDULE  WHERE SCHEDULE_ID=#{scheduleId,jdbcType=DECIMAL}
+  </select>
+  
+  <!-- 根据排班Id获得相应的班次信息 -->
+  <select id="getGradeData" resultType="com.linyang.energy.model.ScheduleDetailBean" parameterType="java.lang.Long" >
+  	SELECT GRADE_ID AS gradeId,GRADE_NAME AS gradeName,START_TIME AS startTime,END_TIME AS endTime  
+  	FROM T_SCHEDULER_DETAIL WHERE SCHEDULE_ID=#{scheduleId,jdbcType=DECIMAL} ORDER BY GRADE_ID 
+  </select>
+  
+  <!-- 更新排班信息 -->
+  <update id="updateScheduleInfo" parameterType="com.linyang.energy.model.ScheduleBean" >
+    UPDATE T_SCHEDULE 
+    <set >
+      <if test="scheduleName != null" >
+        SCHEDULE_NAME = #{scheduleName,jdbcType=VARCHAR},
+      </if>
+      <if test="remark != null" >
+        REMARK = #{remark,jdbcType=VARCHAR},
+      </if>
+    </set>
+    WHERE SCHEDULE_ID = #{scheduleId,jdbcType=DECIMAL}
+  </update>
+  
+  <!-- 更新班次信息 -->
+  <update id="updateGradeInfo" parameterType="com.linyang.energy.model.ScheduleDetailBean" >
+    UPDATE T_SCHEDULER_DETAIL  
+    <set >
+      <if test="gradeName != null" >
+        GRADE_NAME = #{gradeName,jdbcType=VARCHAR},
+      </if>
+      <if test="startTime != null" >
+        START_TIME = #{startTime,jdbcType=VARCHAR},
+      </if>
+      <if test="endTime != null" >
+        END_TIME = #{endTime,jdbcType=VARCHAR},
+      </if>
+      <if test="scheduleId != null" >
+        SCHEDULE_ID = #{scheduleId,jdbcType=DECIMAL},
+      </if>
+    </set>
+    WHERE GRADE_ID = #{gradeId,jdbcType=DECIMAL}
+  </update>
+</mapper>

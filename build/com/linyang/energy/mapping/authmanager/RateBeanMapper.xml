@@ -1,0 +1,221 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.linyang.energy.mapping.authmanager.RateBeanMapper" >
+  <!-- 分页获取费率列表-->
+  <select id="getRatePageData" resultType="HashMap" parameterType="HashMap" >
+  	SELECT RATE_ID,RATE_NAME,RATE_NUMBER,RATE_REMARK,RATE_TYPE
+    FROM T_RATE
+  	WHERE RATE_ID != 0
+  	<if test="scheduleName != ''">
+		 AND RATE_NAME LIKE '%' || #{rateName} || '%'
+	</if>
+	ORDER BY RATE_ID DESC
+  </select>
+  
+  <!-- 根据Id删除费率信息 -->
+  <delete id="deleteRate" parameterType="java.lang.Long" >
+    DELETE FROM T_RATE WHERE RATE_ID=#{rateId,jdbcType=DECIMAL}
+  </delete>
+  
+  <!-- 根据费率Id删除费率配置信息  -->
+  <delete id="deleteRateDetail" parameterType="java.lang.Long" >
+    DELETE FROM T_RATE_SECTOR WHERE RATE_ID=#{rateId,jdbcType=DECIMAL}
+  </delete>
+  
+    <!-- 根据费率Id删除费率配置信息  -->
+  <delete id="deleteRateSectorContent" parameterType="java.lang.Long" >
+    DELETE FROM T_RATE_SECTOR_CONTENT WHERE RATE_ID=#{rateId,jdbcType=DECIMAL}
+  </delete>
+  
+  <!-- 根据时段Id删除费率配置  -->
+  <delete id="deleteRateData" parameterType="java.lang.Long" >
+    DELETE FROM T_RATE_SECTOR WHERE SECTOR_ID=#{sectorId,jdbcType=DECIMAL}
+  </delete>
+  
+  <!-- 检查是否有分户和费率关联 -->
+  <select id="getRateLedgerLink" resultType="java.lang.Long" parameterType="java.lang.Long" >
+  	SELECT COUNT(LEDGER_ID) FROM T_LEDGER
+  	WHERE RATE_ID=#{rateId,jdbcType=DECIMAL}
+  	or RATE_W_ID=#{rateId,jdbcType=DECIMAL}
+  	or RATE_G_ID=#{rateId,jdbcType=DECIMAL}
+  	or RATE_H_ID=#{rateId,jdbcType=DECIMAL}
+  </select>
+  
+  <!-- 检查是否有相同的费率名称 -->
+  <select id="checkRateName" resultType="java.lang.Long">
+  	SELECT COUNT(RATE_ID)
+  	FROM T_RATE WHERE RATE_NAME=#{rateName,jdbcType=VARCHAR} AND RATE_ID !=0
+    <if test="rateId != null">
+          AND RATE_ID != #{rateId}
+    </if>
+  </select>
+  
+  <!-- 插入费率信息 -->
+  <insert id="insertRateData" parameterType="com.linyang.energy.model.RateBean" >
+    INSERT INTO T_RATE (
+    	RATE_ID,
+    	RATE_NAME,
+    	RATE_REMARK,
+    	<if test="volumeRate != null">
+    		VOLUME_RATE,
+    	</if>
+    	<if test="demandRate != null">
+    		DEMAND_RATE,
+    	</if>
+    	<if test="demandThres != null">
+    		DEMAND_THRES,
+    	</if>
+    	RATE_NUMBER
+    ) 
+    VALUES 
+    (
+    	#{rateId,jdbcType=DECIMAL},
+    	#{rateName,jdbcType=VARCHAR},
+    	#{rateRemark,jdbcType=VARCHAR},
+    	<if test="volumeRate != null">
+    		#{volumeRate},
+    	</if>
+    	<if test="demandRate != null">
+    		#{demandRate},
+    	</if>
+    	<if test="demandThres != null">
+    		#{demandThres},
+    	</if>
+    	#{rateNumber}
+    )
+  </insert> 
+  
+  <!-- 插入费率配置信息 -->
+  <insert id="insertRateDetail" parameterType="com.linyang.energy.model.RateSectorBean" >
+    INSERT INTO T_RATE_SECTOR (SECTOR_ID,RATE_VALUE,RATE_ID,SECTOR_NAME)
+    VALUES (#{sectorId,jdbcType=DECIMAL},#{rateValue,jdbcType=DOUBLE},#{rateId,jdbcType=DECIMAL},
+    #{sectorName,jdbcType=VARCHAR})
+  </insert>
+  
+  <!-- 根据费率Id获得相应的费率信息 -->
+  <select id="getRateData" resultType="com.linyang.energy.model.RateBean" parameterType="java.lang.Long" >
+	  	SELECT RATE_ID AS rateId,RATE_NAME AS rateName,RATE_REMARK AS rateRemark,VOLUME_RATE AS volumeRate,
+	  	DEMAND_RATE AS demandRate, DEMAND_THRES AS demandThres, RATE_NUMBER AS rateNumber
+	  	FROM T_RATE  WHERE RATE_ID=#{rateId,jdbcType=DECIMAL}
+  </select>
+  
+  <!-- 根据费率Id获得相应的配置信息 -->
+  <select id="getSectorData" resultType="com.linyang.energy.model.RateSectorBean" parameterType="java.lang.Long" >
+	  	SELECT SECTOR_ID AS sectorId,RATE_VALUE AS rateValue,
+	  	RATE_ID AS rateId,SECTOR_NAME AS sectorName
+	  	FROM T_RATE_SECTOR WHERE RATE_ID=#{rateId,jdbcType=DECIMAL}
+  </select>
+  
+    <!-- 根据费率Id获得相应的配置信息 -->
+  <select id="getSectorData2" resultType="com.linyang.energy.model.RateSectorBean">
+	  	SELECT distinct SECTOR_ID AS sectorId,RATE_VALUE AS rateValue,
+	  	RATE_ID AS rateId,SECTOR_NAME AS sectorName
+	  	FROM T_RATE_SECTOR WHERE RATE_ID=#{rateId,jdbcType=DECIMAL} and SECTOR_ID = #{sectorId,jdbcType=DECIMAL}
+  </select>
+  
+     <!-- 根据费率Id获得相应的详细配置信息  by guosen 2014-12-18 -->
+  <select id="getSectorContentData" resultType="com.linyang.energy.model.RateSectorContentBean" parameterType="java.lang.Long" >
+  		SELECT T1.CONTENT_ID AS contentId, T1.RATE_ID AS rateId, T1.SECTOR_ID AS sectorId, 
+  		T1.BEGIN_TIME AS beginTime, T1.END_TIME AS endTime,T2.SECTOR_NAME AS sectorName FROM 
+  		T_RATE_SECTOR_CONTENT T1 LEFT JOIN T_RATE_SECTOR T2
+    	ON  T1.RATE_ID = T2.RATE_ID AND T1.SECTOR_ID = T2.SECTOR_ID
+    	WHERE T2.RATE_ID=#{rateId,jdbcType=DECIMAL}
+    	ORDER BY T1.BEGIN_TIME
+  </select>
+  
+  <!-- 更新费率信息 -->
+  <update id="updateRateInfo" parameterType="com.linyang.energy.model.RateBean" >
+    UPDATE T_RATE 
+    <set >
+      <if test="rateName != null" >
+        RATE_NAME = #{rateName,jdbcType=VARCHAR},
+      </if>
+      <if test="rateRemark != null" >
+        RATE_REMARK = #{rateRemark,jdbcType=VARCHAR},
+      </if>
+      	RATE_NUMBER = #{rateNumber,jdbcType=DECIMAL},
+   		VOLUME_RATE = #{volumeRate,jdbcType=DECIMAL},
+   		DEMAND_RATE = #{demandRate,jdbcType=DECIMAL},
+   		DEMAND_THRES = #{demandThres,jdbcType=DECIMAL},
+    </set>
+    WHERE RATE_ID = #{rateId,jdbcType=DECIMAL}
+  </update>
+
+  <!-- 更新 水、气、热 的 T_RATE表数据-->
+  <update id="updateOtherRate">
+        UPDATE T_RATE
+        <set >
+            <if test="rateName != null" >
+                RATE_NAME = #{rateName,jdbcType=VARCHAR},
+            </if>
+            <if test="rateRemark != null" >
+                RATE_REMARK = #{rateRemark,jdbcType=VARCHAR},
+            </if>
+            <if test="rateType > 0" >
+                RATE_TYPE = #{rateType},
+            </if>
+        </set>
+        WHERE RATE_ID = #{rateId,jdbcType=DECIMAL}
+  </update>
+
+    <!-- 插入 水、气、热 的 T_RATE表数据-->
+    <insert id="insertOtherRate">
+        INSERT INTO T_RATE (RATE_ID,RATE_NAME,RATE_REMARK,RATE_TYPE,RATE_NUMBER)
+        VALUES (#{rateId,jdbcType=DECIMAL}, #{rateName,jdbcType=VARCHAR}, #{rateRemark,jdbcType=VARCHAR}, #{rateType,jdbcType=DECIMAL}, 1)
+    </insert>
+
+    <!-- 更新费率配置信息 -->
+  <update id="updateSectorInfo" parameterType="com.linyang.energy.model.RateSectorBean" >
+    UPDATE T_RATE_SECTOR  
+    <set >
+      <if test="sectorName != null" >
+        SECTOR_NAME = #{sectorName,jdbcType=VARCHAR},
+      </if>
+      <if test="startTime != null" >
+        BEGIN_TIME = #{startTime,jdbcType=VARCHAR},
+      </if>
+      <if test="endTime != null" >
+        END_TIME = #{endTime,jdbcType=VARCHAR},
+      </if>
+      <if test="rateValue != null" >
+        RATE_VALUE = #{rateValue,jdbcType=DOUBLE},
+      </if>
+      <if test="rateId != null" >
+        RATE_ID = #{rateId,jdbcType=DECIMAL},
+      </if>
+      <if test="sectorPrecent != null" >
+        SECTOR_PERCENT = #{sectorPrecent,jdbcType=DOUBLE},
+      </if>
+    </set>
+    WHERE SECTOR_ID = #{sectorId,jdbcType=DECIMAL}
+  </update>
+  
+  <!-- 新增费率配置详细信息 -->
+  <insert id="insertSectorContent" parameterType="com.linyang.energy.model.RateSectorContentBean" >
+    INSERT INTO T_RATE_SECTOR_CONTENT (CONTENT_ID,RATE_ID,SECTOR_ID,BEGIN_TIME,END_TIME) 
+    VALUES (#{contentId,jdbcType=DECIMAL},#{rateId,jdbcType=DECIMAL},#{sectorId,jdbcType=DECIMAL},
+    #{beginTime,jdbcType=VARCHAR},#{endTime,jdbcType=VARCHAR})
+  </insert>
+
+  <select id="getWaterGasHotByRateId" resultType="HashMap" >
+        select r.RATE_ID, r.RATE_NAME, r.RATE_REMARK, r.RATE_TYPE, s.RATE_VALUE
+        from t_rate r inner join t_rate_sector s on r.RATE_ID=s.RATE_ID
+        where r.rate_id=#{rateId}
+   </select>
+  
+  <select id = "getFilteredRate" parameterType="HashMap" resultType="com.linyang.energy.model.RateBean">
+   select 
+	R.RATE_ID as rateId,
+	R.RATE_NAME as rateName,
+  R.RATE_NUMBER as rateNumber,
+	R.RATE_REMARK as rateRemark
+from T_RATE R
+where 1=1
+ 	<if test="rateName != null and rateName != ''">
+     and R.RATE_NAME = #{rateName}
+ 	</if>
+ 	<if test="rateNumber != null and rateNumber != '' and rateNumber != 0">
+	and R.RATE_NUMBER = #{rateNumber}
+ 	</if>
+	</select>
+</mapper>

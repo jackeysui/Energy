@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.linyang.energy.mapping.authmanager.PollutctlMapper" >
+	<resultMap id="PollutctlMap" type="com.linyang.energy.model.PollutctlBean" >
+		<id column="POLLUTCTL_ID" property="pollutctlId" jdbcType="VARCHAR" />
+		<result column="POLLUTCTL_NAME" property="pollutctlName" jdbcType="VARCHAR" />
+		<result column="PARENT_POLLUTCTL_ID" property="parentPollutctlId" jdbcType="VARCHAR" />
+	</resultMap>
+  <sql id="Base_Column_List" >
+    	POLLUTCTL_ID, POLLUTCTL_NAME, PARENT_POLLUTCTL_ID
+  </sql>
+  <select id="queryPollutctlInfo" parameterType="com.linyang.energy.model.PollutctlBean" resultMap="PollutctlMap">
+		SELECT <include refid="Base_Column_List" />
+		FROM  T_POLLUTCTL_FACIL
+		<where>
+			<if test="parentPollutctlId != null and parentPollutctlId != -1">
+				PARENT_POLLUTCTL_ID = #{parentPollutctlId}
+			</if>
+		</where>
+		ORDER BY POLLUTCTL_ID
+	</select>
+</mapper>

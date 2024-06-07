@@ -1,0 +1,1210 @@
+<?xml version="1.0" encoding="UTF-8" ?> 
+<!DOCTYPE mapper PUBLIC "-//ibatis.apache.org//DTD Mapper 3.0//EN" "http://ibatis.apache.org/dtd/ibatis-3-mapper.dtd">
+
+<mapper namespace="com.linyang.energy.mapping.energydataquery.VoltCurrPowerMapper">
+	<!-- 曲线数据bean -->
+	<resultMap id="CurveBeanResultMap" type="com.linyang.energy.model.CurveBean">
+		<result property="meterId"       column="METER_ID"/>
+		<result property="freezeTime"    column="FREEZE_TIME"/>
+		<result property="a"             column="A"/>
+		<result property="b"             column="B"/>
+		<result property="c"             column="C"/>
+		<result property="d"             column="D"/>
+		<result property="max"          column="V_MAX"/>
+		<result property="maxTime"      column="V_MAX_TIME"/>
+		<result property="min"          column="V_MIN"/>
+		<result property="minTime"      column="V_MIN_TIME"/>
+		<result property="upperTime"    column="V_UPPER_TIME"/>
+		<result property="lowerTime"    column="V_LOWER_TIME"/>
+		<result property="limitRate"    column="V_LIMIT_RATE"/>
+		<result property="fpy"          column="V_FPY"/>
+		<result property="monTime"      column="V_MON_TIME"/>
+		<result property="apA"             column="APA"/>
+		<result property="rpA"             column="RPA"/>
+		<result property="apB"             column="APB"/>
+		<result property="rpB"             column="RPB"/>
+		<result property="apC"             column="APC"/>
+		<result property="rpC"             column="RPC"/>
+		<result property="apD"             column="APD"/>
+		<result property="rpD"             column="RPD"/>
+	</resultMap>
+	
+	<!-- 查询曲线数据 -->
+	<select id="queryCurveData" parameterType="HashMap" resultMap="CurveBeanResultMap">
+		<choose>
+			<!-- 曲线电量 -->
+			<when test="curveType == 6">
+				<!-- 曲线电量 (一周之内) -->
+				<if test="dataType == 0">
+					<if test="frequency == 3"><!-- 曲线电量 (60分钟曲线) -->
+						select  q.LEDGER_ID,  to_date(q.freeze_time, 'yyyy-MM-dd HH24') as FREEZE_TIME,
+						sum(faq) as A, sum(frq) as B, sum(baq) as C, sum(brq) as D
+						from (
+
+						select substr(to_char(t.freeze_time,  'yyyy-MM-dd HH24:mi:ss'), 0,  13) as freeze_time,
+						T2.LEDGER_ID, t.faq_value * t2.add_attr * t2.pct /100 as faq ,  t.frq_value * t2.add_attr * t2.pct /100 as frq,t.baq_value * t2.add_attr * t2.pct /100 as baq,t.brq_value * t2.add_attr * t2.pct /100 as brq
+						from T_CUR_Q t LEFT JOIN T_LEDGER_METER T2
+						ON T.METER_ID = T2.METER_ID
+						where t.FREEZE_TIME >= #{beginTime,jdbcType=TIME}
+						AND t.FREEZE_TIME &lt; #{endTime,jdbcType=TIME}
+						and t.freeze_time &lt;= SYSDATE
+						AND T2.LEDGER_ID = #{objectId}
+						) q
+						group by q.LEDGER_ID,q.freeze_time
+					</if>
+					<if test="frequency == 2"><!-- 曲线电量 (30分钟曲线) -->
+						select  q.LEDGER_ID,q.freeze_time as FREEZE_TIME,
+						sum(faq) as A, sum(frq) as B, sum(baq) as C, sum(brq) as D
+						from (
+						select substr(to_char(t.freeze_time,'yyyy-MM-dd HH24:mi:ss'),1,14)||
+						(case when to_number(substr(to_char(t.freeze_time,'yyyy-MM-dd HH24:mi:ss'),15,2)) &lt; 30 then '00' else '30' end)||':00' as freeze_time ,
+						T2.LEDGER_ID, t.faq_value * t2.add_attr * t2.pct /100 as faq ,  t.frq_value * t2.add_attr * t2.pct /100 as frq,t.baq_value * t2.add_attr * t2.pct /100 as baq,t.brq_value * t2.add_attr * t2.pct /100 as brq
+						from T_CUR_Q t LEFT JOIN T_LEDGER_METER T2
+						ON T.METER_ID = T2.METER_ID
+						where t.FREEZE_TIME >= #{beginTime,jdbcType=TIME}
+						AND t.FREEZE_TIME &lt; #{endTime,jdbcType=TIME}
+						and t.freeze_time &lt;= SYSDATE
+						AND T2.LEDGER_ID = #{objectId}
+						) q
+						group by q.LEDGER_ID,q.freeze_time
+					</if>
+					<if test="frequency == 1"><!-- 曲线电量 (15分钟曲线) -->
+						select  q.LEDGER_ID, q.freeze_time as FREEZE_TIME,
+						sum(faq) as A, sum(frq) as B, sum(baq) as C, sum(brq) as D
+						from (
+						select to_char(t.freeze_time,  'yyyy-MM-dd HH24:mi:ss') as freeze_time,
+						T2.LEDGER_ID, t.faq_value * t2.add_attr * t2.pct /100 as faq ,  t.frq_value * t2.add_attr * t2.pct /100 as frq,t.baq_value * t2.add_attr * t2.pct /100 as baq,t.brq_value * t2.add_attr * t2.pct /100 as brq
+						from T_CUR_Q t LEFT JOIN T_LEDGER_METER T2
+						ON T.METER_ID = T2.METER_ID
+						where t.FREEZE_TIME >= #{beginTime,jdbcType=TIME}
+						AND t.FREEZE_TIME &lt; #{endTime,jdbcType=TIME}
+						and t.freeze_time &lt;= SYSDATE
+						AND T2.LEDGER_ID = #{objectId}
+						) q
+						group by q.LEDGER_ID,q.freeze_time
+					</if>
+				</if>
+				<!-- 曲线电量 (大于一周小于一个月31) -->
+				<if test="dataType == 1">
+					<if test="frequency == 3"><!-- 曲线电量 (60分钟曲线) -->
+						select  q.LEDGER_ID,  to_date(q.freeze_time, 'yyyy-MM-dd HH24') as FREEZE_TIME,
+						sum(faq) as A, sum(frq) as B, sum(baq) as C, sum(brq) as D
+						from (select substr(to_char(t.freeze_time,  'yyyy-MM-dd HH24:mi:ss'), 0,  13) as freeze_time,
+						T2.LEDGER_ID, t.faq_value * t2.add_attr * t2.pct /100 as faq ,  t.frq_value * t2.add_attr * t2.pct /100 as frq,t.baq_value * t2.add_attr * t2.pct /100 as baq,t.brq_value * t2.add_attr * t2.pct /100 as brq
+						from T_CUR_Q t LEFT JOIN T_LEDGER_METER T2
+						ON T.METER_ID = T2.METER_ID
+						where t.FREEZE_TIME >= #{beginTime,jdbcType=TIME}
+						AND t.FREEZE_TIME &lt; #{endTime,jdbcType=TIME}
+						and t.freeze_time &lt;= SYSDATE
+						AND T2.LEDGER_ID = #{objectId}
+						) q
+						group by q.LEDGER_ID,q.freeze_time
+					</if>
+					<if test="frequency == 2"><!-- 曲线电量 (30分钟曲线) -->
+						select  q.LEDGER_ID,  q.freeze_time,
+						sum(faq) as A, sum(frq) as B, sum(baq) as C, sum(brq) as D
+						from (
+						select substr(to_char(t.freeze_time,'yyyy-MM-dd HH24:mi:ss'),1,14)||
+						(case when to_number(substr(to_char(t.freeze_time,'yyyy-MM-dd HH24:mi:ss'),15,2))&lt;30 then '00' else '30' end)||':00' as freeze_time,
+						T2.LEDGER_ID, t.faq_value * t2.add_attr * t2.pct /100 as faq ,  t.frq_value * t2.add_attr * t2.pct /100 as frq,
+						t.baq_value * t2.add_attr * t2.pct /100 as baq,t.brq_value * t2.add_attr * t2.pct /100 as brq
+						from T_CUR_Q t LEFT JOIN T_LEDGER_METER T2
+						ON T.METER_ID = T2.METER_ID
+						where t.FREEZE_TIME >= #{beginTime,jdbcType=TIME}
+						AND t.FREEZE_TIME &lt; #{endTime,jdbcType=TIME}
+						and t.freeze_time &lt;= SYSDATE
+						AND T2.LEDGER_ID = #{objectId}
+						) q
+						group by q.LEDGER_ID,q.freeze_time
+					</if>
+					<if test="frequency == 1"><!-- 曲线电量 (15分钟曲线) -->
+						select  q.LEDGER_ID,  to_date(q.freeze_time, 'yyyy-MM-dd HH24:mi') as FREEZE_TIME,
+						sum(faq) as A, sum(frq) as B, sum(baq) as C, sum(brq) as D
+						from (select substr(to_char(t.freeze_time,  'yyyy-MM-dd HH24:mi:ss'), 0,  16) as freeze_time,
+						T2.LEDGER_ID, t.faq_value * t2.add_attr * t2.pct /100 as faq ,  t.frq_value * t2.add_attr * t2.pct /100 as frq,t.baq_value * t2.add_attr * t2.pct /100 as baq,t.brq_value * t2.add_attr * t2.pct /100 as brq
+						from T_CUR_Q t LEFT JOIN T_LEDGER_METER T2
+						ON T.METER_ID = T2.METER_ID
+						where t.FREEZE_TIME >= #{beginTime,jdbcType=TIME} AND t.FREEZE_TIME &lt; #{endTime,jdbcType=TIME}
+						and t.freeze_time &lt;= SYSDATE
+						AND T2.LEDGER_ID = #{objectId}
+						) q
+						group by q.LEDGER_ID,q.freeze_time
+					</if>
+				</if>
+				<!-- 曲线电量 (大于一个月31小于一年365) -->
+				<if test="dataType == 2">
+					select  q.LEDGER_ID,  to_date(q.freeze_time, 'yyyy-MM-dd') as FREEZE_TIME,
+					sum(faq) as A, sum(frq) as B, sum(baq) as C, sum(brq) as D
+					from (select substr(to_char(t.freeze_time,'yyyy-MM-dd HH24:mi:ss'),0,10) as freeze_time,
+					T2.LEDGER_ID, t.faq_value * t2.add_attr * t2.pct /100 as faq ,  t.frq_value * t2.add_attr * t2.pct /100 as frq,t.baq_value * t2.add_attr * t2.pct /100 as baq,t.brq_value * t2.add_attr * t2.pct /100 as brq
+					from T_CUR_Q t LEFT JOIN T_LEDGER_METER T2
+					ON T.METER_ID = T2.METER_ID
+					where t.FREEZE_TIME >= #{beginTime,jdbcType=TIME} AND t.FREEZE_TIME &lt; #{endTime,jdbcType=TIME}
+					and t.freeze_time &lt;= SYSDATE
+					AND T2.LEDGER_ID = #{objectId}
+					) q
+					group by q.LEDGER_ID,q.freeze_time
+				</if>
+			</when>
+	   		<!-- 曲线电压 (一周之内)-->
+    		<when test="curveType == 1 &amp; dataType == 0">
+    			SELECT T2.LEDGER_ID, FREEZE_TIME, MAX(VA) A, MAX(VB) B, MAX(VC) C, 0 D
+				FROM   T_CUR_V T LEFT JOIN  T_LEDGER_METER T2
+		                   ON T.METER_ID = T2.METER_ID
+				WHERE  FREEZE_TIME >= #{beginTime,jdbcType=TIME}
+				AND    FREEZE_TIME &lt; #{endTime,jdbcType=TIME}
+				and freeze_time &lt;= SYSDATE
+				AND    T2.LEDGER_ID = #{objectId} 
+				group by T2.LEDGER_ID, FREEZE_TIME
+    		</when>
+    		<!-- 曲线电压 (大于一周小于一个月31)-->
+    		<when test="curveType == 1 &amp; dataType == 1">
+				SELECT T2.LEDGER_ID, FREEZE_TIME, MAX(VA) A, MAX(VB) B, MAX(VC) C, 0 D
+				FROM   T_CUR_V T LEFT JOIN  T_LEDGER_METER T2
+		                   ON T.METER_ID = T2.METER_ID
+				WHERE  FREEZE_TIME >= #{beginTime,jdbcType=TIME}
+				AND    FREEZE_TIME &lt; #{endTime,jdbcType=TIME}
+				and freeze_time &lt;= SYSDATE
+				AND    T2.LEDGER_ID = #{objectId} 
+        		AND    t.freeze_time = trunc(t.freeze_time,'hh24')
+        		group by T2.LEDGER_ID, FREEZE_TIME
+    		</when>
+    		<!-- 曲线电流 (一周之内) -->
+    		<when test="curveType == 2 &amp; dataType == 0">
+    			SELECT T2.LEDGER_ID, FREEZE_TIME, SUM(IA) A, SUM(IB) B, SUM(IC) C, SUM(IO) D, SUM(greatest(nvl(IA,0),nvl(IB,0),nvl(IC,0),nvl(IO,0))) DM
+				FROM   T_CUR_I T LEFT JOIN  T_LEDGER_METER T2
+		                   ON T.METER_ID = T2.METER_ID
+				WHERE  FREEZE_TIME >= #{beginTime,jdbcType=TIME}
+				AND    FREEZE_TIME &lt; #{endTime,jdbcType=TIME}
+				and freeze_time &lt;= SYSDATE
+				AND    T2.LEDGER_ID = #{objectId}
+				group by T2.LEDGER_ID, FREEZE_TIME
+    		</when>
+    		<!-- 曲线电流 (大于一周小于一个月31) -->
+    		<when test="curveType == 2 &amp; dataType == 1">
+    			SELECT T2.LEDGER_ID, FREEZE_TIME, SUM(IA) A, SUM(IB) B, SUM(IC) C, SUM(IO) D, SUM(greatest(nvl(IA,0),nvl(IB,0),nvl(IC,0),nvl(IO,0))) DM
+				FROM   T_CUR_I T LEFT JOIN  T_LEDGER_METER T2
+		                   ON T.METER_ID = T2.METER_ID
+				WHERE  FREEZE_TIME >= #{beginTime,jdbcType=TIME}
+				AND    FREEZE_TIME &lt; #{endTime,jdbcType=TIME}
+				and freeze_time &lt;= SYSDATE
+				AND   T2.LEDGER_ID  = #{objectId}
+				AND    t.freeze_time = trunc(t.freeze_time,'hh24')
+				group by T2.LEDGER_ID, FREEZE_TIME
+    		</when>
+    		
+    		<!-- 曲线有功 (一周之内) -->
+    		<when test="curveType == 3 &amp; dataType == 0 &amp; isLedger == true">
+    			SELECT A.METER_ID, A.FREEZE_TIME, A.AP D, A.AP_A A, A.AP_B B, A.AP_C C, greatest(nvl(A.AP,0),nvl(A.AP_A,0),nvl(A.AP_B,0),nvl(A.AP_C,0)) DM
+				FROM   T_CUR_AP 
+				WHERE  A.FREEZE_TIME >= #{beginTime,jdbcType=TIME}
+				AND    A.FREEZE_TIME &lt; #{endTime,jdbcType=TIME}
+				and A.freeze_time &lt;= SYSDATE
+				AND  EXISTS (
+					 SELECT 1 FROM T_LEDGER_METER T1 WHERE  A.METER_ID = T1.METER_ID AND T1.LEDGER_ID = #{ledgerId}
+				)
+    		</when>   		
+    		<!-- 曲线有功 (一周之内) -->
+    		<when test="curveType == 3 &amp; dataType == 0 &amp; isLedger == false">
+    			SELECT T2.LEDGER_ID, A.FREEZE_TIME, SUM(A.AP* t2.add_attr * t2.pct /100) D, SUM(A.AP_A* t2.add_attr * t2.pct /100) A, SUM(A.AP_B* t2.add_attr * t2.pct /100) B, SUM(A.AP_C* t2.add_attr * t2.pct /100) C, 
+    			SUM(greatest(nvl(A.AP,0),nvl(A.AP_A,0),nvl(A.AP_B,0),nvl(A.AP_C,0))) DM
+				FROM   T_CUR_AP A LEFT JOIN  T_LEDGER_METER T2
+		                   ON A.METER_ID = T2.METER_ID
+				WHERE  A.FREEZE_TIME >= #{beginTime,jdbcType=TIME}
+				AND    A.FREEZE_TIME &lt; #{endTime,jdbcType=TIME}
+				and A.freeze_time &lt;= SYSDATE
+				AND  T2.LEDGER_ID  = #{objectId}
+				GROUP BY T2.LEDGER_ID, A.FREEZE_TIME
+    		</when>		
+    		<!-- 曲线有功 (大于一周小于一个月31) -->
+    		<when test="curveType == 3 &amp; dataType == 1  &amp; isLedger == true">
+    			SELECT A.METER_ID, A.FREEZE_TIME, A.AP D, A.AP_A A, A.AP_B B, A.AP_C C, greatest(nvl(A.AP,0),nvl(A.AP_A,0),nvl(A.AP_B,0),nvl(A.AP_C,0)) DM
+				FROM   T_CUR_AP A
+				WHERE  A.FREEZE_TIME >= #{beginTime,jdbcType=TIME}
+				AND    A.FREEZE_TIME &lt; #{endTime,jdbcType=TIME}
+				and A.freeze_time &lt;= SYSDATE
+				AND    a.freeze_time = trunc(a.freeze_time,'hh24')
+				AND  EXISTS (
+					 SELECT 1 FROM T_LEDGER_METER T1 WHERE  A.METER_ID = T1.METER_ID AND T1.LEDGER_ID = #{ledgerId}
+				)
+    		</when>  		
+    		<!-- 曲线有功 (大于一周小于一个月31) -->
+    		<when test="curveType == 3 &amp; dataType == 1  &amp; isLedger == false">
+    			SELECT T2.LEDGER_ID, A.FREEZE_TIME,  SUM(A.AP* t2.add_attr * t2.pct /100) D, SUM(A.AP_A* t2.add_attr * t2.pct /100) A, SUM(A.AP_B* t2.add_attr * t2.pct /100) B, SUM(A.AP_C* t2.add_attr * t2.pct /100) C, 
+    			SUM(greatest(nvl(A.AP,0),nvl(A.AP_A,0),nvl(A.AP_B,0),nvl(A.AP_C,0))) DM
+				FROM   T_CUR_AP A LEFT JOIN  T_LEDGER_METER T2
+		                   ON A.METER_ID = T2.METER_ID
+				WHERE  A.FREEZE_TIME >= #{beginTime,jdbcType=TIME}
+				AND    A.FREEZE_TIME &lt; #{endTime,jdbcType=TIME}
+				and A.freeze_time &lt;= SYSDATE
+				AND    a.freeze_time = trunc(a.freeze_time,'hh24')
+				AND  T2.LEDGER_ID  = #{objectId}
+				GROUP BY T2.LEDGER_ID, A.FREEZE_TIME
+    		</when>
+    		<!-- 曲线无功 (一周之内) -->
+    		<when test="curveType == 4 &amp; dataType == 0 &amp; isLedger == true">
+    			SELECT A.METER_ID, A.FREEZE_TIME, A.RP D, A.RP_A A, A.RP_B B, A.RP_C C, greatest(nvl(A.RP,0),nvl(A.RP_A,0),nvl(A.RP_B,0),nvl(A.RP_C,0)) DM
+				FROM   T_CUR_RP A
+				WHERE  A.FREEZE_TIME >= #{beginTime,jdbcType=TIME}
+				AND    A.FREEZE_TIME &lt; #{endTime,jdbcType=TIME}
+				and A.freeze_time &lt;= SYSDATE
+				AND  EXISTS (
+				     SELECT 1 FROM T_LEDGER_METER T1 WHERE  A.METER_ID = T1.METER_ID AND T1.LEDGER_ID = #{ledgerId}
+				)
+    		</when>
+    		<!-- 曲线无功 (一周之内) -->
+    		<when test="curveType == 4 &amp; dataType == 0 &amp; isLedger == false">
+    			SELECT T2.LEDGER_ID, A.FREEZE_TIME,  SUM(A.RP* t2.add_attr * t2.pct /100) D, SUM(A.RP_A* t2.add_attr * t2.pct /100) A, SUM(A.RP_B* t2.add_attr * t2.pct /100) B, SUM(A.RP_C* t2.add_attr * t2.pct /100) C, 
+    			SUM(greatest(nvl(A.RP,0),nvl(A.RP_A,0),nvl(A.RP_B,0),nvl(A.RP_C,0))) DM
+				FROM   T_CUR_RP A LEFT JOIN  T_LEDGER_METER T2
+		                   ON A.METER_ID = T2.METER_ID
+				WHERE  A.FREEZE_TIME >= #{beginTime,jdbcType=TIME}
+				AND    A.FREEZE_TIME &lt; #{endTime,jdbcType=TIME}
+				and A.freeze_time &lt;= SYSDATE
+				AND  T2.LEDGER_ID  = #{objectId}
+				GROUP BY T2.LEDGER_ID, A.FREEZE_TIME
+    		</when>
+    		<!-- 曲线无功 (大于一周小于一个月31) -->
+    		<when test="curveType == 4 &amp; dataType == 1 &amp; isLedger == true">
+    			SELECT A.METER_ID, A.FREEZE_TIME, A.RP D, A.RP_A A, A.RP_B B, A.RP_C C, greatest(nvl(A.RP,0),nvl(A.RP_A,0),nvl(A.RP_B,0),nvl(A.RP_C,0)) DM
+				FROM   T_CUR_RP A
+				WHERE  A.FREEZE_TIME >= #{beginTime,jdbcType=TIME}
+				AND    A.FREEZE_TIME &lt; #{endTime,jdbcType=TIME}
+				and A.freeze_time &lt;= SYSDATE
+				AND    a.freeze_time = trunc(a.freeze_time,'hh24')
+				AND  EXISTS (
+				     SELECT 1 FROM T_LEDGER_METER T1 WHERE  A.METER_ID = T1.METER_ID AND T1.LEDGER_ID = #{ledgerId}
+				)
+    		</when>
+    		<!-- 曲线无功 (大于一周小于一个月31) -->
+    		<when test="curveType == 4 &amp; dataType == 1 &amp; isLedger == false">
+    			SELECT T2.LEDGER_ID, A.FREEZE_TIME,  SUM(A.RP* t2.add_attr * t2.pct /100) D, SUM(A.RP_A* t2.add_attr * t2.pct /100) A, SUM(A.RP_B* t2.add_attr * t2.pct /100) B, SUM(A.RP_C* t2.add_attr * t2.pct /100) C, 
+    			SUM(greatest(nvl(A.RP,0),nvl(A.RP_A,0),nvl(A.RP_B,0),nvl(A.RP_C,0))) DM
+				FROM   T_CUR_RP A  LEFT JOIN  T_LEDGER_METER T2
+		                   ON A.METER_ID = T2.METER_ID
+				WHERE  A.FREEZE_TIME >= #{beginTime,jdbcType=TIME}
+				AND    A.FREEZE_TIME &lt; #{endTime,jdbcType=TIME}
+				and A.freeze_time &lt;= SYSDATE
+				AND    a.freeze_time = trunc(a.freeze_time,'hh24')
+				AND  T2.LEDGER_ID  = #{objectId}
+				GROUP BY T2.LEDGER_ID, A.FREEZE_TIME
+    		</when>
+    		<!-- 功率因素 (一周之内) -->
+    		<when test="curveType == 5 &amp; dataType == 0">
+				SELECT T2.LEDGER_ID, T.FREEZE_TIME, SUM(T.AP * T2.add_attr * t2.pct /100) APD, SUM(T3.RP * T2.add_attr * t2.pct /100) RPD,
+				 		SUM(T.AP_A * T2.add_attr * t2.pct /100) APA, SUM(T3.RP_A * T2.add_attr * t2.pct /100) RPA,
+				 		SUM(T.AP_B * T2.add_attr * t2.pct /100) APB, SUM(T3.RP_B * T2.add_attr * t2.pct /100) RPB,
+				 		SUM(T.AP_C * T2.add_attr * t2.pct /100) APC, SUM(T3.RP_C * T2.add_attr * t2.pct /100) RPC
+				FROM   T_CUR_AP T LEFT JOIN  T_LEDGER_METER T2
+		                   ON T.METER_ID = T2.METER_ID
+		               LEFT JOIN T_CUR_RP T3 ON T.METER_ID = T3.METER_ID AND T.FREEZE_TIME = T3.FREEZE_TIME
+				WHERE  T.FREEZE_TIME >= #{beginTime,jdbcType=TIME}
+				AND    T.FREEZE_TIME &lt; #{endTime,jdbcType=TIME}
+				and t.freeze_time &lt;= SYSDATE
+				AND    T2.LEDGER_ID  = #{objectId} 
+				 group by t2.LEDGER_ID,t.freeze_time
+    		</when>
+    		<!-- 功率因素 (大于一周小于一个月31) -->
+    		<when test="curveType == 5 &amp; dataType == 1">
+				SELECT T2.LEDGER_ID, T.FREEZE_TIME, SUM(T.AP * T2.add_attr * t2.pct /100) APD, SUM(T3.RP * T2.add_attr * t2.pct /100) RPD,
+				 		SUM(T.AP_A * T2.add_attr * t2.pct /100) APA, SUM(T3.RP_A * T2.add_attr * t2.pct /100) RPA,
+				 		SUM(T.AP_B * T2.add_attr * t2.pct /100) APB, SUM(T3.RP_B * T2.add_attr * t2.pct /100) RPB,
+				 		SUM(T.AP_C * T2.add_attr * t2.pct /100) APC, SUM(T3.RP_C * T2.add_attr * t2.pct /100) RPC
+				FROM   T_CUR_AP T LEFT JOIN  T_LEDGER_METER T2
+		                   ON T.METER_ID = T2.METER_ID
+		               LEFT JOIN T_CUR_RP T3 ON T.METER_ID = T3.METER_ID AND T.FREEZE_TIME = T3.FREEZE_TIME
+				WHERE  T.FREEZE_TIME >= #{beginTime,jdbcType=TIME}
+				AND    T.FREEZE_TIME &lt; #{endTime,jdbcType=TIME}
+				and t.freeze_time &lt;= SYSDATE
+				AND    T2.LEDGER_ID  = #{objectId} 
+					AND    t.freeze_time = trunc(t.freeze_time,'hh24') 
+				group by t2.LEDGER_ID,t.freeze_time
+    		</when>
+    		<!-- 曲线需量有功无功（一周之内） --> 
+    		<when test="curveType == 7 &amp; dataType == 0">
+    			select t.ledger_id, d.freeze_time, sum(d.d_value * t.add_attr * t.pct/100) A, sum(d.id_value * t.add_attr * t.pct/100) B 
+    			from t_cur_d d left join t_ledger_meter t
+    				on d.meter_id = t.meter_id
+    			where d.freeze_time >= #{beginTime,jdbcType=TIME}
+    			and d.freeze_time &lt; #{endTime,jdbcType=TIME}
+    			and t.ledger_id = #{objectId}
+    			group by t.ledger_id,d.freeze_time
+    		</when>	
+    		<!-- 曲线需量有功无功（大于一周小于一个月31） --> 
+    		<when test="curveType == 7 &amp; dataType == 1">
+    			select t.ledger_id, d.freeze_time, sum(d.d_value * t.add_attr * t.pct/100) A, sum(d.id_value * t.add_attr * t.pct/100) B 
+    			from t_cur_d d left join t_ledger_meter t
+    				on d.meter_id = t.meter_id
+    			where d.freeze_time >= #{beginTime,jdbcType=TIME}
+    			and d.freeze_time &lt; #{endTime,jdbcType=TIME}
+    			and t.ledger_id = #{objectId}
+    			and d.freeze_time = trunc(d.freeze_time,'hh24')
+    			group by t.ledger_id,d.freeze_time
+    		</when>
+			<!-- 曲线水量 -->
+			<when test="curveType == 11">
+				<!-- 曲线水量 (一周之内) -->
+				<if test="dataType == 0">
+					<if test="frequency == 3"><!-- 曲线水量 (60分钟水量曲线) -->
+						select  q.LEDGER_ID,  to_date(q.freeze_time, 'yyyy-MM-dd HH24') as FREEZE_TIME,sum(q) as D
+						from (select substr(to_char(t.freeze_time,  'yyyy-MM-dd HH24:mi:ss'), 0,  13) as freeze_time,
+						T2.LEDGER_ID, t.flow_value * t2.add_attr * t2.pct /100 as q
+						from t_cur_wflow t LEFT JOIN T_LEDGER_METER T2
+						ON T.METER_ID = T2.METER_ID
+						where t.FREEZE_TIME >= #{beginTime,jdbcType=TIME} AND t.FREEZE_TIME &lt; #{endTime,jdbcType=TIME}
+						AND T2.LEDGER_ID = #{objectId}
+						) q
+						group by q.LEDGER_ID,q.freeze_time
+					</if>
+					<if test="frequency == 2"><!-- 曲线水量 (30分钟水量曲线) -->
+						select LEDGER_ID,freeze_time,sum(q) as D
+						from (
+						select substr(to_char(t.freeze_time,'yyyy-MM-dd HH24:mi:ss'),1,14)||
+						(case when to_number(substr(to_char(t.freeze_time,'yyyy-MM-dd HH24:mi:ss'),15,2))&lt;30 then '00' else '30' end)||':00' as freeze_time ,
+						T2.LEDGER_ID, t.flow_value * t2.add_attr * t2.pct /100 as q
+						from t_cur_wflow t LEFT JOIN T_LEDGER_METER T2
+						ON T.METER_ID = T2.METER_ID
+						where t.FREEZE_TIME >= #{beginTime,jdbcType=TIME} AND t.FREEZE_TIME &lt; #{endTime,jdbcType=TIME}
+						AND T2.LEDGER_ID = #{objectId})
+						group by LEDGER_ID,freeze_time
+					</if>
+					<if test="frequency == 1"><!-- 曲线水量 (15分钟水量曲线) -->
+						select  q.LEDGER_ID,  q.freeze_time as FREEZE_TIME,sum(q) as D
+						from (select to_char(t.freeze_time,  'yyyy-MM-dd HH24:mi:ss') as freeze_time,
+						T2.LEDGER_ID, t.flow_value * t2.add_attr * t2.pct /100 as q
+						from t_cur_wflow t LEFT JOIN T_LEDGER_METER T2
+						ON T.METER_ID = T2.METER_ID
+						where t.FREEZE_TIME >= #{beginTime,jdbcType=TIME} AND t.FREEZE_TIME &lt; #{endTime,jdbcType=TIME}
+						AND T2.LEDGER_ID = #{objectId}
+						) q
+						group by q.LEDGER_ID,q.freeze_time
+					</if>
+				</if>
+				<!-- 曲线水量 (大于一周小于一个月31) -->
+				<if test="dataType == 1">
+					select  q.LEDGER_ID,  to_date(q.freeze_time, 'yyyy-MM-dd HH24') as FREEZE_TIME,sum(q) as D
+					from (select substr(to_char(t.freeze_time,  'yyyy-MM-dd HH24:mi:ss'), 0,  13) as freeze_time,
+					T2.LEDGER_ID, t.flow_value * t2.add_attr * t2.pct /100 as q
+					from t_cur_wflow t LEFT JOIN T_LEDGER_METER T2
+					ON T.METER_ID = T2.METER_ID
+					where t.FREEZE_TIME >= #{beginTime,jdbcType=TIME} AND t.FREEZE_TIME &lt; #{endTime,jdbcType=TIME}
+					AND T2.LEDGER_ID = #{objectId}
+					) q
+					group by q.LEDGER_ID,q.freeze_time
+				</if>
+				<!-- 曲线水量 (大于一个月31小于一年365) -->
+				<if test="dataType == 2">
+					select  q.LEDGER_ID,  to_date(q.freeze_time, 'yyyy-MM-dd') as FREEZE_TIME,sum(q) as D
+					from (select substr(to_char(t.freeze_time,'yyyy-MM-dd HH24:mi:ss'),0,10) as freeze_time,
+					T2.LEDGER_ID, t.flow_value * t2.add_attr * t2.pct /100 as q
+					from t_cur_wflow t LEFT JOIN T_LEDGER_METER T2
+					ON T.METER_ID = T2.METER_ID
+					where t.FREEZE_TIME >= #{beginTime,jdbcType=TIME} AND t.FREEZE_TIME &lt; #{endTime,jdbcType=TIME}
+					AND T2.LEDGER_ID = #{objectId}
+					) q
+					group by q.LEDGER_ID,q.freeze_time
+				</if>
+			</when>
+
+			<!-- 曲线气量 -->
+			<when test="curveType == 12">
+				<!-- 曲线水量 (一周之内) -->
+				<if test="dataType == 0">
+					<if test="frequency == 3"><!-- 曲线水量 (60分钟气量曲线) -->
+						select  q.LEDGER_ID,  to_date(q.freeze_time, 'yyyy-MM-dd HH24') as FREEZE_TIME,sum(q) as D
+						from (select substr(to_char(t.freeze_time,  'yyyy-MM-dd HH24:mi:ss'), 0,  13) as freeze_time,
+						T2.LEDGER_ID, t.flow_value * t2.add_attr * t2.pct /100 as q
+						from T_CUR_GFLOW t LEFT JOIN T_LEDGER_METER T2
+						ON T.METER_ID = T2.METER_ID
+						where t.FREEZE_TIME >= #{beginTime,jdbcType=TIME} AND t.FREEZE_TIME &lt; #{endTime,jdbcType=TIME}
+						AND T2.LEDGER_ID = #{objectId}
+						) q
+						group by q.LEDGER_ID,q.freeze_time
+					</if>
+					<if test="frequency == 2"><!-- 曲线水量 (30分钟气量曲线) -->
+						select LEDGER_ID,freeze_time,sum(q) as D
+						from (
+						select substr(to_char(t.freeze_time,'yyyy-MM-dd HH24:mi:ss'),1,14)||
+						(case when to_number(substr(to_char(t.freeze_time,'yyyy-MM-dd HH24:mi:ss'),15,2))&lt;30 then '00' else '30' end)||':00' as freeze_time ,
+						T2.LEDGER_ID, t.flow_value * t2.add_attr * t2.pct /100 as q
+						from T_CUR_GFLOW t LEFT JOIN T_LEDGER_METER T2
+						ON T.METER_ID = T2.METER_ID
+						where t.FREEZE_TIME >= #{beginTime,jdbcType=TIME} AND t.FREEZE_TIME &lt; #{endTime,jdbcType=TIME}
+						AND T2.LEDGER_ID = #{objectId})
+						group by LEDGER_ID,freeze_time
+					</if>
+					<if test="frequency == 1"><!-- 曲线水量 (15分钟气量曲线) -->
+						select  q.LEDGER_ID,  q.freeze_time as FREEZE_TIME,sum(q) as D
+						from (select to_char(t.freeze_time,  'yyyy-MM-dd HH24:mi:ss') as freeze_time,
+						T2.LEDGER_ID, t.flow_value * t2.add_attr * t2.pct /100 as q
+						from T_CUR_GFLOW t LEFT JOIN T_LEDGER_METER T2
+						ON T.METER_ID = T2.METER_ID
+						where t.FREEZE_TIME >= #{beginTime,jdbcType=TIME} AND t.FREEZE_TIME &lt; #{endTime,jdbcType=TIME}
+						AND T2.LEDGER_ID = #{objectId}
+						) q
+						group by q.LEDGER_ID,q.freeze_time
+					</if>
+				</if>
+				<!-- 曲线气量 (大于一周小于一个月31) -->
+				<if test="dataType == 1">
+					select  q.LEDGER_ID,  to_date(q.freeze_time, 'yyyy-MM-dd HH24') as FREEZE_TIME,sum(q) as D
+					from (select substr(to_char(t.freeze_time,  'yyyy-MM-dd HH24:mi:ss'), 0,  13) as freeze_time,
+					T2.LEDGER_ID, t.flow_value * t2.add_attr * t2.pct /100 as q
+					from T_CUR_GFLOW t LEFT JOIN T_LEDGER_METER T2
+					ON T.METER_ID = T2.METER_ID
+					where t.FREEZE_TIME >= #{beginTime,jdbcType=TIME} AND t.FREEZE_TIME &lt; #{endTime,jdbcType=TIME}
+					AND T2.LEDGER_ID = #{objectId}
+					) q
+					group by q.LEDGER_ID,q.freeze_time
+				</if>
+				<!-- 曲线气量 (大于一个月31小于一年365) -->
+				<if test="dataType == 2">
+					select  q.LEDGER_ID,  to_date(q.freeze_time, 'yyyy-MM-dd') as FREEZE_TIME,sum(q) as D
+					from (select substr(to_char(t.freeze_time,'yyyy-MM-dd HH24:mi:ss'),0,10) as freeze_time,
+					T2.LEDGER_ID, t.flow_value * t2.add_attr * t2.pct /100 as q
+					from T_CUR_GFLOW t LEFT JOIN T_LEDGER_METER T2
+					ON T.METER_ID = T2.METER_ID
+					where t.FREEZE_TIME >= #{beginTime,jdbcType=TIME} AND t.FREEZE_TIME &lt; #{endTime,jdbcType=TIME}
+					AND T2.LEDGER_ID = #{objectId}
+					) q
+					group by q.LEDGER_ID,q.freeze_time
+				</if>
+			</when>
+	   	</choose>
+	   	ORDER BY FREEZE_TIME
+	</select>
+	
+	   <!-- 查询数据库中电压不平衡度、电流不平衡度列表 -->
+    <select id="getNoblanceDataList" parameterType="HashMap" resultMap="CurveBeanResultMap">
+        <choose>
+            <!-- 电压相位角-->
+            <when test="curveType == 8">
+                SELECT METER_ID, FREEZE_TIME, AU_AB_A A, AU_B B, AU_CB_C C
+                FROM   T_CUR_V_ANGLE_REC
+                WHERE  METER_ID = #{objectId}
+            </when>
+            <!-- 电流相位角-->
+            <when test="curveType == 9">
+                SELECT METER_ID, FREEZE_TIME, AI_A A, AI_B B, AI_C C
+                FROM   T_CUR_I_ANGLE_REC
+                WHERE  METER_ID = #{objectId}
+            </when>
+        </choose>
+        ORDER BY FREEZE_TIME desc
+    </select>
+	
+    <!-- 查询电压电流功率图表 -->
+    <select id="queryVoltCurrPowerInfo" parameterType="HashMap" resultMap="CurveBeanResultMap">
+    	<choose>
+    		<!-- 曲线电压 (一周之内)-->
+    		<when test="curveType == 1 &amp; dataType == 0">
+				<if test="Vtype == 1">
+				SELECT METER_ID, FREEZE_TIME, VA*1.732 A, VB*1.732 B, VC*1.732 C, 0 D
+				FROM   T_CUR_V
+				WHERE  FREEZE_TIME >= #{beginTime,jdbcType=TIME}
+				AND    FREEZE_TIME &lt; #{endTime,jdbcType=TIME}
+				and freeze_time &lt;= SYSDATE
+				AND    METER_ID = #{objectId}
+				</if>
+				<if test="Vtype == 2">
+					SELECT METER_ID, FREEZE_TIME, VA A, VB B, VC C, 0 D
+					FROM   T_CUR_V
+					WHERE  FREEZE_TIME >= #{beginTime,jdbcType=TIME}
+					AND    FREEZE_TIME &lt; #{endTime,jdbcType=TIME}
+					and freeze_time &lt;= SYSDATE
+					AND    METER_ID = #{objectId}
+				</if>
+			</when>
+    		<!-- 曲线电压 (大于一周小于一个月31)-->
+    		<when test="curveType == 1 &amp; dataType == 1">
+				<if test="Vtype == 1">
+				SELECT METER_ID, FREEZE_TIME,  VA*1.732 A, VB*1.732 B, VC*1.732 C, 0 D
+				FROM   T_CUR_V
+				WHERE  FREEZE_TIME >= #{beginTime,jdbcType=TIME}
+				AND    FREEZE_TIME &lt; #{endTime,jdbcType=TIME}
+				and freeze_time &lt;= SYSDATE
+				AND    METER_ID = #{objectId}
+        		AND    freeze_time = trunc(freeze_time,'hh24')
+				</if>
+				<if test="Vtype == 2">
+					SELECT METER_ID, FREEZE_TIME,  VA A, VB B, VC C, 0 D
+					FROM   T_CUR_V
+					WHERE  FREEZE_TIME >= #{beginTime,jdbcType=TIME}
+					AND    FREEZE_TIME &lt; #{endTime,jdbcType=TIME}
+					and freeze_time &lt;= SYSDATE
+					AND    METER_ID = #{objectId}
+					AND    freeze_time = trunc(freeze_time,'hh24')
+				</if>
+    		</when>
+    		<!-- 曲线电流 (一周之内) -->
+    		<when test="curveType == 2 &amp; dataType == 0">
+    			SELECT METER_ID, FREEZE_TIME, IA A, IB B, IC C, IO D, greatest(nvl(IA,0),nvl(IB,0),nvl(IC,0),nvl(IO,0)) DM
+				FROM   T_CUR_I
+				WHERE  FREEZE_TIME >= #{beginTime,jdbcType=TIME}
+				AND    FREEZE_TIME &lt; #{endTime,jdbcType=TIME}
+				and freeze_time &lt;= SYSDATE
+				AND    METER_ID = #{objectId}
+    		</when>
+    		<!-- 曲线电流 (大于一周小于一个月31) -->
+    		<when test="curveType == 2 &amp; dataType == 1">
+    			SELECT METER_ID, FREEZE_TIME, IA A, IB B, IC C, IO D, greatest(nvl(IA,0),nvl(IB,0),nvl(IC,0),nvl(IO,0)) DM
+				FROM   T_CUR_I
+				WHERE  FREEZE_TIME >= #{beginTime,jdbcType=TIME}
+				AND    FREEZE_TIME &lt; #{endTime,jdbcType=TIME}
+				and freeze_time &lt;= SYSDATE
+				AND    METER_ID = #{objectId}
+				AND    freeze_time = trunc(freeze_time,'hh24')
+    		</when>
+    		<!-- 曲线有功 (一周之内) -->
+    		<when test="curveType == 3 &amp; dataType == 0">
+    			SELECT A.METER_ID, A.FREEZE_TIME, A.AP D, A.AP_A A, A.AP_B B, A.AP_C C, greatest(nvl(A.AP,0),nvl(A.AP_A,0),nvl(A.AP_B,0),nvl(A.AP_C,0)) DM
+				FROM   T_CUR_AP A
+				WHERE  A.FREEZE_TIME >= #{beginTime,jdbcType=TIME}
+				AND    A.FREEZE_TIME &lt; #{endTime,jdbcType=TIME}
+				and A.freeze_time &lt;= SYSDATE
+				<!-- 表示分户Id -->
+				<if test="isLedger == true">
+					AND  EXISTS (
+						 SELECT 1 FROM T_LEDGER_METER T1 WHERE  A.METER_ID = T1.METER_ID AND T1.LEDGER_ID = #{ledgerId}
+					)
+				</if>
+				<!-- 表示计量点Id -->
+				<if test="isLedger == false">
+					AND  A.METER_ID = #{objectId}
+				</if>
+    		</when>
+    		<!-- 曲线有功 (大于一周小于一个月31) -->
+    		<when test="curveType == 3 &amp; dataType == 1">
+    			SELECT A.METER_ID, A.FREEZE_TIME, A.AP D, A.AP_A A, A.AP_B B, A.AP_C C, greatest(nvl(A.AP,0),nvl(A.AP_A,0),nvl(A.AP_B,0),nvl(A.AP_C,0)) DM
+				FROM   T_CUR_AP A
+				WHERE  A.FREEZE_TIME >= #{beginTime,jdbcType=TIME}
+				AND    A.FREEZE_TIME &lt; #{endTime,jdbcType=TIME}
+				and A.freeze_time &lt;= SYSDATE
+				AND    a.freeze_time = trunc(a.freeze_time,'hh24')
+				<!-- 表示分户Id -->
+				<if test="isLedger == true">
+					AND  EXISTS (
+						 SELECT 1 FROM T_LEDGER_METER T1 WHERE  A.METER_ID = T1.METER_ID AND T1.LEDGER_ID = #{ledgerId}
+					)
+				</if>
+				<!-- 表示计量点Id -->
+				<if test="isLedger == false">
+					AND  A.METER_ID = #{objectId}
+				</if>
+    		</when>
+    		<!-- 曲线无功 (一周之内) -->
+    		<when test="curveType == 4 &amp; dataType == 0">
+    			SELECT A.METER_ID, A.FREEZE_TIME, A.RP D, A.RP_A A, A.RP_B B, A.RP_C C, greatest(nvl(A.RP,0),nvl(A.RP_A,0),nvl(A.RP_B,0),nvl(A.RP_C,0)) DM
+				FROM   T_CUR_RP A
+				WHERE  A.FREEZE_TIME >= #{beginTime,jdbcType=TIME}
+				AND    A.FREEZE_TIME &lt; #{endTime,jdbcType=TIME}
+				and A.freeze_time &lt;= SYSDATE
+				<!-- 表示分户Id -->
+				<if test="isLedger == true">
+					AND  EXISTS (
+					     SELECT 1 FROM T_LEDGER_METER T1 WHERE  A.METER_ID = T1.METER_ID AND T1.LEDGER_ID = #{ledgerId}
+					)
+				</if>
+				<!-- 表示计量点Id -->
+				<if test="isLedger == false">
+					AND  A.METER_ID = #{objectId}
+				</if>
+    		</when>
+    		<!-- 曲线无功 (大于一周小于一个月31) -->
+    		<when test="curveType == 4 &amp; dataType == 1">
+    			SELECT A.METER_ID, A.FREEZE_TIME, A.RP D, A.RP_A A, A.RP_B B, A.RP_C C, greatest(nvl(A.RP,0),nvl(A.RP_A,0),nvl(A.RP_B,0),nvl(A.RP_C,0)) DM
+				FROM   T_CUR_RP A
+				WHERE  A.FREEZE_TIME >= #{beginTime,jdbcType=TIME}
+				AND    A.FREEZE_TIME &lt; #{endTime,jdbcType=TIME}
+				and A.freeze_time &lt;= SYSDATE
+				AND    a.freeze_time = trunc(a.freeze_time,'hh24')
+				<!-- 表示分户Id -->
+				<if test="isLedger == true">
+					AND  EXISTS (
+					     SELECT 1 FROM T_LEDGER_METER T1 WHERE  A.METER_ID = T1.METER_ID AND T1.LEDGER_ID = #{ledgerId}
+					)
+				</if>
+				<!-- 表示计量点Id -->
+				<if test="isLedger == false">
+					AND  A.METER_ID = #{objectId}
+				</if>
+    		</when>
+    		<!-- 功率因素 (一周之内) -->
+    		<when test="curveType == 5 &amp; dataType == 0">
+    			SELECT METER_ID, FREEZE_TIME, PF_A/100 A, PF_B/100 B, PF_C/100 C, PF/100 D, greatest(PF_A,PF_B,PF_C,PF) DM
+				FROM   T_CUR_PF
+				WHERE  FREEZE_TIME >= #{beginTime,jdbcType=TIME}
+				AND    FREEZE_TIME &lt; #{endTime,jdbcType=TIME}
+				and freeze_time &lt;= SYSDATE
+				AND    METER_ID = #{objectId}
+    		</when>
+    		<!-- 功率因素 (大于一周小于一个月31) -->
+    		<when test="curveType == 5 &amp; dataType == 1">
+    			SELECT METER_ID, FREEZE_TIME, PF_A/100 A, PF_B/100 B, PF_C/100 C, PF/100 D, greatest(PF_A,PF_B,PF_C,PF) DM
+				FROM   T_CUR_PF
+				WHERE  FREEZE_TIME >= #{beginTime,jdbcType=TIME}
+				AND    FREEZE_TIME &lt; #{endTime,jdbcType=TIME}
+				and freeze_time &lt;= SYSDATE
+				AND    METER_ID = #{objectId}
+				AND    freeze_time = trunc(freeze_time,'hh24')
+    		</when>
+
+
+			<when test="curveType == 6">
+				<!-- 曲线电量 (一周之内) -->
+				<if test="dataType == 0">
+					<if test="frequency == 3"><!-- 曲线电量 (60分钟曲线) -->
+						select q.meter_id as METER_ID,to_date(q.freeze_time,'yyyy-MM-dd HH24') as FREEZE_TIME,sum(q.faq_value) as A,sum(q.frq_value) as B, sum(q.baq_value) as C, sum(q.brq_value) as D from
+						(select substr(to_char(t.freeze_time,'yyyy-MM-dd HH24:mi:ss'),0,13) as freeze_time,t.meter_id,t.faq_value,t.frq_value,t.baq_value,t.brq_value from T_CUR_Q t
+						where t.FREEZE_TIME >= #{beginTime,jdbcType=TIME} AND t.FREEZE_TIME &lt; #{endTime,jdbcType=TIME}
+						and t.freeze_time &lt;= SYSDATE
+						AND t.METER_ID = #{objectId}) q
+						group by q.meter_id,q.freeze_time
+					</if>
+					<if test="frequency == 2"><!-- 曲线电量 (30分钟曲线) -->
+						select meter_id,freeze_time,sum(faq_value) as A,sum(frq_value) as B,sum(baq_value) as C, sum(brq_value) as D
+						from (
+						select t.meter_id,t.faq_value,t.frq_value,t.baq_value,t.brq_value, substr(to_char(t.freeze_time,'yyyy-MM-dd HH24:mi:ss'),1,14)||
+						(case when to_number(substr(to_char(t.freeze_time,'yyyy-MM-dd HH24:mi:ss'),15,2))&lt;30 then '00' else '30' end)||':00' as freeze_time
+						from t_cur_q t
+						where t.freeze_time >= #{beginTime,jdbcType=TIME}
+						and t.freeze_time &lt; #{endTime,jdbcType=TIME}
+						and t.freeze_time &lt;= SYSDATE
+						and t.meter_id = #{objectId}
+						)group by meter_id,freeze_time
+					</if>
+					<if test="frequency == 1"><!-- 曲线电量 (15分钟曲线) -->
+						select to_char(t.freeze_time,'yyyy-MM-dd HH24:mi:ss') as freeze_time,
+						t.meter_id,faq_value as A,frq_value as B,baq_value as C, brq_value as D from T_CUR_Q t
+						where t.FREEZE_TIME >= #{beginTime,jdbcType=TIME}
+						AND t.FREEZE_TIME &lt; #{endTime,jdbcType=TIME}
+						and t.freeze_time &lt;= SYSDATE
+						AND t.METER_ID = #{objectId}
+					</if>
+				</if>
+				<!-- 曲线电量 (大于一周小于一个月31) -->
+				<if test="dataType == 1">
+					select q.meter_id as METER_ID,to_date(q.freeze_time,'yyyy-MM-dd HH24') as FREEZE_TIME,sum(q.faq_value) as A,sum(q.frq_value) as B, sum(q.baq_value) as C, sum(q.brq_value) as D from
+					(select substr(to_char(t.freeze_time,'yyyy-MM-dd HH24:mi:ss'),0,13) as freeze_time,t.meter_id,t.faq_value,t.frq_value,t.baq_value,t.brq_value from T_CUR_Q t
+					where t.FREEZE_TIME >= #{beginTime,jdbcType=TIME} AND t.FREEZE_TIME &lt; #{endTime,jdbcType=TIME}
+					and t.freeze_time &lt;= SYSDATE
+					AND t.METER_ID = #{objectId}) q
+					group by q.meter_id,q.freeze_time
+				</if>
+				<!-- 曲线电量 (大于一个月31小于一年365) -->
+				<if test="dataType == 2">
+					select q.meter_id as METER_ID,to_date(q.freeze_time,'yyyy-MM-dd') as FREEZE_TIME,sum(q.faq_value) as A,sum(q.frq_value) as B, sum(q.baq_value) as C, sum(q.brq_value) as D from
+					(select substr(to_char(t.freeze_time,'yyyy-MM-dd HH24:mi:ss'),0,10) as freeze_time,t.meter_id,t.faq_value,t.frq_value,t.baq_value,t.brq_value from T_CUR_Q t
+					where t.FREEZE_TIME >= #{beginTime,jdbcType=TIME} AND t.FREEZE_TIME &lt; #{endTime,jdbcType=TIME}
+					and t.freeze_time &lt;= SYSDATE
+					AND t.METER_ID = #{objectId}) q
+					group by q.meter_id,q.freeze_time
+				</if>
+			</when>
+    		<!-- 曲线需量有功无功（一周之内） -->
+    		<when test="curveType == 7 &amp; dataType == 0">
+    			select meter_id, freeze_time, d_value A, id_value B
+    			from t_cur_d
+    			where freeze_time >= #{beginTime,jdbcType=TIME}
+    			and freeze_time &lt; #{endTime,jdbcType=TIME}
+    			and meter_id = #{objectId}
+    		</when>   
+    		<!-- 曲线需量有功无功（大于一周小于一个月31） -->
+    		<when test="curveType == 7 &amp; dataType == 1">
+    			select meter_id, freeze_time, d_value A, id_value B
+    			from t_cur_d
+    			where freeze_time >= #{beginTime,jdbcType=TIME}
+    			and freeze_time &lt; #{endTime,jdbcType=TIME}
+    			and meter_id = #{objectId}
+    			and freeze_time = trunc(freeze_time,'hh24')
+    		</when>
+            <!-- 电压相位角 (一周之内)-->
+            <when test="curveType == 8 &amp; dataType == 0">
+                SELECT METER_ID, FREEZE_TIME, AU_AB_A A, AU_B B, AU_CB_C C, 0 D
+                FROM   T_CUR_V_ANGLE_REC
+                WHERE  FREEZE_TIME >= #{beginTime,jdbcType=TIME}
+                AND    FREEZE_TIME &lt; #{endTime,jdbcType=TIME}
+                AND    METER_ID = #{objectId}
+            </when>
+            <!-- 电压相位角 (大于一周小于一个月31)-->
+            <when test="curveType == 8 &amp; dataType == 1">
+                SELECT METER_ID, FREEZE_TIME, AU_AB_A A, AU_B B, AU_CB_C C, 0 D
+                FROM   T_CUR_V_ANGLE_REC
+                WHERE  FREEZE_TIME >= #{beginTime,jdbcType=TIME}
+                AND    FREEZE_TIME &lt; #{endTime,jdbcType=TIME}
+                AND    METER_ID = #{objectId}
+                AND    freeze_time = trunc(freeze_time,'hh24')
+            </when>
+            <!-- 电流相位角 (一周之内)-->
+            <when test="curveType == 9 &amp; dataType == 0">
+                SELECT METER_ID, FREEZE_TIME, AI_A A, AI_B B, AI_C C, 0 D
+                FROM   T_CUR_I_ANGLE_REC
+                WHERE  FREEZE_TIME >= #{beginTime,jdbcType=TIME}
+                AND    FREEZE_TIME &lt; #{endTime,jdbcType=TIME}
+                AND    METER_ID = #{objectId}
+            </when>
+            <!-- 电流相位角 (大于一周小于一个月31)-->
+            <when test="curveType == 9 &amp; dataType == 1">
+                SELECT METER_ID, FREEZE_TIME, AI_A A, AI_B B, AI_C C, 0 D
+                FROM   T_CUR_I_ANGLE_REC
+                WHERE  FREEZE_TIME >= #{beginTime,jdbcType=TIME}
+                AND    FREEZE_TIME &lt; #{endTime,jdbcType=TIME}
+                AND    METER_ID = #{objectId}
+                AND    freeze_time = trunc(freeze_time,'hh24')
+            </when>
+             <!-- 电网频率(一周之内) -->
+            <when test="curveType == 10 &amp; dataType == 0">
+            	SELECT METER_ID, FREEZE_TIME, FREQUCE D
+                FROM   T_CUR_FREQ
+                WHERE  FREEZE_TIME >= #{beginTime,jdbcType=TIME}
+                AND    FREEZE_TIME &lt; #{endTime,jdbcType=TIME}
+                AND    METER_ID = #{objectId}
+            </when>
+            <!-- 电网频率(大于一周小于一个月31) -->
+            <when test="curveType == 10 &amp; dataType == 1">
+            	SELECT METER_ID, FREEZE_TIME, FREQUCE D
+                FROM   T_CUR_FREQ
+                WHERE  FREEZE_TIME >= #{beginTime,jdbcType=TIME}
+                AND    FREEZE_TIME &lt; #{endTime,jdbcType=TIME}
+                AND    METER_ID = #{objectId}
+                AND    freeze_time = trunc(freeze_time,'hh24')
+            </when>
+
+			<!-- 曲线水量 -->
+			<when test="curveType == 11">
+				<!-- 曲线水量 (一周之内) -->
+				<if test="dataType == 0">
+					<if test="frequency == 3"><!-- 曲线水量 (60分钟曲线) -->
+						select q.meter_id as METER_ID,to_date(q.freeze_time,'yyyy-MM-dd HH24') as FREEZE_TIME,sum(q.flow_value) as D from
+						(select substr(to_char(t.freeze_time,'yyyy-MM-dd HH24:mi:ss'),0,13) as freeze_time,t.meter_id,t.flow_value
+						from t_cur_wflow t where t.FREEZE_TIME >= #{beginTime,jdbcType=TIME} AND t.FREEZE_TIME &lt; #{endTime,jdbcType=TIME}
+						AND t.METER_ID = #{objectId}) q
+						group by q.meter_id,q.freeze_time
+					</if>
+					<if test="frequency == 2"><!-- 曲线水量 (30分钟曲线) -->
+						select meter_id,freeze_time,sum(flow_value) as D
+						from (
+						select t.meter_id,t.flow_value, substr(to_char(t.freeze_time,'yyyy-MM-dd HH24:mi:ss'),1,14)||
+						(case when to_number(substr(to_char(t.freeze_time,'yyyy-MM-dd HH24:mi:ss'),15,2)) &lt; 30 then '00' else '30' end)||':00' as freeze_time
+						from t_cur_wflow t
+						where t.FREEZE_TIME >= #{beginTime,jdbcType=TIME} AND t.FREEZE_TIME &lt; #{endTime,jdbcType=TIME}
+						and t.meter_id = #{objectId})
+						group by meter_id,freeze_time
+					</if>
+					<if test="frequency == 1"><!-- 曲线水量 (15分钟曲线) -->
+						select to_char(t.freeze_time,'yyyy-MM-dd HH24:mi:ss') as freeze_time,t.meter_id,t.flow_value as D
+						from t_cur_wflow t where t.FREEZE_TIME >= #{beginTime,jdbcType=TIME} AND t.FREEZE_TIME &lt; #{endTime,jdbcType=TIME}
+						AND t.METER_ID = #{objectId}
+					</if>
+				</if>
+				<!-- 曲线水量 (大于一周小于一个月31) -->
+				<if test="dataType == 1">
+					select q.meter_id as METER_ID,to_date(q.freeze_time,'yyyy-MM-dd HH24') as FREEZE_TIME,sum(q.flow_value) as D from
+					(select substr(to_char(t.freeze_time,'yyyy-MM-dd HH24:mi:ss'),0,13) as freeze_time,t.meter_id,t.flow_value
+					from t_cur_wflow t where t.FREEZE_TIME >= #{beginTime,jdbcType=TIME} AND t.FREEZE_TIME &lt; #{endTime,jdbcType=TIME} AND t.METER_ID = #{objectId}) q
+					group by q.meter_id,q.freeze_time
+				</if>
+				<!-- 曲线水量 (大于一个月31小于一年365) -->
+				<if test="dataType == 2">
+					select q.meter_id as METER_ID,to_date(q.freeze_time,'yyyy-MM-dd HH24') as FREEZE_TIME,sum(q.flow_value) as D from
+					(select substr(to_char(t.freeze_time,'yyyy-MM-dd HH24:mi:ss'),0,10) as freeze_time,t.meter_id,t.flow_value
+					from t_cur_wflow t where t.FREEZE_TIME >= #{beginTime,jdbcType=TIME} AND t.FREEZE_TIME &lt; #{endTime,jdbcType=TIME} AND t.METER_ID = #{objectId}) q
+					group by q.meter_id,q.freeze_time
+				</if>
+			</when>
+
+
+			<!-- 曲线气量 -->
+			<when test="curveType == 12">
+				<!-- 曲线水量 (一周之内) -->
+				<if test="dataType == 0">
+					<if test="frequency == 3"><!-- 曲线气量 (60分钟曲线) -->
+						select q.meter_id as METER_ID,to_date(q.freeze_time,'yyyy-MM-dd HH24') as FREEZE_TIME,sum(q.flow_value) as D from
+						(select substr(to_char(t.freeze_time,'yyyy-MM-dd HH24:mi:ss'),0,13) as freeze_time,t.meter_id,t.flow_value
+						from T_CUR_GFLOW t where t.FREEZE_TIME >= #{beginTime,jdbcType=TIME} AND t.FREEZE_TIME &lt; #{endTime,jdbcType=TIME}
+						AND t.METER_ID = #{objectId}) q
+						group by q.meter_id,q.freeze_time
+					</if>
+					<if test="frequency == 2"><!-- 曲线气量 (30分钟曲线) -->
+						select meter_id,freeze_time,sum(flow_value) as D
+						from (
+						select t.meter_id,t.flow_value, substr(to_char(t.freeze_time,'yyyy-MM-dd HH24:mi:ss'),1,14)||
+						(case when to_number(substr(to_char(t.freeze_time,'yyyy-MM-dd HH24:mi:ss'),15,2)) &lt; 30 then '00' else '30' end)||':00' as freeze_time
+						from T_CUR_GFLOW t
+						where t.FREEZE_TIME >= #{beginTime,jdbcType=TIME} AND t.FREEZE_TIME &lt; #{endTime,jdbcType=TIME}
+						and t.meter_id = #{objectId})
+						group by meter_id,freeze_time
+					</if>
+					<if test="frequency == 1"><!-- 曲线气量 (15分钟曲线) -->
+						select to_char(t.freeze_time,'yyyy-MM-dd HH24:mi:ss') as freeze_time,t.meter_id,t.flow_value as D
+						from T_CUR_GFLOW t where t.FREEZE_TIME >= #{beginTime,jdbcType=TIME} AND t.FREEZE_TIME &lt; #{endTime,jdbcType=TIME}
+						AND t.METER_ID = #{objectId}
+					</if>
+				</if>
+				<!-- 曲线气量 (大于一周小于一个月31) -->
+				<if test="dataType == 1">
+					select q.meter_id as METER_ID,to_date(q.freeze_time,'yyyy-MM-dd HH24') as FREEZE_TIME,sum(q.flow_value) as D from
+					(select substr(to_char(t.freeze_time,'yyyy-MM-dd HH24:mi:ss'),0,13) as freeze_time,t.meter_id,t.flow_value
+					from T_CUR_GFLOW t where t.FREEZE_TIME >= #{beginTime,jdbcType=TIME} AND t.FREEZE_TIME &lt; #{endTime,jdbcType=TIME} AND t.METER_ID = #{objectId}) q
+					group by q.meter_id,q.freeze_time
+				</if>
+				<!-- 曲线气量 (大于一个月31小于一年365) -->
+				<if test="dataType == 2">
+					select q.meter_id as METER_ID,to_date(q.freeze_time,'yyyy-MM-dd HH24') as FREEZE_TIME,sum(q.flow_value) as D from
+					(select substr(to_char(t.freeze_time,'yyyy-MM-dd HH24:mi:ss'),0,10) as freeze_time,t.meter_id,t.flow_value
+					from T_CUR_GFLOW t where t.FREEZE_TIME >= #{beginTime,jdbcType=TIME} AND t.FREEZE_TIME &lt; #{endTime,jdbcType=TIME} AND t.METER_ID = #{objectId}) q
+					group by q.meter_id,q.freeze_time
+				</if>
+			</when>
+    	</choose>
+    	ORDER BY FREEZE_TIME
+    </select>   
+    <!-- 查询曲线数据,用于报表 -->
+    <select id="queryCurveReportData" parameterType="HashMap" resultMap="CurveBeanResultMap">
+    	<choose>
+    		<!-- 曲线电压 -->
+    		<when test="curveType == 1">
+    			SELECT T2.LEDGER_ID, T.FREEZE_TIME, MAX(VA) A, MAX(VB) B, MAX(VC) C, 0 D
+				FROM   T_CUR_V T LEFT JOIN T_LEDGER_METER T2
+                   ON T.METER_ID = T2.METER_ID
+				WHERE  FREEZE_TIME >= #{beginTime,jdbcType=TIME}
+				AND    FREEZE_TIME &lt; #{endTime,jdbcType=TIME}
+				and freeze_time &lt;= SYSDATE
+				AND    T2.LEDGER_ID = #{objectId}      
+				AND    t.freeze_time = trunc(t.freeze_time,'hh24')
+				GROUP BY T2.LEDGER_ID, T.FREEZE_TIME
+    		</when>
+    		<!-- 曲线电流 -->
+    		<when test="curveType == 2">
+    			SELECT T2.LEDGER_ID, T.FREEZE_TIME, SUM(IA) A, SUM(IB) B, SUM(IC) C, SUM(IO) D, SUM(greatest(nvl(IA,0),nvl(IB,0),nvl(IC,0),nvl(IO,0))) DM
+				FROM   T_CUR_I T LEFT JOIN T_LEDGER_METER T2
+                   ON T.METER_ID = T2.METER_ID
+				WHERE  FREEZE_TIME >= #{beginTime,jdbcType=TIME}
+				AND    FREEZE_TIME &lt; #{endTime,jdbcType=TIME}
+				and freeze_time &lt;= SYSDATE
+				AND   T2.LEDGER_ID = #{objectId}      
+				AND    t.freeze_time = trunc(t.freeze_time,'hh24')
+				GROUP BY T2.LEDGER_ID, T.FREEZE_TIME
+    		</when>
+    		<!-- 曲线有功 -->
+    		<when test="curveType == 3 &amp; isLedger == true">
+    			SELECT A.METER_ID, A.FREEZE_TIME, A.AP D, A.AP_A A, A.AP_B B, A.AP_C C, greatest(nvl(A.AP,0),nvl(A.AP_A,0),nvl(A.AP_B,0),nvl(A.AP_C,0)) DM
+				FROM   T_CUR_AP A 
+				WHERE  A.FREEZE_TIME >= #{beginTime,jdbcType=TIME}
+				AND    A.FREEZE_TIME &lt; #{endTime,jdbcType=TIME}
+				and A.freeze_time &lt;= SYSDATE
+				AND    a.freeze_time = trunc(a.freeze_time,'hh24')
+				AND  EXISTS (
+					 SELECT 1 FROM T_LEDGER_METER T1 WHERE  A.METER_ID = T1.METER_ID AND T1.LEDGER_ID = #{ledgerId}
+				)
+    		</when>
+    		<!-- 曲线有功 -->
+    		<when test="curveType == 3 &amp; isLedger == false ">
+    			SELECT T2.LEDGER_ID, A.FREEZE_TIME, SUM(A.AP* t2.add_attr * t2.pct /100) D, SUM(A.AP_A* t2.add_attr * t2.pct /100) A, SUM(A.AP_B* t2.add_attr * t2.pct /100) B, SUM(A.AP_C* t2.add_attr * t2.pct /100) C, 
+    			SUM(greatest(nvl(A.AP,0),nvl(A.AP_A,0),nvl(A.AP_B,0),nvl(A.AP_C,0))) DM
+				FROM   T_CUR_AP A LEFT JOIN T_LEDGER_METER T2
+                   ON A.METER_ID = T2.METER_ID
+				WHERE  A.FREEZE_TIME >= #{beginTime,jdbcType=TIME}
+				AND    A.FREEZE_TIME &lt; #{endTime,jdbcType=TIME}
+				and A.freeze_time &lt;= SYSDATE
+				AND    a.freeze_time = trunc(a.freeze_time,'hh24')
+				AND   T2.LEDGER_ID = #{objectId}  
+				GROUP BY    T2.LEDGER_ID, A.FREEZE_TIME 
+    		</when>
+    		<!-- 曲线无功 -->
+    		<when test="curveType == 4  &amp; isLedger == true ">
+    			SELECT A.METER_ID, A.FREEZE_TIME, A.RP D, A.RP_A A, A.RP_B B, A.RP_C C, greatest(nvl(A.RP,0),nvl(A.RP_A,0),nvl(A.RP_B,0),nvl(A.RP_C,0)) DM
+				FROM   T_CUR_RP A 
+				WHERE  A.FREEZE_TIME >= #{beginTime,jdbcType=TIME}
+				AND    A.FREEZE_TIME &lt; #{endTime,jdbcType=TIME}
+				and A.freeze_time &lt;= SYSDATE
+				AND    a.freeze_time = trunc(a.freeze_time,'hh24')
+				AND  EXISTS (
+				     SELECT 1 FROM T_LEDGER_METER T1 WHERE  A.METER_ID = T1.METER_ID AND T1.LEDGER_ID = #{ledgerId}
+				)
+    		</when>
+    		<!-- 曲线无功 -->
+    		<when test="curveType == 4 &amp; isLedger == false ">
+    			SELECT T2.LEDGER_ID, A.FREEZE_TIME, SUM(A.RP* t2.add_attr * t2.pct /100) D, SUM(A.RP_A* t2.add_attr * t2.pct /100) A, SUM(A.RP_B* t2.add_attr * t2.pct /100) B, SUM(A.RP_C* t2.add_attr * t2.pct /100) C, 
+    			SUM(greatest(nvl(A.RP,0),nvl(A.RP_A,0),nvl(A.RP_B,0),nvl(A.RP_C,0))) DM
+				FROM   T_CUR_RP A LEFT JOIN T_LEDGER_METER T2
+                   ON A.METER_ID = T2.METER_ID
+				WHERE  A.FREEZE_TIME >= #{beginTime,jdbcType=TIME}
+				AND    A.FREEZE_TIME &lt; #{endTime,jdbcType=TIME}
+				and A.freeze_time &lt;= SYSDATE
+				AND    a.freeze_time = trunc(a.freeze_time,'hh24')
+				AND  T2.LEDGER_ID = #{objectId} 
+				GROUP BY    T2.LEDGER_ID, A.FREEZE_TIME 
+    		</when>
+    		<!-- 功率因素 -->
+    		<when test="curveType == 5">
+				SELECT T2.LEDGER_ID, T.FREEZE_TIME,SUM(T.AP * T2.add_attr * t2.pct /100) APD, SUM(T3.RP * T2.add_attr * t2.pct /100) RPD,
+				 		SUM(T.AP_A * T2.add_attr * t2.pct /100) APA, SUM(T3.RP_A * T2.add_attr * t2.pct /100) RPA,
+				 		SUM(T.AP_B * T2.add_attr * t2.pct /100) APB, SUM(T3.RP_B * T2.add_attr * t2.pct /100) RPB,
+				 		SUM(T.AP_C * T2.add_attr * t2.pct /100) APC, SUM(T3.RP_C * T2.add_attr * t2.pct /100) RPC
+				FROM   T_CUR_AP T LEFT JOIN  T_LEDGER_METER T2
+		                   ON T.METER_ID = T2.METER_ID
+		               LEFT JOIN T_CUR_RP T3 ON T.METER_ID = T3.METER_ID AND T.FREEZE_TIME = T3.FREEZE_TIME
+				WHERE  T.FREEZE_TIME >= #{beginTime,jdbcType=TIME}
+				AND    T.FREEZE_TIME &lt; #{endTime,jdbcType=TIME}
+				and t.freeze_time &lt;= SYSDATE
+				AND    T2.LEDGER_ID  = #{objectId} 
+					AND    t.freeze_time = trunc(t.freeze_time,'hh24')
+				 group by t2.LEDGER_ID,t.freeze_time
+    		</when>
+    		<!-- 曲线电量 -->
+    		<when test="curveType == 6">
+					select q.LEDGER_ID,to_date(q.freeze_time,'yyyy-MM-dd HH24') as FREEZE_TIME,sum(faq) as A,sum(frq) as B, sum(baq) as C, sum(brq) as D from
+					(select substr(to_char(t.freeze_time,'yyyy-MM-dd HH24:mi:ss'),0,13) as freeze_time,
+					t2.ledger_id,t.faq_value * t2.add_attr * t2.pct /100 as faq , t.frq_value * t2.add_attr * t2.pct /100 as frq,t.baq_value * t2.add_attr * t2.pct /100 as baq,t.brq_value * t2.add_attr * t2.pct /100 as brq
+					from T_CUR_Q t
+					left join T_LEDGER_METER T2 ON T.METER_ID = T2.METER_ID
+					where t.FREEZE_TIME >= #{beginTime,jdbcType=TIME} AND t.FREEZE_TIME &lt; #{endTime,jdbcType=TIME}
+					and t.freeze_time &lt;= SYSDATE
+					AND t2.LEDGER_ID = #{objectId}) q
+					group by q.LEDGER_ID,q.freeze_time
+    		</when>
+    		<!-- 曲线需量有功无功 --> 
+    		<when test="curveType == 7">
+    			select t.ledger_id, d.freeze_time, sum(d.d_value * t.add_attr * t.pct/100) A, sum(d.id_value * t.add_attr * t.pct/100) B 
+    			from t_cur_d d left join t_ledger_meter t
+    				on d.meter_id = t.meter_id
+    			where d.freeze_time >= #{beginTime,jdbcType=TIME}
+    			and d.freeze_time &lt; #{endTime,jdbcType=TIME}
+    			and t.ledger_id = #{objectId}
+    			and d.freeze_time = trunc(d.freeze_time,'hh24')
+    			group by t.ledger_id,d.freeze_time
+    		</when>
+            <!-- 曲线水量 -->
+            <when test="curveType == 11">
+					select q.LEDGER_ID,to_date(q.freeze_time,'yyyy-MM-dd HH24') as FREEZE_TIME,sum(q) as D from
+					(select substr(to_char(t.freeze_time,'yyyy-MM-dd HH24:mi:ss'),0,13) as freeze_time,
+					t2.ledger_id,t.flow_value * t2.add_attr * t2.pct /100 as q from t_cur_wflow t
+					left join T_LEDGER_METER T2 ON T.METER_ID = T2.METER_ID
+					where t.FREEZE_TIME >= #{beginTime,jdbcType=TIME} AND t.FREEZE_TIME &lt; #{endTime,jdbcType=TIME}
+					AND t2.LEDGER_ID = #{objectId}) q
+					group by q.LEDGER_ID,q.freeze_time
+            </when>
+			<!-- 曲线气量 -->
+			<when test="curveType == 12">
+				select q.LEDGER_ID,to_date(q.freeze_time,'yyyy-MM-dd HH24') as FREEZE_TIME,sum(q) as D from
+				(select substr(to_char(t.freeze_time,'yyyy-MM-dd HH24:mi:ss'),0,13) as freeze_time,
+				t2.ledger_id,t.flow_value * t2.add_attr * t2.pct /100 as q from T_CUR_GFLOW t
+				left join T_LEDGER_METER T2 ON T.METER_ID = T2.METER_ID
+				where t.FREEZE_TIME >= #{beginTime,jdbcType=TIME} AND t.FREEZE_TIME &lt; #{endTime,jdbcType=TIME}
+				AND t2.LEDGER_ID = #{objectId}) q
+				group by q.LEDGER_ID,q.freeze_time
+			</when>
+    	</choose>
+    	ORDER BY FREEZE_TIME
+    </select>
+    
+    <!-- 查询电压电流功率图表,用于报表 -->
+    <select id="queryVoltCurrPowerReportInfo" parameterType="HashMap" resultMap="CurveBeanResultMap">
+    	<choose>
+    		<!-- 曲线电压 -->
+    		<when test="curveType == 1">
+    			<if test="Vtype == 1">
+					SELECT METER_ID, FREEZE_TIME, VA*1.732 A, VB*1.732 B, VC*1.732 C, 0 D
+					FROM   T_CUR_V
+					WHERE  FREEZE_TIME >= #{beginTime,jdbcType=TIME}
+					AND    FREEZE_TIME &lt; #{endTime,jdbcType=TIME}
+					and freeze_time &lt;= SYSDATE
+					AND    METER_ID = #{objectId}
+					AND    freeze_time = trunc(freeze_time,'hh24')
+				</if>
+				<if test="Vtype == 2">
+					SELECT METER_ID, FREEZE_TIME, VA A, VB B, VC C, 0 D
+					FROM   T_CUR_V
+					WHERE  FREEZE_TIME >= #{beginTime,jdbcType=TIME}
+					AND    FREEZE_TIME &lt; #{endTime,jdbcType=TIME}
+					and freeze_time &lt;= SYSDATE
+					AND    METER_ID = #{objectId}
+					AND    freeze_time = trunc(freeze_time,'hh24')
+				</if>
+    		</when>
+    		<!-- 曲线电流 -->
+    		<when test="curveType == 2">
+    			SELECT METER_ID, FREEZE_TIME, IA A, IB B, IC C, IO D, greatest(nvl(IA,0),nvl(IB,0),nvl(IC,0),nvl(IO,0)) DM
+				FROM   T_CUR_I 
+				WHERE  FREEZE_TIME >= #{beginTime,jdbcType=TIME}
+				AND    FREEZE_TIME &lt; #{endTime,jdbcType=TIME}
+				and freeze_time &lt;= SYSDATE
+				AND    METER_ID = #{objectId}
+				AND    freeze_time = trunc(freeze_time,'hh24')
+    		</when>
+    		<!-- 曲线有功 -->
+    		<when test="curveType == 3">
+    			SELECT A.METER_ID, A.FREEZE_TIME, A.AP D, A.AP_A A, A.AP_B B, A.AP_C C, greatest(nvl(A.AP,0),nvl(A.AP_A,0),nvl(A.AP_B,0),nvl(A.AP_C,0)) DM
+				FROM   T_CUR_AP A
+				WHERE  A.FREEZE_TIME >= #{beginTime,jdbcType=TIME}
+				AND    A.FREEZE_TIME &lt; #{endTime,jdbcType=TIME}
+				and A.freeze_time &lt;= SYSDATE
+				AND    a.freeze_time = trunc(a.freeze_time,'hh24')
+				<!-- 表示分户Id -->
+				<if test="isLedger == true">
+					AND  EXISTS (
+						 SELECT 1 FROM T_LEDGER_METER T1 WHERE  A.METER_ID = T1.METER_ID AND T1.LEDGER_ID = #{ledgerId}
+					)
+				</if>
+				<!-- 表示计量点Id -->
+				<if test="isLedger == false">
+					AND  A.METER_ID = #{objectId}
+				</if>
+    		</when>
+    		<!-- 曲线无功 -->
+    		<when test="curveType == 4">
+    			SELECT A.METER_ID, A.FREEZE_TIME, A.RP D, A.RP_A A, A.RP_B B, A.RP_C C, greatest(nvl(A.RP,0),nvl(A.RP_A,0),nvl(A.RP_B,0),nvl(A.RP_C,0)) DM
+				FROM   T_CUR_RP A
+				WHERE  A.FREEZE_TIME >= #{beginTime,jdbcType=TIME}
+				AND    A.FREEZE_TIME &lt; #{endTime,jdbcType=TIME}
+				and A.freeze_time &lt;= SYSDATE
+				AND    a.freeze_time = trunc(a.freeze_time,'hh24')
+				
+				<!-- 表示分户Id -->
+				<if test="isLedger == true">
+					AND  EXISTS (
+					     SELECT 1 FROM T_LEDGER_METER T1 WHERE  A.METER_ID = T1.METER_ID AND T1.LEDGER_ID = #{ledgerId}
+					)
+				</if>
+				<!-- 表示计量点Id -->
+				<if test="isLedger == false">
+					AND  A.METER_ID = #{objectId}
+				</if>
+    		</when>
+    		<!-- 功率因素 -->
+    		<when test="curveType == 5">
+    			SELECT METER_ID, FREEZE_TIME, PF_A/100 A, PF_B/100 B, PF_C/100 C, PF/100 D, greatest(PF_A,PF_B,PF_C,PF) DM
+				FROM   T_CUR_PF
+				WHERE  FREEZE_TIME >= #{beginTime,jdbcType=TIME}
+				AND    FREEZE_TIME &lt; #{endTime,jdbcType=TIME}
+				and freeze_time &lt;= SYSDATE
+				AND    METER_ID = #{objectId}
+				AND    freeze_time = trunc(freeze_time,'hh24')			
+    		</when>
+    		<!-- 曲线电量 -->
+    		<when test="curveType == 6">
+					select q.meter_id as METER_ID,to_date(q.freeze_time,'yyyy-MM-dd HH24') as FREEZE_TIME,sum(q.faq_value) as A,sum(q.frq_value) as B,  sum(q.baq_value) as C, sum(q.brq_value) as D from
+					(select substr(to_char(t.freeze_time,'yyyy-MM-dd HH24:mi:ss'),0,13) as freeze_time,t.meter_id,t.faq_value,t.frq_value,t.baq_value,t.brq_value from T_CUR_Q t
+					where t.FREEZE_TIME >= #{beginTime,jdbcType=TIME} AND t.FREEZE_TIME &lt; #{endTime,jdbcType=TIME}
+					and t.freeze_time &lt;= SYSDATE
+					AND t.METER_ID = #{objectId}) q
+					group by q.meter_id,q.freeze_time
+    		</when>
+    		<!-- 曲线需量有功无功 -->
+    		<when test="curveType == 7">
+    			select meter_id, freeze_time, d_value A, id_value B
+    			from t_cur_d
+    			where freeze_time >= #{beginTime,jdbcType=TIME}
+    			and freeze_time &lt; #{endTime,jdbcType=TIME}
+    			and meter_id = #{objectId}
+    			and freeze_time = trunc(freeze_time,'hh24')
+    		</when>
+            <!-- 电压相位角 -->
+            <when test="curveType == 8">
+                SELECT METER_ID, FREEZE_TIME, AU_AB_A A, AU_B B, AU_CB_C C, 0 D
+                FROM   T_CUR_V_ANGLE_REC
+                WHERE  FREEZE_TIME >= #{beginTime,jdbcType=TIME}
+                AND    FREEZE_TIME &lt; #{endTime,jdbcType=TIME}
+                AND    METER_ID = #{objectId}
+                AND    freeze_time = trunc(freeze_time,'hh24')
+            </when>
+            <!-- 电流相位角 -->
+            <when test="curveType == 9">
+                SELECT METER_ID, FREEZE_TIME, AI_A A, AI_B B, AI_C C, 0 D
+                FROM   T_CUR_I_ANGLE_REC
+                WHERE  FREEZE_TIME >= #{beginTime,jdbcType=TIME}
+                AND    FREEZE_TIME &lt; #{endTime,jdbcType=TIME}
+                AND    METER_ID = #{objectId}
+                AND    freeze_time = trunc(freeze_time,'hh24')
+            </when>
+            <!-- 电网频率 -->
+            <when test="curveType == 10">
+            	SELECT METER_ID, FREEZE_TIME, FREQUCE D
+                FROM   T_CUR_FREQ
+                WHERE  FREEZE_TIME >= #{beginTime,jdbcType=TIME}
+                AND    FREEZE_TIME &lt; #{endTime,jdbcType=TIME}
+                AND    METER_ID = #{objectId}
+                AND    freeze_time = trunc(freeze_time,'hh24')
+            </when>
+            <!-- 曲线水量 -->
+            <when test="curveType == 11">
+				select q.meter_id as METER_ID,to_date(q.freeze_time,'yyyy-MM-dd HH24') as FREEZE_TIME,sum(q.flow_value) as D from
+				(select substr(to_char(t.freeze_time,'yyyy-MM-dd HH24:mi:ss'),0,13) as freeze_time,t.meter_id,t.flow_value
+				from t_cur_wflow t where t.FREEZE_TIME >= #{beginTime,jdbcType=TIME} AND t.FREEZE_TIME &lt; #{endTime,jdbcType=TIME} AND t.METER_ID = #{objectId}) q
+				group by q.meter_id,q.freeze_time
+            </when>
+			<when test="curveType == 12">
+				select q.meter_id as METER_ID,to_date(q.freeze_time,'yyyy-MM-dd HH24') as FREEZE_TIME,sum(q.flow_value) as D from
+				(select substr(to_char(t.freeze_time,'yyyy-MM-dd HH24:mi:ss'),0,13) as freeze_time,t.meter_id,t.flow_value
+				from T_CUR_GFLOW t where t.FREEZE_TIME >= #{beginTime,jdbcType=TIME} AND t.FREEZE_TIME &lt; #{endTime,jdbcType=TIME} AND t.METER_ID = #{objectId}) q
+				group by q.meter_id,q.freeze_time
+			</when>
+    	</choose>
+    	ORDER BY FREEZE_TIME
+    </select>
+    
+    <!-- 查询电压列表 -->
+    <select id="queryVoltCurrPowerList" parameterType="HashMap" resultMap="CurveBeanResultMap">
+    	SELECT METER_ID, FREEZE_TIME, V_MAX, V_MAX_TIME, V_MIN, V_MIN_TIME, V_UPPER_TIME, 
+		       V_LOWER_TIME, V_LIMIT_RATE, V_FPY, V_MON_TIME 
+		FROM   T_DAY_SP_V_STAT
+		WHERE  FREEZE_TIME >= #{beginTime,jdbcType=TIME}
+		AND    FREEZE_TIME &lt;= #{endTime,jdbcType=TIME}
+		AND    METER_ID = #{meterId}
+		ORDER BY FREEZE_TIME DESC
+    </select>
+    
+    <!-- 查询电压、电流、有功功率水平线 -->
+    <select id="queryStraightLine" parameterType="HashMap" resultType="HashMap">
+    	SELECT A.THRESHOLD_ID, A.THRESHOLD_NAME, B.THRESHOLD_VALUE
+		FROM   T_METER_THRESHOLD A, T_METER_THRESHOLD_RELATION B
+		WHERE  A.THRESHOLD_ID = B.THRESHOLD_ID
+		AND    A.THRESHOLD_TYPE = 1
+		AND    B.METER_ID = #{objectId}
+		AND    A.THRESHOLD_ID = #{curveType}
+    </select>
+    
+    <!-- 查询测量点对应分户的标准功率因数 -->
+    <select id="queryStandPF" parameterType="HashMap" resultType="HashMap">
+    	<if test="objectType == 1">
+	    	select t.threshold_id,t.threshold_value from T_LEDGER_THRESHOLD_RELATION t where t.ledger_id=#{objectId}
+    	</if>
+    	<if test="objectType == 2">
+	    	select t.threshold_id,t.threshold_value from T_LEDGER_THRESHOLD_RELATION t,t_meter m where 
+	    	m.ledger_id=t.ledger_id and m.meter_id=#{objectId}
+    	</if>
+    </select>
+    
+    <!-- 根据ledgerId得到meterId -->
+    <select id="getVolMeters" parameterType="HashMap" resultType="HashMap">
+    	SELECT DISTINCT(T1.METER_ID) as METER_ID, T2.METER_NAME as METER_NAME
+    	 FROM T_LEDGER_METER T1 LEFT JOIN T_METER T2 
+    	 ON T1.METER_ID = T2.METER_ID WHERE T1.LEDGER_ID = #{objectId} 
+    </select>
+
+    <!-- 查询分户光伏曲线数据 -->
+    <select id="getLightPower" parameterType="HashMap" resultMap="CurveBeanResultMap">
+        SELECT A.FREEZE_TIME as FREEZE_TIME, sum(A.AP) as D
+        FROM   T_CUR_AP A inner join t_meter m on A.meter_id=m.meter_id
+        WHERE  A.FREEZE_TIME >= #{beginTime,jdbcType=TIME}
+        AND    A.FREEZE_TIME &lt;= #{endTime,jdbcType=TIME}
+        and m.LEDGER_ID IN (SELECT t1.ledger_id from t_ledger t1,t_ledger t2
+            where t1.ledger_lft>=t2.ledger_lft and t1.ledger_rgt&lt;=t2.ledger_rgt and t2.ledger_id=#{ledgerId})
+        and m.VOLUME_TYPE=2
+        group by A.FREEZE_TIME
+        ORDER BY FREEZE_TIME
+    </select>
+    
+    <!-- 获取用户的y轴最小值设置 -->
+    <select id="getUserYMin" resultType="Integer">
+    	select y_min from t_account
+    	where account_id = #{accountId}
+    </select>
+    
+    <!-- 更新用户y轴最小值设置 -->
+    <update id="setUserYMin" parameterType="HashMap">
+    	update t_account set y_min = #{yMin}
+    	where account_id = #{accountId}
+    </update>
+</mapper>

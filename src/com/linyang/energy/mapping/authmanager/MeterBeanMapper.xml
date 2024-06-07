@@ -1,0 +1,285 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.linyang.energy.mapping.authmanager.MeterBeanMapper" >
+  <resultMap id="BaseResultMap" type="com.linyang.energy.model.MeterBean" >
+    <id column="METER_ID" property="meterId" jdbcType="DECIMAL" />
+    <result column="METER_NAME" property="meterName" jdbcType="VARCHAR" />
+    <result column="METER_TYPE" property="meterType" jdbcType="DECIMAL" />
+    <result column="METER_ATTR" property="meterAttr" jdbcType="DECIMAL" />
+    <result column="LEDGER_ID" property="ledgerId" jdbcType="DECIMAL" />
+    <result column="TERMINAL_ID" property="terminalId" jdbcType="DECIMAL" />
+    <result column="MPED_ID" property="mpedId" jdbcType="DECIMAL" />
+    <result column="TYPE_ID" property="typeId" jdbcType="DECIMAL" />
+    <result column="ATTRIBUTE_ID" property="attributeId" jdbcType="DECIMAL" />
+  </resultMap>
+  <sql id="Base_Column_List" >
+    METER_ID, METER_NAME, METER_TYPE, METER_ATTR, LEDGER_ID, TERMINAL_ID, 
+    MPED_ID, TYPE_ID,  ATTRIBUTE_ID
+  </sql>
+  <select id="selectByPrimaryKey" resultMap="BaseResultMap" parameterType="java.lang.Long" >
+    select 
+    <include refid="Base_Column_List" />
+    from T_METER
+    where METER_ID = #{meterId,jdbcType=DECIMAL}
+  </select>
+  <delete id="deleteByPrimaryKey" parameterType="java.lang.Long" >
+    delete from T_METER
+    where METER_ID = #{meterId,jdbcType=DECIMAL}
+  </delete>
+  <insert id="insert" parameterType="com.linyang.energy.model.MeterBean" >
+    insert into T_METER (METER_ID, METER_NAME, METER_TYPE, 
+      METER_ATTR, DEVICE_TYPE, LEDGER_ID, 
+      TERMINAL_ID, MPED_ID, TYPE_ID, 
+      DEVICE_ID, ATTRIBUTE_ID)
+    values (#{meterId,jdbcType=DECIMAL}, #{meterName,jdbcType=VARCHAR}, #{meterType,jdbcType=DECIMAL}, 
+      #{meterAttr,jdbcType=DECIMAL}, #{deviceType,jdbcType=DECIMAL}, #{ledgerId,jdbcType=DECIMAL}, 
+      #{terminalId,jdbcType=DECIMAL}, #{mpedId,jdbcType=DECIMAL}, #{typeId,jdbcType=DECIMAL}, 
+      #{deviceId,jdbcType=DECIMAL}, #{attributeId,jdbcType=DECIMAL})
+  </insert>
+  <insert id="insertSelective" parameterType="com.linyang.energy.model.MeterBean" >
+    insert into T_METER
+    <trim prefix="(" suffix=")" suffixOverrides="," >
+      <if test="meterId != null" >
+        METER_ID,
+      </if>
+      <if test="meterName != null" >
+        METER_NAME,
+      </if>
+      <if test="meterType != null" >
+        METER_TYPE,
+      </if>
+      <if test="meterAttr != null" >
+        METER_ATTR,
+      </if>
+      <if test="deviceType != null" >
+        DEVICE_TYPE,
+      </if>
+      <if test="ledgerId != null" >
+        LEDGER_ID,
+      </if>
+      <if test="terminalId != null" >
+        TERMINAL_ID,
+      </if>
+      <if test="mpedId != null" >
+        MPED_ID,
+      </if>
+      <if test="typeId != null" >
+        TYPE_ID,
+      </if>
+      <if test="deviceId != null" >
+        DEVICE_ID,
+      </if>
+      <if test="attributeId != null" >
+        ATTRIBUTE_ID,
+      </if>
+    </trim>
+    <trim prefix="values (" suffix=")" suffixOverrides="," >
+      <if test="meterId != null" >
+        #{meterId,jdbcType=DECIMAL},
+      </if>
+      <if test="meterName != null" >
+        #{meterName,jdbcType=VARCHAR},
+      </if>
+      <if test="meterType != null" >
+        #{meterType,jdbcType=DECIMAL},
+      </if>
+      <if test="meterAttr != null" >
+        #{meterAttr,jdbcType=DECIMAL},
+      </if>
+      <if test="deviceType != null" >
+        #{deviceType,jdbcType=DECIMAL},
+      </if>
+      <if test="ledgerId != null" >
+        #{ledgerId,jdbcType=DECIMAL},
+      </if>
+      <if test="terminalId != null" >
+        #{terminalId,jdbcType=DECIMAL},
+      </if>
+      <if test="mpedId != null" >
+        #{mpedId,jdbcType=DECIMAL},
+      </if>
+      <if test="typeId != null" >
+        #{typeId,jdbcType=DECIMAL},
+      </if>
+      <if test="deviceId != null" >
+        #{deviceId,jdbcType=DECIMAL},
+      </if>
+      <if test="attributeId != null" >
+        #{attributeId,jdbcType=DECIMAL},
+      </if>
+    </trim>
+  </insert>
+  <update id="updateByPrimaryKeySelective" parameterType="com.linyang.energy.model.MeterBean" >
+    update T_METER
+    <set >
+      <if test="meterName != null" >
+        METER_NAME = #{meterName,jdbcType=VARCHAR},
+      </if>
+      <if test="meterType != null" >
+        METER_TYPE = #{meterType,jdbcType=DECIMAL},
+      </if>
+      <if test="meterAttr != null" >
+        METER_ATTR = #{meterAttr,jdbcType=DECIMAL},
+      </if>
+      <if test="deviceType != null" >
+        DEVICE_TYPE = #{deviceType,jdbcType=DECIMAL},
+      </if>
+      <if test="ledgerId != null" >
+        LEDGER_ID = #{ledgerId,jdbcType=DECIMAL},
+      </if>
+      <if test="terminalId != null" >
+        TERMINAL_ID = #{terminalId,jdbcType=DECIMAL},
+      </if>
+      <if test="mpedId != null" >
+        MPED_ID = #{mpedId,jdbcType=DECIMAL},
+      </if>
+      <if test="typeId != null" >
+        TYPE_ID = #{typeId,jdbcType=DECIMAL},
+      </if>
+      <if test="deviceId != null" >
+        DEVICE_ID = #{deviceId,jdbcType=DECIMAL},
+      </if>
+      <if test="attributeId != null" >
+        ATTRIBUTE_ID = #{attributeId,jdbcType=DECIMAL},
+      </if>
+    </set>
+    where METER_ID = #{meterId,jdbcType=DECIMAL}
+  </update>
+  <update id="updateByPrimaryKey" parameterType="com.linyang.energy.model.MeterBean" >
+    update T_METER
+    set METER_NAME = #{meterName,jdbcType=VARCHAR},
+      METER_TYPE = #{meterType,jdbcType=DECIMAL},
+      METER_ATTR = #{meterAttr,jdbcType=DECIMAL},
+      DEVICE_TYPE = #{deviceType,jdbcType=DECIMAL},
+      LEDGER_ID = #{ledgerId,jdbcType=DECIMAL},
+      TERMINAL_ID = #{terminalId,jdbcType=DECIMAL},
+      MPED_ID = #{mpedId,jdbcType=DECIMAL},
+      TYPE_ID = #{typeId,jdbcType=DECIMAL},
+      DEVICE_ID = #{deviceId,jdbcType=DECIMAL},
+      ATTRIBUTE_ID = #{attributeId,jdbcType=DECIMAL}
+    where METER_ID = #{meterId,jdbcType=DECIMAL}
+  </update>
+  
+  <select id="countMeterByLedgerId" resultType="int">
+  	SELECT COUNT(*) CNT FROM T_METER m JOIN T_LEDGER_SHOW ls ON m.METER_ID = ls.METER_ID WHERE ls.LEDGER_ID=#{ledgerId} AND METER_STATUS =1
+  </select>
+  
+  <select id="countSubMeterByMeterId" resultType="int">
+  	SELECT COUNT(*) CNT FROM T_METER m JOIN T_LINELOSS_METER_INFO l ON l.METER_ID = m.METER_ID WHERE l.PAREMENT_METER_ID = #{meterId} AND m.METER_STATUS =1
+  </select>
+  
+  <!-- 获取线损树 -->
+  <select id="getLineLossTreeData" resultType="LineLossTreeBean">
+  	select m.meter_id as id,l.parement_meter_id as pId,m.meter_name as name from t_lineloss_meter_info l,t_meter m
+	where l.meter_id=m.meter_id and m.ledger_id in (
+		select l1.ledger_id from t_ledger l1,t_ledger l2
+				where l1.ledger_lft>=l2.ledger_lft and l1.ledger_rgt &lt;=l2.ledger_rgt
+				and l2.ledger_id = #{ledgerId}
+	)
+	union
+	select m.meter_id as id,-1 as pId,m.meter_name as name from t_meter m
+	where m.ledger_id in (
+		select l1.ledger_id from t_ledger l1,t_ledger l2
+			where l1.ledger_lft>=l2.ledger_lft and l1.ledger_rgt &lt;=l2.ledger_rgt
+			and l2.ledger_id = #{ledgerId}
+	) and m.meter_id not in (select l.meter_id from t_lineloss_meter_info l)
+  </select>
+  
+  <!-- 删除线损配置关系 -->
+  <delete id="deleteLinelossRelation">
+  		delete from t_lineloss_meter_info t where t.meter_id in (
+  			select m.meter_id from t_meter m where m.ledger_id in(
+				select l1.ledger_id from t_ledger l1,t_ledger l2
+					where l1.ledger_lft>=l2.ledger_lft and l1.ledger_rgt &lt;=l2.ledger_rgt
+					and l2.ledger_id = #{ledgerId}
+			) 
+  		)
+  </delete>
+  
+  <!-- 保存线损配置关系 -->
+  <insert id="saveLineLossRelation" parameterType="LineLossTreeBean">
+  	insert into t_lineloss_meter_info (meter_id,parement_meter_id,meter_level)
+	values (#{id},#{pId},#{meterLevel})
+  </insert>
+  
+  <!-- 得到未配置的DCP -->
+  <select id="getUnSetDCP" resultType="LineLossTreeBean">
+  		select m.meter_id as id,m.meter_name as name, m.meter_type as meterType
+  		 from t_meter m
+		where m.ledger_id in (
+			select l1.ledger_id from t_ledger l1,t_ledger l2
+				where l1.ledger_lft>=l2.ledger_lft and l1.ledger_rgt &lt;=l2.ledger_rgt
+				and l2.ledger_id = #{ledgerId}
+		) and m.meter_id not in (select l.meter_id from t_lineloss_meter_info l) 
+		 and m.meter_status = 1
+		ORDER BY M.METER_NAME
+  </select>
+  
+  <!-- 得到DCP树 -->
+  <select id="getSetDCP" resultType="LineLossTreeBean">
+  	select m.meter_id as id,l.parement_meter_id as pId,m.meter_name as name, m.meter_type as meterType, m.is_virtual as isVirtual
+  	from t_lineloss_meter_info l,t_meter m
+	where l.meter_id=m.meter_id and m.ledger_id in (
+		select l1.ledger_id from t_ledger l1,t_ledger l2
+				where l1.ledger_lft>=l2.ledger_lft and l1.ledger_rgt &lt;=l2.ledger_rgt
+				and l2.ledger_id = #{ledgerId} and m.METER_STATUS = 1
+	)
+	<if test="meterName != null">
+      AND m.meter_name LIKE '%'|| #{meterName} || '%'
+    </if>
+  </select>
+  
+  <select id="getEMOTree" resultType="HashMap">
+    select l.ledger_id as nodeid ,l.ledger_name as nodename,l.parent_ledger_id as parentid,  1 as nodetype from t_ledger l
+        where l.parent_ledger_id =  #{ledgerId}
+    <if test="meterName != null">
+      and l.ledger_name LIKE '%'|| #{meterName} || '%'
+    </if>
+     order by nodetype,nodename
+  </select>
+  
+  <select id="getEMOModel1" resultType="LedgerRelationBean">
+  		select relation_type as type ,relation_id as id ,attr_type as attr ,pct, CASE WHEN relation_type = 1 and l.ledger_name is not null THEN l.ledger_name ELSE relation_name END as name,CASE WHEN relation_type = 1 THEN 0 ELSE m.meter_type END as meterType from T_LEDGER_RELATION t
+        left join t_ledger l ON t.RELATION_ID = l.LEDGER_ID
+        left join t_meter m ON m.METER_ID = t.RELATION_ID
+        where t.ledger_id = #{ledgerId}
+  </select>
+  
+  <select id="getEMOModel2" resultType="HashMap">
+	  	select t1.meter_id as id,t2.meter_name as name,t2.meter_type as meterType from T_LEDGER_SHOW t1 
+	  	left join t_meter t2
+	  	on t1.meter_id = t2.meter_id
+	  	where t1.ledger_id = #{ledgerId} and t2.meter_status = 1
+  </select>
+  
+  <delete id="deleteLedgerRelation">
+  		delete from T_LEDGER_RELATION where ledger_id =#{ledgerId}
+  </delete>
+  
+  <delete id="deleteLedgerShow">
+  		delete from T_LEDGER_SHOW where ledger_id =#{ledgerId}
+  </delete>
+  
+  <insert id="addLedgerRelation" parameterType="HashMap">
+  	insert into  T_LEDGER_RELATION(rec_id,ledger_id,relation_type,relation_id,attr_type,pct,relation_name)
+  	values(#{recId},#{ledgerId},#{relationType},#{relationId},#{attrType},#{pct},#{relationName})
+  </insert>
+  
+  <insert id="addLedgerShow" parameterType="HashMap">
+  	insert into T_LEDGER_SHOW(ledger_id,meter_id) values(#{ledgerId},#{meterId})
+  </insert>
+
+    <select id="getUnSetDCPByName" resultType="LineLossTreeBean">
+        SELECT M.METER_ID AS ID,M.METER_NAME AS NAME, M.METER_TYPE AS METERTYPE
+        FROM T_METER M
+        WHERE M.LEDGER_ID IN (
+        SELECT L1.LEDGER_ID FROM T_LEDGER L1,T_LEDGER L2
+        WHERE L1.LEDGER_LFT>=L2.LEDGER_LFT AND L1.LEDGER_RGT &lt;=L2.LEDGER_RGT
+        AND L2.LEDGER_ID = #{ledgerId}
+        ) AND M.METER_ID NOT IN (SELECT L.METER_ID FROM T_LINELOSS_METER_INFO L)
+        AND M.METER_STATUS = 1
+        AND M.METER_NAME LIKE '%'|| #{meterName} || '%'
+        ORDER BY M.METER_NAME
+    </select>
+  
+</mapper>

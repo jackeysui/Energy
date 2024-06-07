@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8" ?> 
+<!DOCTYPE mapper PUBLIC "-//ibatis.apache.org//DTD Mapper 3.0//EN" "http://ibatis.apache.org/dtd/ibatis-3-mapper.dtd">
+
+<mapper namespace="com.linyang.energy.mapping.bigDataPredict.DayTempMapper">
+	
+	<!-- 得到地区温度数据 -->
+	<select id="getDayTempByParam" parameterType="HashMap" resultType="com.linyang.energy.model.DayTempBean">
+		select t.daily_time as dailyTime ,t.temp_max as tempMax, t.temp_min as tempMin, t.region_id as regionId, t.week as week 
+		 from t_day_temp t 
+		 <where>
+		 	t.region_id = #{regionId}
+		 	<choose>
+		 		<!-- 高温 -->
+		 		<when test="type == 1">
+		 			and t.temp_max >= #{tempMax}
+		 		</when>
+		 		<!-- 低温 -->
+		 		<when test="type == 2">
+		 			and t.temp_min &lt;= #{tempMin}
+		 		</when>
+		 		<!-- 常温 -->
+		 		<when test="type == 3">
+		 			and t.temp_max &lt; #{tempMax} and t.temp_min > #{tempMin}
+		 		</when>
+		 	</choose>
+		 	<if test="dailyTime != null">
+		 		and t.daily_time = #{dailyTime}
+		 	</if>
+		 	<if test="startTime != null">
+		 		and t.daily_time between #{startTime} and #{endTime}
+		 	</if>
+		 </where>
+	</select>
+	
+	<!-- 增加天气情况 -->
+	<insert id="addDayTempInfo" parameterType="com.linyang.energy.model.DayTempBean" >
+<!--		insert into t_day_temp(daily_time,temp_max,temp_min,region_id,week)-->
+<!--		values(#{dailyTime},#{tempMax},#{tempMin},#{regionId},#{week})-->
+		merge into t_day_temp t
+		using (select #{dailyTime} as dailyTime,
+		              #{tempMax}   as tempMax,
+		              #{tempMin}   as tempMin,
+		              #{regionId}  as regionId,
+		              #{week}      as week
+		         from dual) s
+		on (t.daily_time = s.dailyTime and t.region_id = s.regionId)
+		when not matched then
+		  insert (daily_time, temp_max, temp_min, region_id, week)
+		  values (s.dailyTime, s.tempMax, s.tempMin, s.regionId, s.week)
+		
+	</insert>
+	
+	<!-- 查询有功功率曲线 -->
+	<select id="queryLedgerQ" parameterType="HashMap"  resultType="HashMap">
+		 SELECT T2.LEDGER_ID,
+		       A.FREEZE_TIME,
+		       SUM(A.FAQ_VALUE * t2.add_attr * t2.pct / 100) AP
+		  FROM T_CUR_Q A
+		  LEFT JOIN T_LEDGER_METER T2
+		    ON A.METER_ID = T2.METER_ID
+		 WHERE A.FREEZE_TIME >= #{beginTime,jdbcType=TIME}
+		   AND A.FREEZE_TIME &lt; #{endTime,jdbcType=TIME}
+		   AND T2.LEDGER_ID = #{ledgerId}
+		   AND T2.ADD_ATTR > 0
+		 GROUP BY T2.LEDGER_ID, A.FREEZE_TIME
+		 ORDER BY AP DESC
+	</select>
+	
+	<!-- 查询有功功率曲线 -->
+	<select id="queryLedgerAP" parameterType="HashMap"  resultType="HashMap">
+		SELECT T2.LEDGER_ID,
+		       A.FREEZE_TIME,
+		       SUM(A.AP * t2.add_attr * t2.pct / 100) AP
+		  FROM T_CUR_AP A
+		  LEFT JOIN T_LEDGER_METER T2
+		    ON A.METER_ID = T2.METER_ID
+		 WHERE A.FREEZE_TIME >= #{beginTime,jdbcType=TIME}
+		   AND A.FREEZE_TIME &lt; #{endTime,jdbcType=TIME}
+		   AND T2.LEDGER_ID = #{ledgerId}
+		   AND T2.ADD_ATTR > 0
+		 GROUP BY T2.LEDGER_ID, A.FREEZE_TIME
+		 ORDER BY AP DESC
+	</select>
+	
+	<!-- 计算用户功率值 -->
+	<select id="sumLedgerAP" parameterType="HashMap"  resultType="Double">
+		SELECT SUM(A.AP * t2.add_attr * t2.pct / 100) AP
+		  FROM T_CUR_AP A
+		  LEFT JOIN T_LEDGER_METER T2
+		    ON A.METER_ID = T2.METER_ID
+		 WHERE A.FREEZE_TIME >= #{beginTime,jdbcType=TIME}
+		   AND A.FREEZE_TIME &lt; #{endTime,jdbcType=TIME}
+		   AND T2.LEDGER_ID = #{ledgerId}
+		   AND T2.ADD_ATTR > 0
+	</select>
+	
+	<!-- 计算用户电量-->
+	<select id="sumLedgerQ" parameterType="HashMap"  resultType="Double">
+		SELECT SUM(A.faq_value * t2.add_attr * t2.pct / 100) AP
+		  FROM T_CUR_Q A
+		  LEFT JOIN T_LEDGER_METER T2
+		    ON A.METER_ID = T2.METER_ID
+		 WHERE A.FREEZE_TIME >= #{beginTime,jdbcType=TIME}
+		   AND A.FREEZE_TIME &lt; #{endTime,jdbcType=TIME}
+		   AND T2.LEDGER_ID = #{ledgerId}
+		   AND T2.ADD_ATTR > 0
+	</select>
+	
+	<!-- 得到需要查询的区域代码 -->
+	<select id="getRegionList" resultType="String">
+		SELECT DISTINCT T1.REGION FROM T_LEDGER T1 WHERE T1.REGION IS NOT NULL
+	</select>
+	
+	<select id="getNameByRegion" parameterType="String"  resultType="String" >
+		select t1.region_name from t_region t1 where t1.region_id = #{region}
+	</select>
+
+</mapper>

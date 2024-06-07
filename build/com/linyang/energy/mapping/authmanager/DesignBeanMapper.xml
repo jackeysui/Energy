@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.linyang.energy.mapping.authmanager.DesignBeanMapper" >
+  <!-- 获取生产计划列表-->
+  <select id="getDesignList" resultType="com.linyang.energy.model.DesignBean" >
+  	SELECT P.PLAN_ID AS planId,P.PRODUCT_ID AS productId,P.ASSEMBLE_ID AS assembleId,
+  	T.PRODUCT_NAME AS productName,A.ASSEMBLE_NAME AS assembleName,P.BEGIN_TIME AS beginTime,
+  	P.END_TIME AS endTime,P.OUTPUT AS output FROM T_PLAN P LEFT JOIN T_PRODUCT T ON P.PRODUCT_ID=T.PRODUCT_ID 
+  	LEFT JOIN T_ASSEMBLE A ON P.ASSEMBLE_ID=A.ASSEMBLE_ID AND A.FLAG=1 ORDER BY P.PLAN_ID DESC
+  </select>
+  
+  <!-- 根据条件查询生产计划 -->
+  <select id="searchDesign" parameterType="HashMap" resultType="com.linyang.energy.model.DesignBean" >
+  	SELECT * FROM (SELECT P.PLAN_ID AS planId,P.PRODUCT_ID AS productId,P.ASSEMBLE_ID AS assembleId,
+  	T.PRODUCT_NAME AS productName,A.ASSEMBLE_NAME AS assembleName,P.BEGIN_TIME AS beginTime,
+  	P.END_TIME AS endTime,P.OUTPUT AS output FROM T_PLAN P LEFT JOIN T_PRODUCT T ON P.PRODUCT_ID=T.PRODUCT_ID 
+  	LEFT JOIN T_ASSEMBLE A ON P.ASSEMBLE_ID=A.ASSEMBLE_ID AND A.FLAG=1 WHERE 1=1 
+  	<if test="beginTime != null &amp; endTime != null" >
+        AND (P.BEGIN_TIME BETWEEN #{beginTime,jdbcType=DATE} AND #{endTime,jdbcType=DATE} 
+        OR P.END_TIME BETWEEN #{beginTime,jdbcType=DATE} AND #{endTime,jdbcType=DATE}  ) 
+    </if>
+    <if test="productId != null" >
+        AND P.PRODUCT_ID = #{productId,jdbcType=DECIMAL} 
+    </if>
+    <if test="assembleId != null" >
+        AND P.ASSEMBLE_ID = #{assembleId,jdbcType=DECIMAL} 
+    </if>
+  	ORDER BY P.PLAN_ID DESC ) A 
+  	union  
+  	SELECT * FROM (SELECT P.PLAN_ID AS planId,P.PRODUCT_ID AS productId,P.ASSEMBLE_ID AS assembleId,
+  	T.PRODUCT_NAME AS productName,A.ASSEMBLE_NAME AS assembleName,P.BEGIN_TIME AS beginTime,
+  	P.END_TIME AS endTime,P.OUTPUT AS output FROM T_PLAN P LEFT JOIN T_PRODUCT T ON P.PRODUCT_ID=T.PRODUCT_ID 
+  	LEFT JOIN T_ASSEMBLE A ON P.ASSEMBLE_ID=A.ASSEMBLE_ID AND A.FLAG=1 WHERE 1=1 
+  	<if test="beginTime != null &amp; endTime != null" >
+        AND P.END_TIME &gt;= #{beginTime,jdbcType=DATE} AND P.BEGIN_TIME &lt;= #{endTime,jdbcType=DATE}
+    </if>
+    <if test="productId != null" >
+        AND P.PRODUCT_ID = #{productId,jdbcType=DECIMAL} 
+    </if>
+    <if test="assembleId != null" >
+        AND P.ASSEMBLE_ID = #{assembleId,jdbcType=DECIMAL} 
+    </if>
+  	ORDER BY P.PLAN_ID DESC ) B
+  </select>
+  
+  <!-- 录入能耗列表-->
+  <select id="getPowerList" resultType="com.linyang.energy.model.PowerInputBean" >
+  	SELECT T.PLAN_ID AS planId,T.MEASURE_UNIT_ID AS unitId,T.TYPE_ID AS typeId,T.TYPE_VALUE AS typeValue,
+    D.DETAIL_NAME AS unitName,C.DETAIL_NAME AS typeName FROM T_PLAN_PRODUCT_TYPE T LEFT JOIN T_DICT_TYPE_DETAIL D 
+    ON T.MEASURE_UNIT_ID = D.DETAIL_ID AND D.CATE_ID=200 AND D.STATUS=1 LEFT JOIN T_DICT_TYPE_DETAIL C 
+    ON T.TYPE_ID=C.DETAIL_ID AND C.STATUS=1 AND C.CATE_ID IN (1000,1001,1002,1003,1004,1005,1006) 
+  </select>
+  
+  <!-- 根据Id删除生产计划信息 -->
+  <delete id="deletePlan" parameterType="java.lang.Long" >
+    DELETE FROM T_PLAN WHERE PLAN_ID=#{planId,jdbcType=DECIMAL}
+  </delete>
+  
+  <!-- 根据产品Id删除能耗信息 -->
+  <delete id="deletePower" parameterType="java.lang.Long" >
+    DELETE FROM T_PLAN_PRODUCT_TYPE WHERE PLAN_ID=#{planId,jdbcType=DECIMAL}
+  </delete>
+  
+  <!-- 获取耗能种类 -->
+  <select id="getPowerData" resultType="HashMap" parameterType="java.lang.Long">
+  	SELECT T.TYPE_ID,D.DETAIL_NAME FROM T_PRODUCT_DEVICE_RELATION T LEFT JOIN T_DICT_TYPE_DETAIL D 
+  	ON T.TYPE_ID= D.DETAIL_ID  WHERE T.PRODUCT_ID=#{productId,jdbcType=DECIMAL}
+  </select>
+  
+  <!-- 获取产品列表 -->
+  <select id="getProductData" resultType="HashMap" >
+  	SELECT A.PRODUCT_ID,A.PRODUCT_NAME,B.DETAIL_ID,B.DETAIL_NAME FROM T_PRODUCT A,T_DICT_TYPE_DETAIL B WHERE A.MEASURE_UNIT_ID = B.DETAIL_ID AND B.STATUS=1
+  </select>
+  
+  <!-- 获取流水线列表 -->
+  <select id="getAssembleData" resultType="HashMap" >
+  	SELECT ASSEMBLE_ID,ASSEMBLE_NAME FROM T_ASSEMBLE WHERE FLAG=1
+  </select>
+  
+  <!-- 获取计量单位 -->
+  <select id="getUnitData" resultType="HashMap" >
+  	SELECT DETAIL_ID,DETAIL_NAME FROM T_DICT_TYPE_DETAIL  WHERE STATUS=1 
+  	AND CATE_ID=200
+  </select>
+  
+  <!-- 根据计划Id删除耗能种类信息  -->
+  <delete id="deletePowerDetail" parameterType="HashMap" >
+    DELETE FROM T_PLAN_PRODUCT_TYPE WHERE PLAN_ID=#{planId,jdbcType=DECIMAL} 
+    AND TYPE_ID=#{typeId,jdbcType=DECIMAL}
+  </delete>
+  
+  <!-- 插入计划信息 -->
+  <insert id="insertPlanData" parameterType="com.linyang.energy.model.DesignBean" >
+  	INSERT INTO T_PLAN (PLAN_ID,PRODUCT_ID,ASSEMBLE_ID,BEGIN_TIME,END_TIME,OUTPUT) VALUES 
+  	(#{planId,jdbcType=DECIMAL},#{productId,jdbcType=DECIMAL},#{assembleId,jdbcType=DECIMAL},
+  	#{beginTime},#{endTime},#{output,jdbcType=DOUBLE})
+  </insert> 
+  
+  <!-- 插入耗能信息 -->
+  <insert id="insertPowerInfo" parameterType="com.linyang.energy.model.PowerInputBean" >
+    INSERT INTO T_PLAN_PRODUCT_TYPE (PLAN_ID,MEASURE_UNIT_ID,TYPE_ID,TYPE_VALUE) VALUES 
+    (#{planId,jdbcType=DECIMAL},#{unitId,jdbcType=DECIMAL},#{typeId,jdbcType=DECIMAL},#{typeValue,jdbcType=DOUBLE})
+  </insert>
+  
+  <!-- 根据Id获得相应的计划信息 -->
+  <select id="getPlanInfo" resultType="com.linyang.energy.model.DesignBean" parameterType="java.lang.Long" >
+  	SELECT P.PLAN_ID AS planId,P.PRODUCT_ID AS productId,P.ASSEMBLE_ID AS assembleId,D.DETAIL_NAME AS outPutUnit,
+  	T.PRODUCT_NAME AS productName,A.ASSEMBLE_NAME AS assembleName,P.BEGIN_TIME AS beginTime,
+  	P.END_TIME AS endTime,P.OUTPUT AS output FROM T_PLAN P LEFT JOIN T_PRODUCT T ON P.PRODUCT_ID=T.PRODUCT_ID 
+  	LEFT JOIN T_ASSEMBLE A ON P.ASSEMBLE_ID=A.ASSEMBLE_ID AND A.FLAG=1 LEFT JOIN T_DICT_TYPE_DETAIL D 
+  	ON T.MEASURE_UNIT_ID=D.DETAIL_ID WHERE P.PLAN_ID=#{planId,jdbcType=DECIMAL} ORDER BY P.PLAN_ID DESC
+  </select>
+  
+  <!-- 根据计划Id获得相应的耗能种类 -->
+  <select id="getPowerDataById" resultType="com.linyang.energy.model.PowerInputBean" parameterType="java.lang.Long" >
+  	SELECT T.PLAN_ID AS planId,T.MEASURE_UNIT_ID AS unitId,T.TYPE_ID AS typeId,T.TYPE_VALUE AS typeValue,
+    D.DETAIL_NAME AS unitName,C.DETAIL_NAME AS typeName FROM T_PLAN_PRODUCT_TYPE T LEFT JOIN T_DICT_TYPE_DETAIL D 
+    ON T.MEASURE_UNIT_ID = D.DETAIL_ID AND D.CATE_ID=200 AND D.STATUS=1 LEFT JOIN T_DICT_TYPE_DETAIL C 
+    ON T.TYPE_ID=C.DETAIL_ID AND C.STATUS=1 AND C.CATE_ID IN (1000,1001,1002,1003,1004,1005,1006) 
+    WHERE T.PLAN_ID=#{planId,jdbcType=DECIMAL}
+  </select>
+  
+  
+  <!-- 更新计划信息 -->
+  <update id="updatePlanInfo" parameterType="com.linyang.energy.model.DesignBean" >
+    UPDATE T_PLAN 
+    <set >
+      <if test="productId != null" >
+        PRODUCT_ID  = #{productId,jdbcType=DECIMAL},
+      </if>
+      <if test="assembleId != null" >
+        ASSEMBLE_ID  = #{assembleId,jdbcType=DECIMAL},
+      </if>
+      <if test="beginTime != null" >
+        BEGIN_TIME = #{beginTime,jdbcType=DATE},
+      </if>
+      <if test="endTime != null" >
+        END_TIME = #{endTime,jdbcType=DATE},
+      </if>
+      <if test="output != null" >
+        OUTPUT = #{output,jdbcType=DOUBLE},
+      </if>
+    </set>
+    WHERE PLAN_ID = #{planId,jdbcType=DECIMAL}
+  </update>
+  
+  <!-- 更新能耗信息 -->
+  <update id="updatePowerInfo" parameterType="com.linyang.energy.model.PowerInputBean" >
+    UPDATE T_PLAN_PRODUCT_TYPE 
+    <set >
+      <if test="unitId != null" >
+        MEASURE_UNIT_ID = #{unitId,jdbcType=DECIMAL},
+      </if>
+      <if test="typeValue != null" >
+        TYPE_VALUE = #{typeValue,jdbcType=DOUBLE},
+      </if>
+    </set>
+    WHERE PLAN_ID = #{planId,jdbcType=DECIMAL} AND TYPE_ID = #{typeId,jdbcType=DECIMAL}
+  </update>
+</mapper>

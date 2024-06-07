@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.linyang.energy.mapping.pullSwitch.PullSwitchMapper" >
+
+    <select id="queryMeterById" resultType="HashMap">
+        SELECT NVL(T1.LEDGER_ID,-1) LEDGER_ID, NVL(T1.LEDGER_NAME,'-') LEDGER_NAME,NVL(T3.METER_ID,0) METER_ID,NVL(T3.METER_NAME,'-') METER_NAME,NVL(T5.MPOINT_ID,0) MPOINT_ID,
+		NVL(T5.MPOINT_NAME,'-') MPOINT_NAME, NVL(T6.TERMINAL_ID,0) TERMINAL_ID,NVL(T6.TERMINAL_NAME,'-') TERMINAL_NAME,T6.TERMINAL_ADDRESS , T5.MPOINT_INDEX FROM T_LEDGER T1
+		RIGHT JOIN T_METER T3 ON T1.LEDGER_ID = T3.LEDGER_ID
+		JOIN T_MPED_INFO T4 ON T3.MPED_ID = T4.MPED_ID
+		JOIN COLL_PLATFORM.T_MPOINT T5 ON T5.MPOINT_ID = T4.MPED_ID
+		JOIN COLL_PLATFORM.T_TERMINAL T6 ON T6.TERMINAL_ID = T5.TERMINAL_ID
+		WHERE T3.METER_ID = #{meterId} AND T5.MPOINT_STATUS = 1
+    </select>
+    
+    <select id="queryMeterByAddr" resultType="HashMap">
+        SELECT T1.LEDGER_ID , T1.LEDGER_NAME , T3.METER_ID , T3.METER_NAME , T4.AMMETER_ADDRESS
+        FROM T_LEDGER T1 , T_LEDGER_METER T2 , T_METER T3 ,T_MPED_INFO T4
+		WHERE T1.LEDGER_ID = T2.LEDGER_ID
+		AND T2.METER_ID = T3.METER_ID
+		AND T3.MPED_ID = T4.MPED_ID
+		AND T4.AMMETER_ADDRESS = #{addr}
+    </select>
+
+    <select id="queryLedger" resultType="HashMap">
+        SELECT NVL(L1.LEDGER_ID,-1) LEDGER_ID,NVL(L1.LEDGER_NAME,'-') LEDGER_NAME FROM T_LEDGER L1,T_LEDGER L2
+        WHERE L1.LEDGER_LFT &lt;= L2.LEDGER_LFT AND L1.LEDGER_RGT >= L2.LEDGER_RGT AND L2.LEDGER_ID = #{ledgerId}
+        AND L1.ANALY_TYPE = 102
+    </select>
+
+
+    <select id="queryMeterDataById" resultType="HashMap">
+        SELECT T1.METER_ID,T1.METER_NAME,T2.LEDGER_NAME FROM T_METER T1,T_LEDGER T2
+        WHERE T1.LEDGER_ID = T2.LEDGER_ID AND  T1.METER_ID = #{meterId}
+    </select>
+
+
+
+</mapper>

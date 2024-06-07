@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8" ?> 
+<!DOCTYPE mapper PUBLIC "-//ibatis.apache.org//DTD Mapper 3.0//EN" "http://ibatis.apache.org/dtd/ibatis-3-mapper.dtd">
+
+<mapper namespace="com.linyang.energy.mapping.phone.ServePhoneMapper">
+	<!-- 分户bean map -->
+	<resultMap id="BaseResultMap" type="com.linyang.energy.model.LedgerBean" >
+		<id column="LEDGER_ID"            property="ledgerId"        jdbcType="DECIMAL" />
+		<result column="LEDGER_NAME"      property="ledgerName"      jdbcType="VARCHAR" />
+		<result column="NUMBER_OF_PEOPLE" property="numberOfPeople"  jdbcType="DECIMAL" />
+		<result column="USE_AREA"         property="useArea"         jdbcType="DECIMAL" />
+		<result column="DEPTH"            property="depth"           jdbcType="DECIMAL" />
+		<result column="LEDGER_LFT"       property="ledgerLft"       jdbcType="DECIMAL" />
+		<result column="LEDGER_RGT"       property="ledgerRgt"       jdbcType="DECIMAL" />
+		<result column="PARENT_LEDGER_ID" property="parentLedgerId"  jdbcType="DECIMAL" />
+		<result column="COLLMETER_NUMBER" property="collmeterNumber" jdbcType="DECIMAL" />
+		<result column="RATE_ID"          property="rateId"          jdbcType="DECIMAL" />
+		<result column="LEDGER_REMARK"    property="ledgerRemark"    jdbcType="VARCHAR" />
+		<result column="THRESHOLD_ID"     property="thresholdId"     jdbcType="DECIMAL" />
+		<result column="THRESHOLD_NAME"   property="thresholdName"   jdbcType="VARCHAR" />
+		<result column="THRESHOLD_VALUE"  property="thresholdValue"  jdbcType="VARCHAR" />
+		<result column="X"                property="x"               jdbcType="DOUBLE" />
+		<result column="Y"                property="y"               jdbcType="DOUBLE" />
+		<result column="PIC_ID"           property="picId"           jdbcType="DECIMAL" />
+		<result column="ANALY_TYPE"       property="analyType"       jdbcType="INTEGER" />
+		<result column="INHERIT"          property="inherit"         jdbcType="INTEGER" />
+		<result column="USER_NO"          property="userNo"          jdbcType="VARCHAR" />
+		<result column="INDUSTRY_TYPE"    property="industryType"    jdbcType="VARCHAR" />
+		<result column="INDUSTRY_NAME"    property="industryName"    jdbcType="VARCHAR" />
+		<result column="REGION"           property="region"          jdbcType="VARCHAR" />
+		<result column="REGION_NAME"      property="regionName"      jdbcType="VARCHAR" />
+		<result column="CONTACTS"         property="contacts"        jdbcType="VARCHAR" />
+		<result column="CONTACT_INFO"     property="contactInfo"     jdbcType="VARCHAR" />
+		<result column="ADDRESS"          property="address"         jdbcType="VARCHAR" />
+		<result column="LEDGER_TYPE"      property="ledgerType"      jdbcType="DECIMAL" />
+		<result column="LINELOSS"         property="lineloss"      jdbcType="DECIMAL" />
+        <result column="ADD_ATTR"       property="addAttr"       jdbcType="INTEGER" />
+	</resultMap>
+
+	<sql id="Base_Column_List" >
+		LEDGER_ID, LEDGER_NAME, NUMBER_OF_PEOPLE, USE_AREA, DEPTH, LEDGER_LFT, LEDGER_RGT, PARENT_LEDGER_ID, 
+		COLLMETER_NUMBER, RATE_ID, LEDGER_REMARK, X, Y, PIC_ID, ANALY_TYPE, INHERIT,USER_NO,INDUSTRY_TYPE,
+		REGION,CONTACTS,CONTACT_INFO,ADDRESS
+	</sql>
+	
+	<!-- 获取电表结构数据 -->
+	<select id="getMeterTreeData" resultType="LineLossTreeBean">
+  	select id,pId,name,ledgerId,ledgerName from (
+	  	select m.meter_id as id,l.parement_meter_id as pId,m.meter_name as name,m.ledger_id as ledgerId,tl.ledger_name as ledgerName 
+	  	from t_lineloss_meter_info l,t_meter m,t_ledger tl
+		where l.meter_id=m.meter_id and m.meter_status = 1 and m.ledger_id = tl.ledger_id 
+		and m.ledger_id in (
+			select l1.ledger_id from t_ledger l1,t_ledger l2
+					where l1.ledger_lft>=l2.ledger_lft and l1.ledger_rgt &lt;=l2.ledger_rgt
+					and l2.ledger_id = #{ledgerId} and l2.analy_type = 102
+		)
+		<!-- 加载未配置的电表(电工电力结构树不加载)
+		union
+		select m.meter_id as id,0 as pId,m.meter_name as name,m.ledger_id as ledgerId,tl.ledger_name as ledgerName 
+		from t_meter m,t_ledger tl
+		where m.meter_status = 1 and m.ledger_id = tl.ledger_id 
+		and m.ledger_id in (
+			select l1.ledger_id from t_ledger l1,t_ledger l2
+				where l1.ledger_lft>=l2.ledger_lft and l1.ledger_rgt &lt;=l2.ledger_rgt
+				and l2.ledger_id = #{ledgerId} and l2.analy_type = 102
+		) and m.meter_id not in (select l.meter_id from t_lineloss_meter_info l)
+		-->
+	) where 1=1 
+	<if test="accountId != null &amp; accountId != '' ">
+		and ledgerId in (
+			SELECT NODE_LEDGER FROM V_LEDGER_TREE WHERE PARENT_LEDGER in (
+		  		SELECT L.LEDGER_ID FROM V_GROUP_LEDGER L WHERE L.ACCOUNT_ID = #{accountId}
+			)
+		)
+	</if>
+	<if test="userledgerId != null &amp; userledgerId != -100">
+		AND ledgerId IN (
+			SELECT NODE_LEDGER FROM V_LEDGER_TREE WHERE PARENT_LEDGER = #{userledgerId}
+		)
+	</if>
+	<!-- add by chengq 20160216  自身及子节点过滤 -->
+	<if test="meterLimit != null &amp; meterLimit != '' &amp;  meterLimit != -1">
+		AND id NOT IN (
+			  select t.METER_ID from t_lineloss_meter_info t
+			  start with t.parement_meter_id = #{meterLimit}
+			  connect by prior t.meter_id = t.parement_meter_id
+		)
+		AND id != #{meterLimit}
+	</if>
+  </select>
+  
+  <!-- 获取区域列表 -->
+  <select id="getRegionListByParam" resultMap="BaseResultMap"  parameterType="HashMap" >
+		SELECT 
+		<include refid="Base_Column_List" />
+		FROM T_LEDGER
+		<where>
+			<if test="ledgerName != null &amp; ledgerName !='' ">
+				AND LEDGER_NAME like '%' || {ledgerName} || '%'
+			</if>
+			<if test="ledgerId != null &amp; ledgerId != -100">
+				AND LEDGER_ID IN (
+					SELECT NODE_LEDGER FROM V_LEDGER_TREE WHERE PARENT_LEDGER = #{ledgerId}
+				)
+			</if>
+			<if test="accountId != null &amp; accountId != '' ">
+				AND LEDGER_ID IN (
+					SELECT NODE_LEDGER FROM V_LEDGER_TREE WHERE PARENT_LEDGER in (
+      					SELECT L.LEDGER_ID FROM V_GROUP_LEDGER L WHERE L.ACCOUNT_ID = #{accountId}
+					)
+				)
+			</if>
+		AND LEDGER_ID IN(select distinct l1.ledger_id from t_ledger l1,t_ledger l2
+				where l1.ledger_lft &lt;= l2.ledger_lft and l1.ledger_rgt >= l2.ledger_rgt
+				and l2.analy_type = 102 and l1.analy_type != 102 and l1.analy_type != 101)
+		</where>
+  </select>
+  
+</mapper>

@@ -1,0 +1,377 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//ibatis.apache.org//DTD Mapper 3.0//EN" "http://ibatis.apache.org/dtd/ibatis-3-mapper.dtd">
+
+<mapper namespace="com.linyang.energy.mapping.message.SuggestMapper">
+
+    <!-- 回复表map -->
+    <resultMap id="replyMap" type="com.linyang.energy.model.ReplyBean">
+        <id property="replyId" column="REPLY_ID"/>
+        <id property="sugId" column="SUG_ID"/>
+        <id property="submitDate" column="SUBMIT_DATE"/>
+        <id property="accountId" column="ACCOUNT_ID"/>
+        <id property="submitUser" column="SUBMIT_USER"/>
+        <id property="ledgerId" column="LEDGER_ID"/>
+        <id property="submitLedger" column="SUBMIT_LEDGER"/>
+        <id property="replyMsg" column="REPLY_MSG"/>
+        <id property="contactWay" column="CONTACT_WAY"/>
+        <id property="status" column="STATUS"/>
+        <id property="seq" column="SEQ"/>
+    </resultMap>
+
+    <resultMap id="recodeMap" type="com.linyang.energy.model.RecordBean">
+        <id property="sugId" column="SUG_ID"/>
+        <id property="submitDateStr" column="SUBMIT_DATE"/>
+        <id property="accountId" column="ACCOUNT_ID"/>
+        <id property="submitUser" column="SUBMIT_USER"/>
+        <id property="ledgerId" column="LEDGER_ID"/>
+        <id property="submitLedger" column="SUBMIT_LEDGER"/>
+        <id property="sugMsg" column="SUG_MSG"/>
+        <id property="contactWay" column="CONTACT_WAY"/>
+        <id property="status" column="STATUS"/>
+    </resultMap>
+
+    <!-- 分页查询反馈信息列表数据 -->
+    <select id="getSuggestPageList" resultMap="recodeMap">
+        <if test="ledgerId!=1">
+            SELECT
+            TSR.SUG_ID,
+            TO_CHAR (
+            TSR.SUBMIT_DATE,
+            'yyyy-mm-dd HH24:mi'
+            ) AS SUBMIT_DATE,
+            TSR.ACCOUNT_ID,
+            TSR.SUBMIT_USER,
+            TSR.LEDGER_ID,
+            TL.parent_ledger_id,
+            TSR.SUBMIT_LEDGER,
+            TSR.SUG_MSG,
+            TA.PHONE CONTACT_WAY,
+            TSR.STATUS
+            FROM
+            T_SUGGEST_RECORD TSR
+            JOIN T_ACCOUNT TA ON TA.ACCOUNT_ID =
+            TSR.ACCOUNT_ID
+            JOIN T_LEDGER TL ON TL.LEDGER_ID = TA.LEDGER_ID
+            WHERE
+            1 = 1
+            AND TA.LEDGER_ID IN (
+            SELECT
+            node.ledger_id
+            FROM
+            t_ledger node,
+            t_ledger
+            PARENT
+            WHERE
+            node.ledger_lft BETWEEN PARENT .ledger_lft
+            AND PARENT
+            .ledger_rgt
+            AND PARENT .ledger_id = #{ledgerId}
+            AND node.ANALY_TYPE =
+            102
+            ) OR TA.LEDGER_ID = #{ledgerId}
+            ORDER BY
+            NVL2 (TSR.status, 1, 0),
+            TSR.SUBMIT_DATE DESC
+        </if>
+        <if test="ledgerId==1">
+            SELECT
+            TSR.SUG_ID,
+            TO_CHAR (
+            TSR.SUBMIT_DATE,
+            'yyyy-mm-dd HH24:mi'
+            ) AS SUBMIT_DATE,
+            TSR.ACCOUNT_ID,
+            TSR.SUBMIT_USER,
+            TSR.LEDGER_ID,
+            TSR.SUBMIT_LEDGER,
+            TSR.SUG_MSG,
+            TA.PHONE CONTACT_WAY,
+            TSR.STATUS
+            FROM
+            T_SUGGEST_RECORD TSR
+            LEFT JOIN T_ACCOUNT TA
+            ON TA.ACCOUNT_ID = TSR.ACCOUNT_ID
+            ORDER BY
+            NVL2 (TSR.status, 1, 0),
+            TSR.SUBMIT_DATE DESC
+        </if>
+    </select>
+
+    <!-- 管理员获取reply表未处理信息 -->
+    <select id="getReplyNumsForAdmin" resultType="Long">
+		SELECT
+		COUNT(*)
+		FROM
+		T_SUGGEST_REPLY
+		WHERE
+		(STATUS = 0
+		OR STATUS IS NULL)
+		AND LEDGER_ID IN
+		(
+		SELECT
+		node.ledger_id
+		FROM
+		t_ledger node,
+		t_ledger PARENT
+		WHERE
+		node.ledger_lft BETWEEN PARENT .ledger_lft
+		AND PARENT .ledger_rgt
+		AND
+		PARENT .ledger_id = #{ledgerId}
+		AND node.ANALY_TYPE = 102
+		)
+	</select>
+
+    <!-- 管理员获取record表未处理信息 -->
+    <select id="getRocordNumsForAdmin" resultType="Long">
+		SELECT
+		COUNT(*)
+		FROM
+		T_SUGGEST_RECORD
+		WHERE
+		(STATUS = 0
+		OR STATUS IS NULL)
+		AND LEDGER_ID IN
+		(
+		SELECT
+		node.ledger_id
+		FROM
+		t_ledger node,
+		t_ledger PARENT
+		WHERE
+		node.ledger_lft BETWEEN PARENT .ledger_lft
+		AND PARENT .ledger_rgt
+		AND
+		PARENT .ledger_id = #{ledgerId}
+		AND node.ANALY_TYPE = 102
+		)
+	</select>
+
+
+    <!-- 用户只针对reply表进行查询是否有遗留问题 -->
+    <select id="getSuggestNumsForUsers" parameterType="Long"
+            resultType="Long">
+		SELECT COUNT(*) FROM T_SUGGEST_REPLY TS WHERE
+		TS.SUG_ID IN (
+		SELECT SUG_ID FROM T_SUGGEST_RECORD TSR
+		WHERE
+		TSR.ACCOUNT_ID =
+		#{accountId}
+		) AND (TS.STATUS = 0 OR TS.STATUS IS NULL) AND ACCOUNT_ID
+		&lt;> #{accountId}
+	</select>
+
+    <!-- 检测用户的sug_id是否已经存在 -->
+    <select id="toViewUserSugIdIsExist" parameterType="Long"
+            resultType="Long">
+		SELECT SUG_ID FROM T_SUGGEST_RECORD WHERE ACCOUNT_ID
+		=#{accountId} AND ROWNUM = 1
+	</select>
+
+    <!-- 检测用户的sug_id是否已经存在 -->
+    <select id="toViewSugIdIsExist" parameterType="String"
+            resultType="Long">
+		SELECT SUG_ID FROM T_SUGGEST_RECORD WHERE OPEN_ID
+		=#{openId} AND ROWNUM = 1
+	</select>
+
+
+    <!-- 插入回复表 -->
+    <insert id="interpositionReply" parameterType="com.linyang.energy.model.ReplyBean">
+        INSERT INTO
+        T_SUGGEST_REPLY
+        (REPLY_ID,SUG_ID,SUBMIT_DATE,ACCOUNT_ID,SUBMIT_USER,LEDGER_ID,SUBMIT_LEDGER,REPLY_MSG,CONTACT_WAY,STATUS,SEQ ,OPEN_ID
+        )
+        values(#{replyId},#{sugId},#{submitDate},#{accountId},#{submitUser},#{ledgerId},#{submitLedger},#{replyMsg},#{contactWay},0,0
+        <if test="openId!=null and openId!=''">
+            ,#{openId}
+        </if>
+        )
+    </insert>
+
+    <!-- 插入建议表 -->
+    <insert id="interpositionRecord" parameterType="com.linyang.energy.model.RecordBean">
+        INSERT INTO
+        T_SUGGEST_RECORD
+        (SUG_ID,SUBMIT_DATE,ACCOUNT_ID,SUBMIT_USER,LEDGER_ID,SUBMIT_LEDGER,SUG_MSG,CONTACT_WAY,STATUS
+        <if test="openId!=null and openId!=''">
+            ,OPEN_ID
+        </if>
+        )
+        VALUES(#{sugId},#{submitDate},#{accountId},#{submitUser},#{ledgerId},#{submitLedger},#{sugMsg},#{contactWay},0
+        <if test="openId!=null and openId!=''">
+            ,#{openId}
+        </if>
+        )
+    </insert>
+
+    <!-- 获取用户与管理员的一对一聊天信息,tag为标记确定发送人 -->
+    <select id="getChatRecordByAccountId" resultMap="replyMap">
+        SELECT * FROM(
+        SELECT A.*,
+        ROWNUM RN
+        FROM ( SELECT
+        tag,
+        REPLY_ID,
+        ACCOUNT_ID,
+        SUG_ID,
+        REPLY_MSG,
+        SUBMIT_DATE,
+        OPEN_ID
+        FROM(
+        SELECT
+        0 tag,
+        TSP.REPLY_ID,
+        TSP.ACCOUNT_ID,
+        TSP.SUG_ID SUG_ID,
+        TSP.REPLY_MSG REPLY_MSG,
+        TSP.SUBMIT_DATE SUBMIT_DATE,
+        TSP.OPEN_ID OPEN_ID
+        FROM
+        T_SUGGEST_REPLY TSP
+        WHERE
+        <if test="openId!=''">
+            TSP.SUG_ID  = #{sugId}
+            AND TSP.OPEN_ID &lt;> #{openId}
+        </if>
+        <if test="openId==''">
+            TSP.ACCOUNT_ID&lt;>#{accountId}
+        </if>
+        UNION ALL
+        SELECT
+        1 tag,
+        TSP1.REPLY_ID,
+        TSP1.ACCOUNT_ID,
+        TSP1.SUG_ID
+        SUG_ID,
+        TSP1.REPLY_MSG
+        REPLY_MSG,
+        TSP1.SUBMIT_DATE SUBMIT_DATE,
+        TSP1.OPEN_ID OPEN_ID
+        FROM
+        T_SUGGEST_REPLY TSP1
+        WHERE
+        <if test="openId!=''">
+            TSP1.OPEN_ID=#{openId}
+        </if>
+        <if test="openId==''">
+            TSP1.ACCOUNT_ID=#{accountId}
+        </if>
+        UNION ALL
+        SELECT
+        1 tag,
+        0 REPLY_ID,
+        TSR.ACCOUNT_ID,
+        TSR.SUG_ID SUG_ID,
+        TSR.SUG_MSG REPLY_MSG,
+        TSR.SUBMIT_DATE SUBMIT_DATE,
+        TSR.OPEN_ID OPEN_ID
+        FROM
+        T_SUGGEST_RECORD TSR
+        WHERE
+        <if test="openId!=''">
+            TSR.OPEN_ID=#{openId}
+        </if>
+        <if test="openId==''">
+            TSR.ACCOUNT_ID=#{accountId}
+        </if>
+        )
+        WHERE
+        SUG_ID = #{sugId}
+        ORDER BY
+        SUBMIT_DATE DESC) A
+        WHERE ROWNUM &lt;= 20*#{pageNo})
+        WHERE RN >=
+        20*(#{pageNo} -1)
+        ORDER BY
+        SUBMIT_DATE
+    </select>
+
+    <!-- 修改reply表记录状态 0未回复,1已回复 -->
+    <update id="updateReplyStatus" parameterType="Long">
+		UPDATE
+		T_SUGGEST_REPLY SET STATUS=1 WHERE SUG_ID = #{sugId} AND ACCOUNT_ID
+		&lt;> #{accountId} AND STATUS &lt;> 1
+	</update>
+
+    <!-- 修改record表记录状态 0未回复,1已回复 -->
+    <update id="updateRecordStatus" parameterType="Long">
+		UPDATE
+		T_SUGGEST_RECORD SET STATUS=1 WHERE SUG_ID = #{sugId} AND ACCOUNT_ID
+		&lt;> #{accountId} AND STATUS &lt;> 1
+	</update>
+
+
+    <select id="getExcelList" resultMap="replyMap">
+		SELECT
+		SUBMIT_LEDGER,
+		SUBMIT_USER,
+		SUG_ID,
+		REPLY_MSG,
+		SUBMIT_DATE,
+		CONTACT_WAY
+		FROM
+		(
+		SELECT
+		TSP.SUBMIT_LEDGER SUBMIT_LEDGER,
+		TSP.SUBMIT_USER SUBMIT_USER,
+		TSP.SUG_ID SUG_ID,
+		TSP.REPLY_MSG REPLY_MSG,
+		TSP.SUBMIT_DATE SUBMIT_DATE,
+		TSP.CONTACT_WAY CONTACT_WAY
+		FROM
+		T_SUGGEST_REPLY TSP
+		UNION ALL
+		SELECT
+		TSR.SUBMIT_LEDGER SUBMIT_LEDGER,
+		TSR.SUBMIT_USER SUBMIT_USER,
+		TSR.SUG_ID SUG_ID,
+		TSR.SUG_MSG REPLY_MSG,
+		TSR.SUBMIT_DATE SUBMIT_DATE,
+		TSR.CONTACT_WAY CONTACT_WAY
+		FROM
+		T_SUGGEST_RECORD TSR
+		)
+		ORDER BY
+		SUG_ID
+	</select>
+
+
+    <select id="getSugId" resultType="Long">
+		SELECT SUG_ID FROM
+		T_SUGGEST_RECORD
+	</select>
+
+
+    <select id="isPush" resultType="HashMap">
+		SELECT IS_PUSH from
+		T_SUGGEST_RECORD WHERE ACCOUNT_ID = #{accountId}
+	</select>
+
+    <!-- 修改reply表记录状态 0未回复,1已回复 -->
+    <update id="updateIsPush" parameterType="Long">
+		UPDATE T_SUGGEST_RECORD
+		SET is_push=#{push} WHERE ACCOUNT_ID = #{accountId}
+	</update>
+
+    <select id="lastDate" resultType="HashMap">
+		SELECT SUBMIT_DATE FROM (
+		SELECT SUBMIT_DATE FROM T_SUGGEST_REPLY WHERE ACCOUNT_ID = #{acoountId}
+		ORDER BY SUBMIT_DATE DESC
+		)WHERE ROWNUM = 1
+	</select>
+
+    <select id="getAppUserForOpenId" resultType="HashMap">
+        SELECT * FROM (
+        SELECT TA.LEDGER_ID ledgerId,TA.ACCOUNT_ID accountId,TA.PHONE PHONE,TA.LOGIN_NAME loginName FROM T_OPEN_TERMINAL TOT
+        LEFT JOIN T_ACCOUNT TA
+        ON TA.ACCOUNT_ID = TOT.ACCOUNT_ID
+        WHERE TOT.OPEN_ID = #{openId}
+        ORDER BY TA.CREATE_DATE
+        ) WHERE ROWNUM = 1
+    </select>
+
+
+
+
+</mapper>

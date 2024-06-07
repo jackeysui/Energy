@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.linyang.energy.mapping.yunNan.EnsavingManageMapper">
+
+    <select id="queryEnsavingPageList" resultType="HashMap">
+        SELECT T1.ENT_ID,T2.ENT_NAME,T1.ENS_NAME,T1.ENS_ID,T1.ENS_TYPE,T1.AMOUNT,T1.ENS_AMOUNT,T1.BEGIN_TIME,T1.END_TIME,T1.REMARK
+        FROM T_ENSAVING_INFO T1
+        LEFT JOIN T_ENT_INFO T2 ON T1.ENT_ID = T2.ENT_ID
+        JOIN (
+        SELECT T1.LEDGER_ID AS ID, T1.LEDGER_NAME AS NAME, 1 AS TYPE FROM T_LEDGER T1,T_LEDGER T2
+        WHERE T1.LEDGER_LFT >= T2.LEDGER_LFT AND T1.LEDGER_RGT &lt;=T2.LEDGER_RGT AND T2.LEDGER_ID=#{pId}
+        ) T4 ON T1.ENT_ID = T4.ID
+        <where>
+            <if test="ledgerId != null and ledgerId != ''">
+                T1.ENT_ID = #{ledgerId}
+            </if>
+        </where>
+    </select>
+
+    <insert id="saveData" parameterType="HashMap">
+        INSERT INTO T_ENSAVING_INFO (
+        <if test="ensId">
+            ENS_ID,
+        </if>
+        <if test="ensName">
+            ENS_NAME,
+        </if>
+        <if test="ensType">
+            ENS_TYPE,
+        </if>
+        <if test="impMeas">
+            IMP_MEAS,
+        </if>
+        <if test="amount">
+            AMOUNT,
+        </if>
+        <if test="ensAmount">
+            ENS_AMOUNT,
+        </if>
+        <if test="beginTime">
+            BEGIN_TIME,
+        </if>
+        <if test="endTime">
+            END_TIME,
+        </if>
+        <if test="remark != null and remark != ''">
+            REMARK,
+        </if>
+        <if test="ledgerId">
+            ENT_ID,
+        </if>
+        UPLOAD_STATUS
+        )
+        VALUES (
+        <if test="ensId">
+            #{ensId},
+        </if>
+        <if test="ensName">
+            #{ensName},
+        </if>
+        <if test="ensType">
+            #{ensType},
+        </if>
+        <if test="impMeas">
+            #{impMeas},
+        </if>
+        <if test="amount">
+            #{amount},
+        </if>
+        <if test="ensAmount">
+            #{ensAmount},
+        </if>
+        <if test="beginTime">
+            TO_DATE(#{beginTime},'yyyy-mm-dd'),
+        </if>
+        <if test="endTime">
+            TO_DATE(#{endTime},'yyyy-mm-dd'),
+        </if>
+        <if test="remark != null and remark != ''">
+          #{remark},
+        </if>
+        <if test="ledgerId">
+            #{ledgerId},
+        </if>
+        0
+        )
+    </insert>
+    
+    <update id="modifyData" parameterType="HashMap">
+        UPDATE T_ENSAVING_INFO
+        <set>
+            <if test="ensName != null and ensName != ''">
+                ENS_NAME = #{ensName} ,
+            </if>
+            <if test="ensType != null and ensName != ''">
+                ENS_TYPE = #{ensType} ,
+            </if>
+            <if test="impMeas != null and impMeas != ''">
+                IMP_MEAS = #{impMeas},
+            </if>
+            <if test="amount != null and amount != ''">
+                AMOUNT = #{amount} ,
+            </if>
+            <if test="ensAmount != null and ensAmount != ''">
+                ENS_AMOUNT = #{ensAmount} ,
+            </if>
+            <if test="beginTime != null and beginTime != ''">
+                BEGIN_TIME =  TO_DATE(#{beginTime},'yyyy-mm-dd') ,
+            </if>
+            <if test="endTime != null and endTime != ''">
+                END_TIME = TO_DATE(#{endTime},'yyyy-mm-dd') ,
+            </if>
+            <if test="remark != null and  remark != ''">
+                REMARK = #{remark} ,
+            </if>
+            <if test="dataIndex != null and dataIndex != ''">
+                DATA_INDEX = #{dataIndex} ,
+            </if>
+            <if test="uploadStatus != null and uploadStatus != ''">
+                UPLOAD_STATUS = #{uploadStatus} ,
+            </if>
+            <if test="ledger != null and ledgerId != ''">
+                ENT_ID = #{ledgerId},
+            </if>
+        </set>
+        WHERE ENS_ID = #{ensId}
+    </update>
+
+    <select id="queryDataById" resultType="HashMap">
+        SELECT T1.ENS_ID,T1.ENS_NAME,T1.ENS_TYPE,T1.IMP_MEAS,T1.AMOUNT,T1.ENS_AMOUNT,T1.BEGIN_TIME,
+        T1.END_TIME,T1.REMARK,T1.UPLOAD_STATUS,T1.DATA_INDEX,T1.ENT_ID,T2.ENT_NAME,T2.ENT_CODE
+        FROM T_ENSAVING_INFO T1
+        LEFT JOIN T_ENT_INFO T2 ON T1.ENT_ID = T2.ENT_ID
+        WHERE T1.ENS_ID = #{ensId}
+    </select>
+    
+    <delete id="deleteDataById">
+      DELETE FROM T_ENSAVING_INFO WHERE ENS_ID = #{ensId}
+    </delete>
+
+    <update id="updateDataIndexById" parameterType="HashMap">
+        UPDATE T_ENSAVING_INFO SET DATA_INDEX = #{dataIndex} ,UPLOAD_STATUS = #{uploadStatus}
+    </update>
+
+</mapper>

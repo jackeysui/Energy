@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.linyang.energy.mapping.demand.LedgerDetailsMapper">
+
+    <!-- 获取方案列表信息 -->
+    <select id="queryPlanList" resultType="HashMap">
+      SELECT PLAN_ID,PLAN_NAME,START_DATE,END_DATE,RESPOND_START_TIME,RESPOND_END_TIME,PITCH_PEAK,REMARKS
+      FROM T_POWERGRID_DEMAND_PLAN
+    </select>
+
+    <!-- 根据方案id获取方案详细信息 -->
+    <select id="queryPlanDetailsById" resultType="HashMap">
+      SELECT PLAN_ID,PLAN_NAME,START_DATE,END_DATE,RESPOND_START_TIME,RESPOND_END_TIME,PITCH_PEAK,REMARKS
+      FROM T_POWERGRID_DEMAND_PLAN WHERE PLAN_ID = #{planId}
+    </select>
+
+    <!-- 得到方案下企业列表(分页) -->
+    <select id="queryLedgerListPageData" resultType="HashMap">
+        SELECT T1.LEDGER_ID LEDGERID,T1.LEDGER_NAME LEDGERNAME,T2.LEDGER_PITCH_PEAK LEDGERPITCHPEAK,T3.PITCH_PEAK PITCHPEAK,
+        T2.SUBDUCTION_REMARKS SUBDUCTIONREMARKS FROM T_LEDGER T1
+        JOIN T_PLAN_LEDGER_CONFIG t2
+        ON T1.LEDGER_ID = T2.LEDGER_ID
+        JOIN T_POWERGRID_DEMAND_PLAN T3
+        ON T2.PLAN_ID = T3.PLAN_ID
+        WHERE T2.PLAN_ID = #{planId}
+    </select>
+
+    <select id="queryLedgerIds" resultType="Long">
+        SELECT T1.LEDGER_ID FROM T_LEDGER T1,T_LEDGER T2
+        WHERE T1.LEDGER_LFT >= T2.LEDGER_LFT AND T1.LEDGER_RGT &lt;= T2.LEDGER_RGT AND T2.LEDGER_ID=#{ledgerId} AND T1.ANALY_TYPE=102
+    </select>
+
+    <!-- 得到需求响应概况列表信息 -->
+    <select id="queryOverview" resultType="HashMap">
+        WITH LEDGER_VIEW AS (SELECT COUNT(T1.LEDGER_ID) LEDGERSUM FROM T_LEDGER T1,T_LEDGER T2
+        WHERE T1.LEDGER_LFT >= T2.LEDGER_LFT AND T1.LEDGER_RGT &lt;= T2.LEDGER_RGT AND T2.LEDGER_ID=#{ledgerId} AND T1.ANALY_TYPE=102),
+        PLAN_LEDGER_VIEW AS (SELECT COUNT(LEDGER_ID) JOINLEDGERSUM FROM T_PLAN_LEDGER_CONFIG WHERE PLAN_ID = #{planId}),
+        PLAN_VIEW AS (SELECT * FROM T_POWERGRID_DEMAND_PLAN WHERE PLAN_ID = #{planId})
+        SELECT T1.LEDGERSUM,T2.JOINLEDGERSUM,T3.PITCH_PEAK FROM LEDGER_VIEW T1 , PLAN_LEDGER_VIEW T2 , PLAN_VIEW T3
+    </select>
+
+    <!-- 得到需求响应方案图表信息 -->
+    <select id="queryChartDatas" resultType="HashMap">
+        SELECT T1.LEDGER_ID LEDGERID,T1.LEDGER_NAME LEDGERNAME,T2.LEDGER_PITCH_PEAK LEDGERPITCHPEAK,T3.PITCH_PEAK PITCHPEAK,
+        T2.SUBDUCTION_REMARKS SUBDUCTIONREMARKS FROM T_LEDGER T1
+        JOIN T_PLAN_LEDGER_CONFIG t2
+        ON T1.LEDGER_ID = T2.LEDGER_ID
+        JOIN T_POWERGRID_DEMAND_PLAN T3
+        ON T2.PLAN_ID = T3.PLAN_ID
+        WHERE T2.PLAN_ID = #{planId}
+    </select>
+
+    <!-- 通过起止时间查询曲线有功功率 -->
+    <select id="queryAPavg" resultType="Double">
+        select sum(t.ap * m.add_attr * m.pct / 100) as ap
+		  from t_cur_ap t, t_ledger_meter m
+		 where t.meter_id = m.meter_id
+		   and m.ledger_id = #{ledgerId}
+		   and t.freeze_time between #{beginTime} AND #{endTime}
+    </select>
+    
+     <!-- 通过起止时间查询总电量 -->
+    <select id="queryOneMeterFaq" resultType="Double">
+       select sum(t.ap) as faq
+        from t_cur_ap t
+       where t.meter_id = #{meterId} and t.freeze_time between to_date(#{beginTime,jdbcType=VARCHAR},'yyyy-MM-dd hh24:mi:ss') AND to_date(#{endTime,jdbcType=VARCHAR},'yyyy-MM-dd hh24:mi:ss')
+    </select>
+
+	 <!-- 通过起止时间查询总电量 -->
+    <select id="queryOneLedgerFaq" resultType="Double">
+       select sum(t.ap) as faq
+      from t_cur_ap t, t_ledger_meter m
+     where t.meter_id = m.meter_id
+       and m.ledger_id = #{ledgerId}
+       and t.freeze_time between to_date(#{beginTime,jdbcType=VARCHAR},'yyyy-MM-dd hh24:mi:ss') AND to_date(#{endTime,jdbcType=VARCHAR},'yyyy-MM-dd hh24:mi:ss')
+    </select>
+</mapper>

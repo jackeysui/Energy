@@ -1,0 +1,216 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.linyang.energy.mapping.authmanager.RoleBeanMapper" >
+  <resultMap id="BaseResultMap" type="com.linyang.energy.model.RoleBean" >
+    <id column="ROLE_ID" property="roleId" jdbcType="DECIMAL" />
+    <result column="ROLE_NAME" property="roleName" jdbcType="VARCHAR" />
+    <result column="ROLE_STATUS" property="roleStatus" jdbcType="DECIMAL" />
+    <result column="ROLE_TYPE" property="roleType" jdbcType="DECIMAL" />
+    <result column="CREATE_USERID" property="createUserid" jdbcType="DECIMAL" />
+    <result column="CREATE_DATE" property="createDate" jdbcType="TIMESTAMP" />
+    <result column="MODIFY_USERID" property="modifyUserid" jdbcType="DECIMAL" />
+    <result column="MODIFY_DATE" property="modifyDate" jdbcType="TIMESTAMP" />
+    <result column="ROLE_DESC" property="roleDesc" jdbcType="VARCHAR" />
+  </resultMap>
+  <sql id="Base_Column_List" >
+    ROLE_ID, ROLE_NAME, ROLE_STATUS, CREATE_USERID, CREATE_DATE, MODIFY_USERID, MODIFY_DATE, 
+    ROLE_DESC
+  </sql>
+  <!-- 分页获取角色列表-->
+  <select id="getRolePageData" resultType="HashMap" parameterType="HashMap" >
+		  SELECT   U.LOGIN_NAME    AS CREATEUSER,
+	               R.ROLE_STATUS   AS ROLESTATUS,
+	               R.ROLE_NAME     AS ROLENAME,
+	               M.LOGIN_NAME AS MODIFYUSER,
+	               R.MODIFY_DATE   AS MODIFYDATE,
+	               R.ROLE_DESC     AS ROLEDESC,
+	               R.ROLE_TYPE     AS ROLETYPE,
+	               R.CREATE_DATE   AS CREATEDATE,
+	               R.ROLE_ID AS ROLEID
+	          FROM  T_ROLE R
+	           left join T_ACCOUNT M on   M.ACCOUNT_ID = R.MODIFY_USERID AND M.ACCOUNT_STATUS != 2
+	           left join T_ACCOUNT U on   U.ACCOUNT_ID = R.CREATE_USERID AND U.ACCOUNT_STATUS != 2
+	         WHERE 
+	              R.ROLE_ID!=1
+		   <if test="createUser != ''">
+			AND  R.CREATE_USERID   = #{createUser}
+		   </if>
+		    <if test="modifyUser != ''">
+			AND  R.MODIFY_USERID   = #{modifyUser}
+		   </if>
+		   <if test="roleType != ''">
+			AND  R.ROLE_TYPE   = #{roleType}
+		   </if>
+           <if test="roleStatus != ''">
+			AND R.ROLE_STATUS = #{roleStatus}
+		   </if>
+		   <if test="inputName != ''">
+		   AND (U.LOGIN_NAME   LIKE '%' || #{inputName} || '%' or  M.LOGIN_NAME LIKE '%' || #{inputName} || '%' OR   R.ROLE_NAME LIKE '%' || #{inputName} || '%')
+		   </if>
+		   <if test="beginTime != ''">
+			AND R.CREATE_DATE BETWEEN #{beginTime} AND #{endTime}
+		   </if>
+           <if test="beginTime1 != ''">
+			AND R.MODIFY_DATE BETWEEN #{beginTime1} AND #{endTime1}
+		   </if>
+		   ORDER BY R.ROLE_ID DESC
+  </select>
+  <!-- 根据角色Id删除角色 -->
+  <delete id="deleteRole" parameterType="java.lang.Long" >
+    delete from T_ROLE
+    where ROLE_ID = #{roleId,jdbcType=DECIMAL}
+  </delete>
+  <insert id="insert" parameterType="com.linyang.energy.model.RoleBean" >
+    insert into T_ROLE (ROLE_ID, ROLE_NAME, ROLE_STATUS, 
+      CREATE_USERID, CREATE_DATE, MODIFY_USERID, 
+      MODIFY_DATE, ROLE_DESC)
+    values (#{roleId,jdbcType=DECIMAL}, #{roleName,jdbcType=VARCHAR}, #{roleStatus,jdbcType=DECIMAL}, 
+      #{createUserid,jdbcType=DECIMAL}, #{createDate,jdbcType=TIMESTAMP}, #{modifyUserid,jdbcType=DECIMAL}, 
+      #{modifyDate,jdbcType=TIMESTAMP}, #{roleDesc,jdbcType=VARCHAR})
+  </insert>
+  <!-- 新增角色 -->
+  <insert id="addRoleInfo" parameterType="com.linyang.energy.model.RoleBean" >
+    insert into T_ROLE
+    <trim prefix="(" suffix=")" suffixOverrides="," >
+      <if test="roleId != null" >
+        ROLE_ID,
+      </if>
+      <if test="roleName != null" >
+        ROLE_NAME,
+      </if>
+      <if test="roleStatus != null" >
+        ROLE_STATUS,
+      </if>
+      <if test="createUserid != null" >
+        CREATE_USERID,
+      </if>
+      <if test="createDate != null" >
+        CREATE_DATE,
+      </if>
+      <if test="modifyUserid != null" >
+        MODIFY_USERID,
+      </if>
+      <if test="modifyDate != null" >
+        MODIFY_DATE,
+      </if>
+      <if test="roleDesc != null" >
+        ROLE_DESC,
+      </if>
+    </trim>
+    <trim prefix="values (" suffix=")" suffixOverrides="," >
+      <if test="roleId != null" >
+        #{roleId,jdbcType=DECIMAL},
+      </if>
+      <if test="roleName != null" >
+        #{roleName,jdbcType=VARCHAR},
+      </if>
+      <if test="roleStatus != null" >
+        1,
+      </if>
+      <if test="createUserid != null" >
+        #{createUserid,jdbcType=DECIMAL},
+      </if>
+      <if test="createDate != null" >
+        #{createDate,jdbcType=TIMESTAMP},
+      </if>
+      <if test="modifyUserid != null" >
+        #{modifyUserid,jdbcType=DECIMAL},
+      </if>
+      <if test="modifyDate != null" >
+        #{modifyDate,jdbcType=TIMESTAMP},
+      </if>
+      <if test="roleDesc != null" >
+        #{roleDesc,jdbcType=VARCHAR},
+      </if>
+    </trim>
+  </insert>
+  <!-- 更新角色 -->
+  <update id="updateRoleInfo" parameterType="com.linyang.energy.model.RoleBean" >
+    update T_ROLE
+    <set >
+      <if test="roleName != null" >
+        ROLE_NAME = #{roleName,jdbcType=VARCHAR},
+      </if>
+      <if test="roleStatus != null" >
+        ROLE_STATUS = #{roleStatus,jdbcType=DECIMAL},
+      </if>
+      <if test="createUserid != null" >
+        CREATE_USERID = #{createUserid,jdbcType=DECIMAL},
+      </if>
+      <if test="createDate != null" >
+        CREATE_DATE = #{createDate,jdbcType=TIMESTAMP},
+      </if>
+      <if test="modifyUserid != null" >
+        MODIFY_USERID = #{modifyUserid,jdbcType=DECIMAL},
+      </if>
+      <if test="modifyDate != null" >
+        MODIFY_DATE = #{modifyDate,jdbcType=TIMESTAMP},
+      </if>
+      <if test="roleDesc != null" >
+        ROLE_DESC = #{roleDesc,jdbcType=VARCHAR},
+      </if>
+    </set>
+    where ROLE_ID = #{roleId,jdbcType=DECIMAL}
+  </update>
+  <update id="updateByPrimaryKey" parameterType="com.linyang.energy.model.RoleBean" >
+    update T_ROLE
+    set ROLE_NAME = #{roleName,jdbcType=VARCHAR},
+      ROLE_STATUS = #{roleStatus,jdbcType=DECIMAL},
+      CREATE_USERID = #{createUserid,jdbcType=DECIMAL},
+      CREATE_DATE = #{createDate,jdbcType=TIMESTAMP},
+      MODIFY_USERID = #{modifyUserid,jdbcType=DECIMAL},
+      MODIFY_DATE = #{modifyDate,jdbcType=TIMESTAMP},
+      ROLE_DESC = #{roleDesc,jdbcType=VARCHAR}
+    where ROLE_ID = #{roleId,jdbcType=DECIMAL}
+  </update>
+  <!-- 判断是否有用户和角色有关联 -->
+	<select id="isUseRole" parameterType="java.lang.Long" resultType="java.lang.Long">
+		select count(*)
+	      from t_account_role t, t_account a
+	     where a.account_id = t.account_id
+	       and t.role_id =  #{roleId}
+	       and a.account_status != 2
+	</select>
+	<!-- 判断角色名称是否重复 -->
+	<select id="checkRoleName" parameterType="java.lang.String" resultType="int">
+		select    count(*) from t_role t where t.role_name=#{roleName}
+		<if test="operType == 1">
+			and t.role_name != #{roleName}
+		</if>
+	</select>
+		 <!-- 根据角色id获取角色信息 -->
+	<select id="getRoleByRoleId" parameterType="long" resultType="com.linyang.energy.model.RoleBean">
+	      SELECT 
+	           R.ROLE_ID       AS ROLEID,
+               R.ROLE_STATUS   AS ROLESTATUS,
+               R.ROLE_NAME     AS ROLENAME,
+               R.MODIFY_DATE   AS MODIFYDATE,
+               R.ROLE_DESC     AS ROLEDESC,
+               R.ROLE_TYPE     AS ROLETYPE,
+               R.CREATE_DATE   AS CREATEDATE
+          FROM  T_ROLE R
+         WHERE  R.ROLE_ID = #{roleId}
+	</select>
+	<select id = "getFilterdRole" parameterType="HashMap" resultType="com.linyang.energy.model.RoleBean">
+	SELECT 
+	           R.ROLE_ID       AS ROLEID,
+               R.ROLE_STATUS   AS ROLESTATUS,
+               R.ROLE_NAME     AS ROLENAME,
+               R.MODIFY_DATE   AS MODIFYDATE,
+               R.ROLE_DESC     AS ROLEDESC,
+               R.ROLE_TYPE     AS ROLETYPE,
+               R.CREATE_DATE   AS CREATEDATE
+	from 
+		T_ROLE R
+	WHERE 1=1
+   <if test="roleName != null and roleName != ''">
+            and R.role_name = #{roleName}
+   </if>
+        <if test="roleStatus != null and roleStatus != '' and roleStatus != 0">
+            and R.role_status = #{roleStatus}
+        </if>
+        <if test="roleDesc != null and roleDesc != ''">
+            and R.role_desc = #{roleDesc}
+        </if>
+	</select>
+</mapper>

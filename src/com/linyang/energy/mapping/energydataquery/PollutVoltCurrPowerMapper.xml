@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="UTF-8" ?> 
+<!DOCTYPE mapper PUBLIC "-//ibatis.apache.org//DTD Mapper 3.0//EN" "http://ibatis.apache.org/dtd/ibatis-3-mapper.dtd">
+
+<mapper namespace="com.linyang.energy.mapping.energydataquery.PollutVoltCurrPowerMapper">
+	<!-- 曲线数据bean -->
+	<resultMap id="CurveBeanResultMap" type="com.linyang.energy.model.CurveBean">
+		<result property="meterId"       column="METER_ID"/>
+		<result property="freezeTime"    column="FREEZE_TIME"/>
+		<result property="a"             column="A"/>
+		<result property="b"             column="B"/>
+		<result property="c"             column="C"/>
+		<result property="d"             column="D"/>
+        <result property="e"             column="E"/>
+		<result property="max"          column="V_MAX"/>
+		<result property="maxTime"      column="V_MAX_TIME"/>
+		<result property="min"          column="V_MIN"/>
+		<result property="minTime"      column="V_MIN_TIME"/>
+		<result property="upperTime"    column="V_UPPER_TIME"/>
+		<result property="lowerTime"    column="V_LOWER_TIME"/>
+		<result property="limitRate"    column="V_LIMIT_RATE"/>
+		<result property="fpy"          column="V_FPY"/>
+		<result property="monTime"      column="V_MON_TIME"/>
+		<result property="apA"             column="APA"/>
+		<result property="rpA"             column="RPA"/>
+		<result property="apB"             column="APB"/>
+		<result property="rpB"             column="RPB"/>
+		<result property="apC"             column="APC"/>
+		<result property="rpC"             column="RPC"/>
+		<result property="apD"             column="APD"/>
+		<result property="rpD"             column="RPD"/>
+	</resultMap>
+	
+	<select id="queryPollutCur" parameterType="HashMap" resultMap="CurveBeanResultMap">
+        <if test="curveType == 6">
+            <if test="type==2">
+                select pollut.LEDGER_ID,pollut.FREEZE_TIME,pollut.A+pollutctl.B A, pollut.A B,pollutctl.B C from
+                (select q.LEDGER_ID,to_date(q.freeze_time,'yyyy-MM-dd HH24') as FREEZE_TIME,NVL(SUM(faq), 0) as A   from
+                (select substr(to_char(t.freeze_time,'yyyy-MM-dd HH24:mi:ss'),0,13) as freeze_time,
+                t2.ledger_id,t.faq_value * t2.add_attr * t2.pct /100 as faq from T_CUR_Q t
+                left join T_LEDGER_METER T2 ON T.METER_ID = T2.METER_ID
+                where t.FREEZE_TIME BETWEEN #{beginTime,jdbcType=TIME} AND  #{endTime,jdbcType=TIME}
+                and t.freeze_time &lt;= SYSDATE
+                AND t2.LEDGER_ID = #{LEDGER_ID_POLLUT}) q
+                group by q.LEDGER_ID,q.freeze_time) pollut
+                join
+                ( select q.LEDGER_ID,to_date(q.freeze_time,'yyyy-MM-dd HH24') as FREEZE_TIME,NVL(SUM(faq), 0) as B   from
+                (select substr(to_char(t.freeze_time,'yyyy-MM-dd HH24:mi:ss'),0,13) as freeze_time,
+                t2.ledger_id,t.faq_value * t2.add_attr * t2.pct /100 as faq  from T_CUR_Q t
+                left join T_LEDGER_METER T2 ON T.METER_ID = T2.METER_ID
+                where t.FREEZE_TIME BETWEEN #{beginTime,jdbcType=TIME} AND  #{endTime,jdbcType=TIME}
+                and t.freeze_time &lt;= SYSDATE
+                AND t2.LEDGER_ID = #{LEDGER_ID_POLLUTCTL} ) q
+                group by q.LEDGER_ID,q.freeze_time) pollutctl
+                on POLLUT.FREEZE_TIME = pollutctl.FREEZE_TIME
+                ORDER BY POLLUT.freeze_time
+            </if>
+            <if  test="type==1">
+                select q.LEDGER_ID,to_date(q.freeze_time,'yyyy-MM-dd HH24') as FREEZE_TIME,NVL(SUM(faq), 0) as A,
+                NVL(SUM(faq), 0) as B from
+                (select substr(to_char(t.freeze_time,'yyyy-MM-dd HH24:mi:ss'),0,13) as freeze_time,
+                t2.ledger_id,t.faq_value * t2.add_attr * t2.pct /100 as faq from T_CUR_Q t
+                left join T_LEDGER_METER T2 ON T.METER_ID = T2.METER_ID
+                where t.FREEZE_TIME BETWEEN #{beginTime,jdbcType=TIME} AND  #{endTime,jdbcType=TIME}
+                and t.freeze_time &lt;= SYSDATE
+                AND t2.LEDGER_ID = #{LEDGER_ID_POLLUT}) q
+                group by q.LEDGER_ID,q.freeze_time
+            </if>
+            <if  test="type==0">
+                select q.LEDGER_ID,to_date(q.freeze_time,'yyyy-MM-dd HH24') as FREEZE_TIME,NVL(SUM(faq), 0) as A,
+                NVL(SUM(faq), 0) as C from
+                (select substr(to_char(t.freeze_time,'yyyy-MM-dd HH24:mi:ss'),0,13) as freeze_time,
+                t2.ledger_id,t.faq_value * t2.add_attr * t2.pct /100 as faq from T_CUR_Q t
+                left join T_LEDGER_METER T2 ON T.METER_ID = T2.METER_ID
+                where t.FREEZE_TIME BETWEEN #{beginTime,jdbcType=TIME} AND  #{endTime,jdbcType=TIME}
+                and t.freeze_time &lt;= SYSDATE
+                AND t2.LEDGER_ID = #{LEDGER_ID_POLLUTCTL}) q
+                group by q.LEDGER_ID,q.freeze_time
+            </if>
+        </if>
+        <if test="curveType == 3">
+            <if  test="type==2">
+                SELECT L1.LEDGER_ID,L1.FREEZE_TIME,L1.B+L2.C A,L1.B,L2.C,L3.POLLUTCTL_BOOT_THR D,l4.POLLUT_BOOT_THR E
+                FROM (
+                SELECT T2.LEDGER_ID, A.FREEZE_TIME, SUM(A.AP* t2.add_attr * t2.pct /100) B
+                FROM   T_CUR_AP A LEFT JOIN  T_LEDGER_METER T2
+                ON A.METER_ID = T2.METER_ID
+                WHERE  A.FREEZE_TIME BETWEEN #{beginTime,jdbcType=TIME} AND  #{endTime,jdbcType=TIME}
+                AND  T2.LEDGER_ID  = #{LEDGER_ID_POLLUT}
+                GROUP BY T2.LEDGER_ID, A.FREEZE_TIME
+                ) L1
+                JOIN
+                (
+                SELECT T2.LEDGER_ID, A.FREEZE_TIME, SUM(A.AP* t2.add_attr * t2.pct /100) C
+                FROM   T_CUR_AP A LEFT JOIN  T_LEDGER_METER T2
+                ON A.METER_ID = T2.METER_ID
+                WHERE  A.FREEZE_TIME BETWEEN #{beginTime,jdbcType=TIME} AND  #{endTime,jdbcType=TIME}
+                AND  T2.LEDGER_ID  = #{LEDGER_ID_POLLUTCTL}
+                GROUP BY T2.LEDGER_ID, A.FREEZE_TIME
+                ) L2
+                ON L1.FREEZE_TIME = L2.FREEZE_TIME
+                JOIN t_ep_facil_relation L3
+                ON L3.LEDGER_ID_POLLUTCTL = l2.LEDGER_ID
+                join t_ep_facil_relation L4
+                ON L4.LEDGER_ID_POLLUT = l1.LEDGER_ID
+                ORDER BY L1.FREEZE_TIME
+            </if>
+            <if  test="type==1">
+                SELECT T2.LEDGER_ID, A.FREEZE_TIME, SUM(A.AP* t2.add_attr * t2.pct /100) A,SUM(A.AP* t2.add_attr * t2.pct /100) B
+                FROM   T_CUR_AP A LEFT JOIN  T_LEDGER_METER T2
+                ON A.METER_ID = T2.METER_ID
+                WHERE  A.FREEZE_TIME BETWEEN #{beginTime,jdbcType=TIME} AND  #{endTime,jdbcType=TIME}
+                AND  T2.LEDGER_ID  = #{LEDGER_ID_POLLUT}
+                GROUP BY T2.LEDGER_ID, A.FREEZE_TIME
+            </if>
+            <if  test="type==0">
+                SELECT T2.LEDGER_ID, A.FREEZE_TIME, SUM(A.AP* t2.add_attr * t2.pct /100) A,SUM(A.AP* t2.add_attr * t2.pct /100) C
+                FROM   T_CUR_AP A LEFT JOIN  T_LEDGER_METER T2
+                ON A.METER_ID = T2.METER_ID
+                WHERE  A.FREEZE_TIME BETWEEN #{beginTime,jdbcType=TIME} AND  #{endTime,jdbcType=TIME}
+                AND  T2.LEDGER_ID  = #{LEDGER_ID_POLLUTCTL}
+                GROUP BY T2.LEDGER_ID, A.FREEZE_TIME
+            </if>
+        </if>
+	</select>
+
+
+	<select id="queryPolType" resultType="HashMap">
+		select pollutctl_id,pollut_id from T_LEDGER where LEDGER_ID = #{ledgerId}
+	</select>
+
+	<select id="queryFacilRelation" parameterType="HashMap" resultType="HashMap">
+		<if test="type==0"><!-- 治污设施 -->
+		select ledger_id_pollut,ledger_id_pollutctl from t_ep_facil_relation where ledger_id_pollutctl = #{ledgerId}
+		</if>
+		<if test="type==1"><!-- 产污设施 -->
+		select ledger_id_pollut,ledger_id_pollutctl from t_ep_facil_relation where ledger_id_pollut = #{ledgerId}
+		</if>
+	</select>
+
+    <select id="queryEventDeclar" resultType="HashMap">
+		SELECT T1.LEDGER_NAME POLLUT_NAME,T4.LEDGER_NAME POLLUTCTL_NAME,T2.EVENT_START_TIME,T2.EVENT_END_TIME,T2.EVENT_ID,T3.POLLUT_BOOT_THR,T3.POLLUTCTL_BOOT_THR,T2.EVENT_STATUS,T5.DECLARE_TIME FROM T_LEDGER T1
+		JOIN T_EVENT T2 ON T1.LEDGER_ID = T2.OBJECT_ID
+		JOIN T_EP_FACIL_RELATION T3 ON T3.LEDGER_ID_POLLUT = T1.LEDGER_ID
+		JOIN T_LEDGER T4 ON T4.LEDGER_ID = T3.LEDGER_ID_POLLUTCTL
+		LEFT JOIN T_EP_DECLARE T5 ON T5.EVENT_RECID = T2.EVENT_RECID
+		WHERE T2.EVENT_START_TIME BETWEEN to_date(#{beginTime},'yyyy-mm-dd hh24:mi:ss')  AND
+		to_date(#{endTime},'yyyy-mm-dd hh24:mi:ss')
+		AND T1.LEDGER_ID = #{LEDGER_ID_POLLUT}
+		AND T2.EVENT_ID = #{eventId}
+    </select>
+
+
+
+</mapper>

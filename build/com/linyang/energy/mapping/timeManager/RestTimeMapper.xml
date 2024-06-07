@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8" ?> 
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+
+<mapper namespace="com.linyang.energy.mapping.timeManager.RestTimeMapper">
+	<!-- 保存用户休息日设置 -->
+	<insert id="insertLedgerRestDay" parameterType="com.linyang.energy.model.LedgerRestDayBean">
+		insert into t_ledger_rest_day
+		(ledger_id,monday,tuesday,wednesday,thursday,friday,saturday,sunday,INCLUDE_DEFAULT_HOLIDAY,INCLUDE_CUSTOM_HOLIDAY)
+		values
+		(#{ledgerId},#{monday},#{tuesday},#{wednesday},#{thursday},#{friday},#{saturday},#{sunday},#{includeDefaultHoliday},#{includeCustomHoliday})
+	</insert>
+
+	<!-- 删除用户休息日设置 -->
+	<delete id="deleteLedgerRestDay">
+		delete from t_ledger_rest_day where ledger_id = #{ledgerId}
+    </delete>
+
+	<!-- 获取用户休息日设置 -->
+	<select id="getLedgerRestDayByLedgerId" resultType="com.linyang.energy.model.LedgerRestDayBean">
+		select ledger_id
+		ledgerId,monday,tuesday,wednesday,thursday,friday,saturday,sunday,INCLUDE_DEFAULT_HOLIDAY includeDefaultHoliday,INCLUDE_CUSTOM_HOLIDAY includeCustomHoliday
+        from t_ledger_rest_day where ledger_id = #{ledgerId}
+	</select>
+
+    <!-- 获取班制休息日设置 -->
+    <select id="getClassRestDayById" resultType="com.linyang.energy.model.ClassRestDayBean">
+        select class_id
+        classId,monday,tuesday,wednesday,thursday,friday,saturday,sunday,INCLUDE_DEFAULT_HOLIDAY includeDefaultHoliday,INCLUDE_CUSTOM_HOLIDAY includeCustomHoliday
+        from t_class_rest_day where class_id = #{classId}
+    </select>
+
+	<!-- 保存用户节假日设置 -->
+	<insert id="insertLedgerHolidaySetting" parameterType="com.linyang.energy.dto.HolidayBean">
+		insert into t_ledger_custom_holiday
+		(ledger_id,holiday_name,from_date,end_date)
+		values(#{ledgerId},#{name},#{fromDate,jdbcType=TIMESTAMP},#{endDate,jdbcType=TIMESTAMP})
+	</insert>
+
+    <!-- 更新节假日设置 -->
+	<update id="updateLedgerHolidaySetting" parameterType="com.linyang.energy.dto.HolidayBean">
+		update t_ledger_custom_holiday set from_date = #{fromDate,jdbcType=TIMESTAMP},end_date=#{endDate,jdbcType=TIMESTAMP} where holiday_name = #{name}
+        <if test="ledgerId != null">
+            and ledger_id = #{ledgerId}
+        </if>
+    </update>
+    <update id="updateClassHolidaySetting" parameterType="com.linyang.energy.dto.HolidayBean">
+        update t_class_custom_holiday set from_date = #{fromDate,jdbcType=TIMESTAMP},end_date=#{endDate,jdbcType=TIMESTAMP} where holiday_name = #{name}
+    </update>
+    
+	<!-- 删除用户节假日设置 -->
+	<delete id="deleteLedgerHolidaySetting">
+		delete from t_ledger_custom_holiday where ledger_id = #{ledgerId}
+    </delete>
+
+	<!-- 获取用户休息日设置 -->
+	<select id="getLedgerHolidaySettingByLedgerId" resultType="com.linyang.energy.dto.HolidayBean">
+		select ledger_id ledgerId,holiday_name name,from_date
+		fromDate,end_date endDate from t_ledger_custom_holiday where ledger_id
+		= #{ledgerId}
+    </select>
+
+    <!-- 获取班制休息日设置 -->
+    <select id="getClassHolidaySettingById" resultType="com.linyang.energy.model.ClassHolidayBean">
+        select class_id classId,holiday_name name,from_date
+        fromDate,end_date endDate from t_class_custom_holiday where class_id
+        = #{classId}
+    </select>
+
+	<!-- 保存用户工作日休息时段设置 -->
+	<insert id="insertLedgerWorkdayRestTimeSetting" parameterType="com.linyang.energy.dto.TimePeriodBean">
+		insert into t_ledger_workday_rest(ledger_id,rest_begin,rest_end)
+		values(#{ledgerId},#{beginTime,jdbcType=TIMESTAMP},#{endTime,jdbcType=TIMESTAMP})
+	</insert>
+
+	<!-- 删除用户工作日休息时段设置 -->
+	<delete id="deleteLedgerWorkdayRestTimeSetting">
+		delete from t_ledger_workday_rest where ledger_id = #{ledgerId}
+    </delete>
+
+	<!-- 获取用户工作日休息时段设置 -->
+	<select id="getLedgerWorkdayRestTimeByLedgerId" resultType="com.linyang.energy.dto.TimePeriodBean">
+		select ledger_id ledgerId,rest_begin beginTime,rest_end endTime from
+		t_ledger_workday_rest where ledger_id = #{ledgerId}
+    </select>
+
+    <!-- 获取班制工作日休息时段设置 -->
+    <select id="getClassWorkdayRestTimeById" resultType="com.linyang.energy.model.ClassTimePeriodBean">
+        select class_id classId,rest_begin beginTime,rest_end endTime from
+        t_class_workday_rest where class_id = #{classId}
+    </select>
+
+    <!-- 删除班制休息日设置 -->
+    <delete id="deleteClassRestDay">
+        delete from t_class_rest_day where class_id = #{classId}
+    </delete>
+
+    <!-- 保存班制休息日设置 -->
+    <insert id="insertClassRestDay" parameterType="com.linyang.energy.model.ClassRestDayBean">
+        insert into t_class_rest_day
+        (class_id,monday,tuesday,wednesday,thursday,friday,saturday,sunday,INCLUDE_DEFAULT_HOLIDAY,INCLUDE_CUSTOM_HOLIDAY)
+        values
+        (#{classId},#{monday},#{tuesday},#{wednesday},#{thursday},#{friday},#{saturday},#{sunday},#{includeDefaultHoliday},#{includeCustomHoliday})
+    </insert>
+
+    <!-- 删除班制节假日设置 -->
+    <delete id="deleteClassHolidaySetting">
+        delete from t_class_custom_holiday where class_id = #{classId}
+    </delete>
+
+    <!-- 保存班制节假日设置 -->
+    <insert id="insertClassHolidaySetting" parameterType="com.linyang.energy.model.ClassHolidayBean">
+        insert into t_class_custom_holiday
+        (class_id,holiday_name,from_date,end_date)
+        values(#{classId},#{name},#{fromDate,jdbcType=TIMESTAMP},#{endDate,jdbcType=TIMESTAMP})
+    </insert>
+
+    <!-- 删除班制工作日休息时段设置 -->
+    <delete id="deleteClassWorkdayRestTimeSetting">
+        delete from t_class_workday_rest where class_id = #{classId}
+    </delete>
+
+    <!-- 保存班制工作日休息时段设置 -->
+    <insert id="insertClassWorkdayRestTimeSetting" parameterType="com.linyang.energy.model.ClassTimePeriodBean">
+        insert into t_class_workday_rest(class_id,rest_begin,rest_end)
+        values(#{classId},#{beginTime,jdbcType=TIMESTAMP},#{endTime,jdbcType=TIMESTAMP})
+    </insert>
+
+</mapper>

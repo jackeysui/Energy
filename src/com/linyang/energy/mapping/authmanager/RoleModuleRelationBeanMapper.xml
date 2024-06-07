@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.linyang.energy.mapping.authmanager.RoleModuleRelationBeanMapper" >
+  <resultMap id="BaseResultMap" type="com.linyang.energy.model.RoleModuleRelationBean" >
+    <id column="MODULE_ID" property="moduleId" jdbcType="DECIMAL" />
+    <id column="ROLE_ID" property="roleId" jdbcType="DECIMAL" />
+  </resultMap>
+  <delete id="deleteByPrimaryKey" parameterType="com.linyang.energy.model.RoleModuleRelationBean" >
+    delete from T_ROLE_MODULE_RELATION
+    where 
+      ROLE_ID = #{roleId,jdbcType=DECIMAL}
+  </delete>
+  <insert id="insert" parameterType="com.linyang.energy.model.RoleModuleRelationBean" >
+    insert into T_ROLE_MODULE_RELATION (MODULE_ID, ROLE_ID)
+    values (#{moduleId,jdbcType=DECIMAL}, #{roleId,jdbcType=DECIMAL})
+  </insert>
+  <insert id="insertSelective" parameterType="com.linyang.energy.model.RoleModuleRelationBean" >
+    insert into T_ROLE_MODULE_RELATION
+    <trim prefix="(" suffix=")" suffixOverrides="," >
+      <if test="moduleId != null" >
+        MODULE_ID,
+      </if>
+      <if test="roleId != null" >
+        ROLE_ID,
+      </if>
+    </trim>
+    <trim prefix="values (" suffix=")" suffixOverrides="," >
+      <if test="moduleId != null" >
+        #{moduleId,jdbcType=DECIMAL},
+      </if>
+      <if test="roleId != null" >
+        #{roleId,jdbcType=DECIMAL},
+      </if>
+    </trim>
+  </insert>
+</mapper>
